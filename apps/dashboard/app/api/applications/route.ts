@@ -6,7 +6,6 @@ import { handleRouteError, ValidationError } from "@/lib/errors";
 import { enforceRateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { productionRepository } from "@/lib/repositories/production";
-import { runLeadQualificationWorkflow } from "@/lib/services/qualification";
 import { fundingApplicationSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +68,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         source: "public_application",
         ai_qualification_ready: true,
+        ai_qualification_requested_at: new Date().toISOString(),
         schema_version: "0008"
       } as Json
     });
@@ -112,8 +112,8 @@ export async function POST(request: NextRequest) {
       ai_task_id: aiTask.id,
       status: "queued",
       message: "Funding application submitted and queued for AI qualification",
-      provider: "openai",
-      model: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
+      provider: null,
+      model: null,
       metadata: {
         lead_id: lead.id,
         business_application_id: application.id
@@ -147,13 +147,7 @@ export async function POST(request: NextRequest) {
       } as Json
     });
 
-    const qualification = await runLeadQualificationWorkflow({
-      lead: linkedLead,
-      application,
-      task: aiTask
-    });
-
-    return NextResponse.json({ data: { application, lead: linkedLead, ai_task: aiTask, qualification } }, { status: 201 });
+    return NextResponse.json({ data: { application, lead: linkedLead, ai_task: aiTask } }, { status: 201 });
   } catch (error) {
     return handleRouteError(error);
   }

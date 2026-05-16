@@ -202,24 +202,70 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
     const tier = ["A", "B", "C", "D"].includes(String(record.tier)) ? (String(record.tier) as "A" | "B" | "C" | "D") : null;
     const leadStatus = decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "reviewed";
     const applicationStatus = decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "reviewed";
+    const industryRisk = stringFrom(record.industry_risk);
+    const fundingFit = stringFrom(record.funding_fit ?? record.funding_recommendation);
+    const underwritingSummary = stringFrom(record.underwriting_summary ?? record.summary);
+    const internalNotes = stringFrom(record.internal_notes);
+    const lenderRecommendations = (record.lender_recommendations ?? record.recommended_lenders) as Json[] | Json;
+    const requestedDocuments = (record.requested_documents as Json) ?? ["bank_statements", "government_id", "business_bank_account"];
 
     await leadsRepository.update(task.lead_id, {
       qualification_score: score,
       tier,
       status: leadStatus,
-      ai_summary: stringFrom(record.underwriting_summary),
-      internal_notes: stringFrom(record.internal_notes),
+      ai_summary: underwritingSummary,
+      internal_notes: internalNotes,
       processing_error: false,
       processing_error_detail: null
     });
 
     if (task.business_application_id) {
+      await productionRepository.createLeadScore({
+        lead_id: task.lead_id,
+        business_application_id: task.business_application_id,
+        score,
+        tier,
+        decision,
+        industry_risk: industryRisk,
+        funding_fit: fundingFit,
+        underwriting_summary: underwritingSummary,
+        lender_recommendations: lenderRecommendations as Json,
+        internal_notes: internalNotes,
+        provider: null,
+        model: null,
+        input_payload: {
+          requested_amount: task.input_payload?.requested_amount,
+          monthly_deposits: task.input_payload?.monthly_deposits,
+          credit_score_range: task.input_payload?.credit_score_range,
+          industry: task.input_payload?.industry
+        } as Json,
+        output_payload: result
+      });
+
+      await productionRepository.createUnderwritingReview({
+        application_id: null,
+        lead_id: task.lead_id,
+        business_application_id: task.business_application_id,
+        ai_task_id: task.id,
+        status: decision === "qualified" ? "approved" : decision === "declined" ? "declined" : "in_review",
+        risk_score: numberFrom(record.risk_score ?? record.qualification_score ?? score) ?? Math.max(0, 100 - (score ?? 50)),
+        qualification_score: score,
+        industry_risk: industryRisk,
+        funding_recommendation: fundingFit,
+        requested_documents: requestedDocuments as Json,
+        notes: internalNotes,
+        ai_summary: underwritingSummary,
+        lender_recommendations: lenderRecommendations as Json
+      });
+
       await productionRepository.updateBusinessApplication(task.business_application_id, {
         status: applicationStatus,
         metadata: {
           ai_task_id: task.id,
           last_ai_decision: decision,
           qualification_score: score,
+          qualification_tier: tier,
+          qualification_completed_at: new Date().toISOString(),
           lifecycle_updated_at: new Date().toISOString()
         } as Json
       });
