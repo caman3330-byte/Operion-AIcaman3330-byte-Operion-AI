@@ -1,0 +1,10 @@
+{
+  "name": "11_orchestration_route_webhook",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Webhook adapter for lead_intake, outreach_campaign, CRM sync, lender_matching, and reporting_automation. POST normalized events to /api/orchestration/route-workflow with x-operion-internal-key."
+  }
+}

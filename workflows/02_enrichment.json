@@ -1,0 +1,10 @@
+{
+  "name": "02_enrichment",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Reads raw leads, calls 08_deduplication_gate before Apollo enrichment, then updates leads to enriched."
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "05_distribution_legacy_disabled",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Legacy placeholder retained for architecture traceability. MVP v1 uses 09_distribution_approval."
+  }
+}

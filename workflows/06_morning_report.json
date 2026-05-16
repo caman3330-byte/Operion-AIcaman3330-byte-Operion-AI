@@ -1,0 +1,10 @@
+{
+  "name": "06_morning_report",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Cron 7:30AM. Query Supabase metrics and send founder report via SendGrid."
+  }
+}

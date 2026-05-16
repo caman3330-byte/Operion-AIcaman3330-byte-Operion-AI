@@ -1,0 +1,41 @@
+{
+  "name": "Operion AI Lead Acquisition + Outreach Runtime",
+  "version": 1,
+  "description": "n8n-ready workflow contract for lead discovery, enrichment, SDR prep, SendGrid delivery, reply classification, and founder escalation.",
+  "webhooks": [
+    {
+      "path": "business_discovery",
+      "method": "POST",
+      "target": "/api/acquisition/jobs",
+      "notes": "Create or run source discovery jobs for Apollo, Google Maps, website extraction, or future directory connectors."
+    },
+    {
+      "path": "acquisition_enrichment",
+      "method": "POST",
+      "target": "/api/acquisition/enrich",
+      "notes": "Run normalization, duplicate detection, quality scoring, contact confidence scoring, and enrichment persistence."
+    },
+    {
+      "path": "outreach_sdr_prep",
+      "method": "POST",
+      "target": "/api/outreach/sdr/prepare",
+      "notes": "Generate Claude-powered outreach, create approval request, and enqueue approved-ready SDR email records."
+    },
+    {
+      "path": "outreach_follow_up",
+      "method": "POST",
+      "target": "/api/outreach/workers/tick",
+      "notes": "Send queued, due, approved outreach through SendGrid with retry and audit logging."
+    },
+    {
+      "path": "reply_classification",
+      "method": "POST",
+      "target": "/api/outreach/replies",
+      "notes": "Classify inbound replies, score intent, suppress opt-outs, and escalate hot leads."
+    }
+  ],
+  "security": {
+    "header": "x-operion-internal-key",
+    "environment_variable": "OPERION_INTERNAL_API_KEY"
+  }
+}

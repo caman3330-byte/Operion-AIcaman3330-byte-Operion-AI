@@ -1,0 +1,10 @@
+{
+  "name": "04_outreach",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Runs 8AM, 12PM, and 4PM. Sends day 0 / 48h / 96h emails through SendGrid."
+  }
+}

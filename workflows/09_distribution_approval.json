@@ -1,0 +1,10 @@
+{
+  "name": "09_distribution_approval",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Webhook-triggered after founder approval. Matches lenders and calls POST /api/distribute."
+  }
+}

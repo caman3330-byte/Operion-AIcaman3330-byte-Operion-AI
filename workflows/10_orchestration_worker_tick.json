@@ -1,0 +1,10 @@
+{
+  "name": "10_orchestration_worker_tick",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Cron every 1-5 minutes. POST /api/orchestration/workers/tick with x-operion-internal-key to process queued agent tasks."
+  }
+}

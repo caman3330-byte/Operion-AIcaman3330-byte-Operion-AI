@@ -1,0 +1,10 @@
+{
+  "name": "01_discovery",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Cron every 6h. Apollo discovery writes raw leads to Supabase through the dashboard API or Supabase HTTP node."
+  }
+}

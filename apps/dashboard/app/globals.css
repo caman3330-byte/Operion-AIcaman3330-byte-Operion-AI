@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 38% 5%;
+    --foreground: 210 26% 93%;
+    --card: 220 29% 8%;
+    --card-foreground: 210 26% 93%;
+    --muted: 220 20% 13%;
+    --muted-foreground: 218 12% 64%;
+    --accent: 166 63% 12%;
+    --accent-foreground: 158 72% 78%;
+    --primary: 164 78% 48%;
+    --primary-foreground: 220 39% 6%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 153 67% 39%;
+    --success-foreground: 154 100% 96%;
+    --warning: 39 92% 56%;
+    --warning-foreground: 38 96% 12%;
+    --border: 218 21% 18%;
+    --input: 218 21% 18%;
+    --ring: 164 78% 48%;
+  }
+
+  .light {
+    --background: 210 24% 98%;
+    --foreground: 218 31% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 218 31% 15%;
+    --muted: 214 24% 93%;
+    --muted-foreground: 217 12% 43%;
+    --accent: 163 58% 92%;
+    --accent-foreground: 166 71% 21%;
+    --primary: 166 73% 35%;
+    --primary-foreground: 0 0% 100%;
+    --border: 214 18% 86%;
+    --input: 214 18% 86%;
+    --ring: 166 73% 35%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply bg-background text-foreground;
+  }
+
+  body {
+    @apply min-h-screen bg-background font-sans antialiased;
+    letter-spacing: 0;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .fintech-shell {
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.42), rgba(2, 6, 23, 0) 36rem),
+      hsl(var(--background));
+  }
+
+  .fintech-grid {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: linear-gradient(to bottom, black, transparent 72%);
+  }
+
+  .glass-panel {
+    @apply border border-white/10 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-xl;
+  }
+
+  .premium-ring {
+    @apply ring-1 ring-white/10;
+  }
+}

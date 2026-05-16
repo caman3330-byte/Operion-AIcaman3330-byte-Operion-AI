@@ -1,0 +1,10 @@
+{
+  "name": "08_deduplication_gate",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Callable workflow or Supabase Edge Function wrapper for Apollo ID, email, domain, and business-name checks."
+  }
+}

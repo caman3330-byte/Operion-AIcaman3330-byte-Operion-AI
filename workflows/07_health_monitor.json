@@ -1,0 +1,10 @@
+{
+  "name": "07_health_monitor",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Cron every 15 minutes. Poll /api/health and alert thresholds into alerts table plus Slack for WARN/CRITICAL."
+  }
+}

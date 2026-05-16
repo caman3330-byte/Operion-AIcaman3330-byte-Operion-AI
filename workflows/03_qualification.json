@@ -1,0 +1,10 @@
+{
+  "name": "03_qualification",
+  "active": false,
+  "nodes": [],
+  "connections": {},
+  "settings": {
+    "timezone": "Asia/Calcutta",
+    "notes": "Sequentially calls POST /api/qualify for enriched leads. Do not parallelize Claude requests in MVP v1."
+  }
+}

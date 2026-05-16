@@ -1,0 +1,19 @@
+{
+  "name": "operion-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Operion AI MVP v1 monorepo for AI-operated digital finance infrastructure.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm --workspace @operion/dashboard run dev",
+    "build": "npm --workspace @operion/shared run build && npm --workspace @operion/dashboard run build",
+    "lint": "npm --workspace @operion/dashboard run lint",
+    "typecheck": "npm --workspace @operion/shared run typecheck && npm --workspace @operion/dashboard run typecheck"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}
