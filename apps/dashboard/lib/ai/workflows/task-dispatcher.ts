@@ -197,7 +197,7 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
   const record = asRecord(result);
 
   if (task.task_type === "lead_qualification" && task.lead_id) {
-    const score = numberFrom(record.score ?? record.qualification_score);
+    const score = numberFrom(record.score ?? record.qualification_score) ?? 0;
     const decision = String(record.decision ?? "review_required");
     const tier = ["A", "B", "C", "D"].includes(String(record.tier)) ? (String(record.tier) as "A" | "B" | "C" | "D") : null;
     const leadStatus = decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "reviewed";
@@ -206,8 +206,10 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
     const fundingFit = stringFrom(record.funding_fit ?? record.funding_recommendation);
     const underwritingSummary = stringFrom(record.underwriting_summary ?? record.summary);
     const internalNotes = stringFrom(record.internal_notes);
-    const lenderRecommendations = (record.lender_recommendations ?? record.recommended_lenders) as Json[] | Json;
+    const lenderRecommendations = (record.lender_recommendations ?? record.recommended_lenders ?? []) as Json;
     const requestedDocuments = (record.requested_documents as Json) ?? ["bank_statements", "government_id", "business_bank_account"];
+    const taskInput = asRecord(task.input_payload);
+    const defaultProvider = task.assigned_agent?.toLowerCase().includes("anthropic") || task.assigned_agent?.toLowerCase().includes("claude") ? "anthropic" : "openai";
 
     await leadsRepository.update(task.lead_id, {
       qualification_score: score,
@@ -229,15 +231,15 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
         industry_risk: industryRisk,
         funding_fit: fundingFit,
         underwriting_summary: underwritingSummary,
-        lender_recommendations: lenderRecommendations as Json,
+        lender_recommendations: lenderRecommendations,
         internal_notes: internalNotes,
-        provider: null,
+        provider: defaultProvider,
         model: null,
         input_payload: {
-          requested_amount: task.input_payload?.requested_amount,
-          monthly_deposits: task.input_payload?.monthly_deposits,
-          credit_score_range: task.input_payload?.credit_score_range,
-          industry: task.input_payload?.industry
+          requested_amount: taskInput.requested_amount,
+          monthly_deposits: taskInput.monthly_deposits,
+          credit_score_range: taskInput.credit_score_range,
+          industry: taskInput.industry
         } as Json,
         output_payload: result
       });
@@ -248,14 +250,14 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
         business_application_id: task.business_application_id,
         ai_task_id: task.id,
         status: decision === "qualified" ? "approved" : decision === "declined" ? "declined" : "in_review",
-        risk_score: numberFrom(record.risk_score ?? record.qualification_score ?? score) ?? Math.max(0, 100 - (score ?? 50)),
+        risk_score: numberFrom(record.risk_score ?? record.qualification_score ?? score) ?? Math.max(0, 100 - score),
         qualification_score: score,
         industry_risk: industryRisk,
         funding_recommendation: fundingFit,
-        requested_documents: requestedDocuments as Json,
+        requested_documents: requestedDocuments,
         notes: internalNotes,
         ai_summary: underwritingSummary,
-        lender_recommendations: lenderRecommendations as Json
+        lender_recommendations: lenderRecommendations
       });
 
       await productionRepository.updateBusinessApplication(task.business_application_id, {
