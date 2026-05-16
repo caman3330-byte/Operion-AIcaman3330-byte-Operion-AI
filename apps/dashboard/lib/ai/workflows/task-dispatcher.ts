@@ -1,10 +1,10 @@
 import type { AiTask, AiTaskStatus, Json } from "@operion/shared";
+import type { AiProvider, AiTaskDispatchInput } from "@/lib/ai/types";
 import { ConfigurationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { productionRepository } from "@/lib/repositories/production";
 import { routeAiWorkflow, workflowForTaskType } from "@/lib/ai/router";
-import type { AiTaskDispatchInput } from "@/lib/ai/types";
 
 export interface AiTaskDispatchResult {
   worker_id: string;
@@ -160,7 +160,7 @@ async function recoverAiTask(
     } as Json
   });
   await productionRepository.createApiUsageLog({
-    service: task.assigned_agent.includes("openai") ? "openai" : "anthropic",
+    service: getTaskProvider(task.task_type),
     operation: String(task.task_type),
     lead_id: task.lead_id,
     business_application_id: task.business_application_id,
@@ -201,7 +201,7 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
     const decision = String(record.decision ?? "review_required");
     const tier = ["A", "B", "C", "D"].includes(String(record.tier)) ? (String(record.tier) as "A" | "B" | "C" | "D") : null;
     const leadStatus = decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "reviewed";
-    const applicationStatus = decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "reviewed";
+    const applicationStatus = decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "needs_review";
     const industryRisk = stringFrom(record.industry_risk);
     const fundingFit = stringFrom(record.funding_fit ?? record.funding_recommendation);
     const underwritingSummary = stringFrom(record.underwriting_summary ?? record.summary);
@@ -209,7 +209,9 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
     const lenderRecommendations = (record.lender_recommendations ?? record.recommended_lenders ?? []) as Json;
     const requestedDocuments = (record.requested_documents as Json) ?? ["bank_statements", "government_id", "business_bank_account"];
     const taskInput = asRecord(task.input_payload);
-    const defaultProvider = task.assigned_agent?.toLowerCase().includes("anthropic") || task.assigned_agent?.toLowerCase().includes("claude") ? "anthropic" : "openai";
+    const provider = (result as { provider?: string }).provider ?? getTaskProvider(task.task_type);
+    const model = (result as { usage?: { model?: string } }).usage?.model ?? null;
+    const businessApplicationId = task.business_application_id ?? null;
 
     await leadsRepository.update(task.lead_id, {
       qualification_score: score,
@@ -221,46 +223,46 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
       processing_error_detail: null
     });
 
-    if (task.business_application_id) {
-      await productionRepository.createLeadScore({
-        lead_id: task.lead_id,
-        business_application_id: task.business_application_id,
-        score,
-        tier,
-        decision,
-        industry_risk: industryRisk,
-        funding_fit: fundingFit,
-        underwriting_summary: underwritingSummary,
-        lender_recommendations: lenderRecommendations,
-        internal_notes: internalNotes,
-        provider: defaultProvider,
-        model: null,
-        input_payload: {
-          requested_amount: taskInput.requested_amount,
-          monthly_deposits: taskInput.monthly_deposits,
-          credit_score_range: taskInput.credit_score_range,
-          industry: taskInput.industry
-        } as Json,
-        output_payload: result
-      });
+    await productionRepository.createLeadScore({
+      lead_id: task.lead_id,
+      business_application_id: businessApplicationId,
+      score,
+      tier,
+      decision,
+      industry_risk: industryRisk,
+      funding_fit: fundingFit,
+      underwriting_summary: underwritingSummary,
+      lender_recommendations: lenderRecommendations,
+      internal_notes: internalNotes,
+      provider,
+      model,
+      input_payload: {
+        requested_amount: taskInput.requested_amount,
+        monthly_deposits: taskInput.monthly_deposits,
+        credit_score_range: taskInput.credit_score_range,
+        industry: taskInput.industry
+      } as Json,
+      output_payload: result
+    });
 
-      await productionRepository.createUnderwritingReview({
-        application_id: null,
-        lead_id: task.lead_id,
-        business_application_id: task.business_application_id,
-        ai_task_id: task.id,
-        status: decision === "qualified" ? "approved" : decision === "declined" ? "declined" : "in_review",
-        risk_score: numberFrom(record.risk_score ?? record.qualification_score ?? score) ?? Math.max(0, 100 - score),
-        qualification_score: score,
-        industry_risk: industryRisk,
-        funding_recommendation: fundingFit,
-        requested_documents: requestedDocuments,
-        notes: internalNotes,
-        ai_summary: underwritingSummary,
-        lender_recommendations: lenderRecommendations
-      });
+    await productionRepository.createUnderwritingReview({
+      application_id: businessApplicationId,
+      lead_id: task.lead_id,
+      business_application_id: businessApplicationId,
+      ai_task_id: task.id,
+      status: decision === "qualified" ? "approved" : decision === "declined" ? "declined" : "in_review",
+      risk_score: numberFrom(record.risk_score ?? record.qualification_score ?? score) ?? Math.max(0, 100 - score),
+      qualification_score: score,
+      industry_risk: industryRisk,
+      funding_recommendation: fundingFit,
+      requested_documents: requestedDocuments,
+      notes: internalNotes,
+      ai_summary: underwritingSummary,
+      lender_recommendations: lenderRecommendations
+    });
 
-      await productionRepository.updateBusinessApplication(task.business_application_id, {
+    if (businessApplicationId) {
+      await productionRepository.updateBusinessApplication(businessApplicationId, {
         status: applicationStatus,
         metadata: {
           ai_task_id: task.id,
@@ -296,6 +298,11 @@ function buildTaskInput(task: AiTask): Json {
     business_application_id: task.business_application_id,
     input: task.input_payload
   } as Json;
+}
+
+function getTaskProvider(taskType: string): AiProvider {
+  const workflow = workflowForTaskType(taskType);
+  return workflow === "funding_fit_analysis" || workflow === "executive_summary" ? "claude" : "openai";
 }
 
 function summarizeResult(result: Json) {

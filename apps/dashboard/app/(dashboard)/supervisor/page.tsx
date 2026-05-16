@@ -48,6 +48,25 @@ export default async function SupervisorPage() {
         </Card>
       ) : null}
 
+      {!production.environmentReady ? (
+        <Card className="border-destructive bg-destructive/10">
+          <CardHeader>
+            <CardTitle>Production environment incomplete</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            The production environment must have Supabase configured and at least one AI provider available.
+            <div className="mt-3 space-y-1 text-xs">
+              <div>Supabase: {production.configurationStatus.supabase ? "configured" : "missing"}</div>
+              <div>Anthropic: {production.configurationStatus.anthropic ? "configured" : "missing"}</div>
+              <div>OpenAI: {production.configurationStatus.openai ? "configured" : "missing"}</div>
+              <div>SendGrid: {production.configurationStatus.sendgrid ? "configured" : "missing"}</div>
+              <div>Stripe: {production.configurationStatus.stripe ? "configured" : "missing"}</div>
+              <div>n8n: {production.configurationStatus.n8n ? "configured" : "missing"}</div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {production.migrationRequired ? (
         <Card className="border-warning bg-warning/10">
           <CardHeader>

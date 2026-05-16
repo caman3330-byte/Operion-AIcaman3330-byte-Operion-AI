@@ -1,10 +1,20 @@
 import { logger } from "@/lib/logger";
+import { getConfigurationStatus } from "@/lib/env";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { productionRepository } from "@/lib/repositories/production";
 
 export interface ProductionSupervisorSummary {
   source: "supabase" | "unavailable";
   migrationRequired: boolean;
+  configurationStatus: {
+    supabase: boolean;
+    anthropic: boolean;
+    openai: boolean;
+    sendgrid: boolean;
+    stripe: boolean;
+    n8n: boolean;
+  };
+  environmentReady: boolean;
   applications: number;
   leads: number;
   qualifiedLeads: number;
@@ -20,6 +30,9 @@ export interface ProductionSupervisorSummary {
 }
 
 export async function getProductionSupervisorSummary(): Promise<ProductionSupervisorSummary> {
+  const configurationStatus = getConfigurationStatus();
+  const environmentReady = configurationStatus.supabase && (configurationStatus.anthropic || configurationStatus.openai);
+
   try {
     await productionRepository.ensureProductionSchema();
     const [leads, applications, aiTasks, approvals, reviews, matches, outreachLogs, usage] = await Promise.all([
@@ -36,6 +49,8 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
     return {
       source: "supabase",
       migrationRequired: false,
+      configurationStatus,
+      environmentReady,
       applications: applications.length,
       leads: leads.total,
       qualifiedLeads: leads.data.filter((lead) => lead.status === "qualified" || lead.status === "approved" || lead.status === "funded").length,
@@ -54,6 +69,8 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
     return {
       source: "unavailable",
       migrationRequired: true,
+      configurationStatus,
+      environmentReady,
       applications: 0,
       leads: 0,
       qualifiedLeads: 0,

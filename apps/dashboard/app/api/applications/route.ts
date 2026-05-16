@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       user_id: actor?.id ?? null,
       profile_id: actor?.id ?? null,
       lead_id: lead.id,
-      status: "submitted",
+      status: "ai_review",
       business_name: payload.business_name,
       industry: payload.industry,
       state: payload.state ?? null,
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         funding_purpose: payload.funding_purpose ?? null
       } as Json,
       business_application_id: application.id,
-      assigned_agent: "underwriting_ai",
+      assigned_agent: "underwriting_agent",
       created_by: actor?.id ?? null
     });
 
