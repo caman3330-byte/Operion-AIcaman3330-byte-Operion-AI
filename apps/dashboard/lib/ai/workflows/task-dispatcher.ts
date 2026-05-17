@@ -312,12 +312,6 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
       });
     }
 
-    await productionRepository.updateAiTask(task.id, {
-      status: "completed",
-      cost_estimate_usd: result.usage?.estimatedCostUsd ?? undefined,
-      completed_at: new Date().toISOString()
-    });
-
     await leadsRepository.update(task.lead_id, {
       status: leadStatus,
       ai_summary: underwritingSummary,
@@ -406,7 +400,7 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
     }
   }
 
-  if (requiresApproval(record) && task.business_application_id) {
+  if (requiresApproval(record) && task.business_application_id && task.task_type !== "lender_recommendation") {
     await productionRepository.createApproval({
       entity_type: "business_application",
       entity_id: task.business_application_id,
