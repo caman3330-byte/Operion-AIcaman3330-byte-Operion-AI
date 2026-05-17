@@ -30,7 +30,7 @@ const MAX_ATTEMPTS = 3;
 const workflowChains: Record<string, string | undefined> = {
   lead_intake: "lead_enrichment",
   lead_enrichment: "lead_qualification",
-  lead_qualification: "lender_matching",
+  lead_qualification: "lender_recommendation",
   business_discovery: "contact_extraction",
   contact_extraction: "acquisition_enrichment",
   acquisition_enrichment: "outreach_sdr_prep",

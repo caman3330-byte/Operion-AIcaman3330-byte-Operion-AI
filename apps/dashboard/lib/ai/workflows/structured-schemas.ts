@@ -63,7 +63,12 @@ export const underwritingSummarySchema = z.object({
   strengths: z.array(z.string()),
   risks: z.array(z.string()),
   missing_documents: z.array(z.string()),
-  recommended_next_action: z.string()
+  recommended_next_action: z.string(),
+  revenue_trend: z.enum(["increasing", "stable", "decreasing", "volatile", "unknown"]),
+  nsf_alerts: z.number().int().min(0),
+  mca_stacking_risk: z.enum(["low", "medium", "high", "critical"]),
+  estimated_approval_probability: z.number().min(0).max(100),
+  statement_insights: z.array(z.string())
 });
 
 export const underwritingSummaryJsonSchema = {
@@ -78,7 +83,12 @@ export const underwritingSummaryJsonSchema = {
     strengths: { type: "array", items: { type: "string" } },
     risks: { type: "array", items: { type: "string" } },
     missing_documents: { type: "array", items: { type: "string" } },
-    recommended_next_action: { type: "string" }
+    recommended_next_action: { type: "string" },
+    revenue_trend: { type: "string", enum: ["increasing", "stable", "decreasing", "volatile", "unknown"] },
+    nsf_alerts: { type: "integer", minimum: 0 },
+    mca_stacking_risk: { type: "string", enum: ["low", "medium", "high", "critical"] },
+    estimated_approval_probability: { type: "number", minimum: 0, maximum: 100 },
+    statement_insights: { type: "array", items: { type: "string" } }
   },
   required: [
     "qualification_score",
@@ -89,7 +99,12 @@ export const underwritingSummaryJsonSchema = {
     "strengths",
     "risks",
     "missing_documents",
-    "recommended_next_action"
+    "recommended_next_action",
+    "revenue_trend",
+    "nsf_alerts",
+    "mca_stacking_risk",
+    "estimated_approval_probability",
+    "statement_insights"
   ]
 };
 

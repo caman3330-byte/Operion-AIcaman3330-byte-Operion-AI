@@ -270,7 +270,137 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
           qualification_score: score,
           qualification_tier: tier,
           qualification_completed_at: new Date().toISOString(),
+          revenue_trend: stringFrom(record.revenue_trend),
+          nsf_alerts: numberFrom(record.nsf_alerts),
+          mca_stacking_risk: stringFrom(record.mca_stacking_risk),
+          estimated_approval_probability: numberFrom(record.estimated_approval_probability),
           lifecycle_updated_at: new Date().toISOString()
+        } as Json
+      });
+    }
+  }
+
+  if (task.task_type === "underwriting_summary" && task.lead_id) {
+    const score = numberFrom(record.qualification_score) ?? null;
+    const decision = String(record.decision ?? "review_required");
+    const leadStatus = decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "reviewed";
+    const applicationStatus = (decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "needs_review") as BusinessApplicationStatus;
+    const industryRisk = stringFrom(record.industry_risk) || null;
+    const fundingFit = stringFrom(record.funding_fit) || null;
+    const underwritingSummary = stringFrom(record.underwriting_summary ?? record.summary);
+    const internalNotes = stringFrom(record.internal_notes) || null;
+    const requestedDocuments = (record.missing_documents as Json) ?? ["bank_statements", "government_id", "business_bank_account"];
+    const riskScore = numberFrom(record.qualification_score ?? record.risk_score) ?? null;
+    const provider = (result as { provider?: string }).provider ?? getTaskProvider(task.task_type);
+    const model = (result as { usage?: { model?: string } }).usage?.model ?? null;
+    const businessApplicationId = task.business_application_id ?? null;
+
+    if (businessApplicationId) {
+      await productionRepository.updateBusinessApplication(businessApplicationId, {
+        status: applicationStatus,
+        metadata: {
+          ai_task_id: task.id,
+          last_underwriting_summary_at: new Date().toISOString(),
+          revenue_trend: stringFrom(record.revenue_trend),
+          nsf_alerts: numberFrom(record.nsf_alerts),
+          mca_stacking_risk: stringFrom(record.mca_stacking_risk),
+          estimated_approval_probability: numberFrom(record.estimated_approval_probability),
+          statement_insights: record.statement_insights ?? [],
+          underwriting_summary: underwritingSummary,
+          lifecycle_updated_at: new Date().toISOString()
+        } as Json
+      });
+    }
+
+    await productionRepository.updateAiTask(task.id, {
+      status: "completed",
+      cost_estimate_usd: result.usage?.estimatedCostUsd ?? undefined,
+      completed_at: new Date().toISOString()
+    });
+
+    await leadsRepository.update(task.lead_id, {
+      status: leadStatus,
+      ai_summary: underwritingSummary,
+      processing_error: false,
+      processing_error_detail: null
+    });
+
+    await productionRepository.createUnderwritingReview({
+      application_id: businessApplicationId,
+      lead_id: task.lead_id,
+      business_application_id: businessApplicationId,
+      ai_task_id: task.id,
+      status: decision === "qualified" ? "approved" : decision === "declined" ? "declined" : "in_review",
+      risk_score: riskScore ?? 0,
+      qualification_score: score ?? 0,
+      industry_risk: industryRisk,
+      funding_recommendation: fundingFit,
+      requested_documents: requestedDocuments,
+      notes: internalNotes,
+      ai_summary: underwritingSummary,
+      lender_recommendations: record.lender_recommendations ?? [] as Json
+    });
+  }
+
+  if (task.task_type === "lender_recommendation" && task.lead_id && task.business_application_id) {
+    const recommendations = Array.isArray(record.recommendations) ? record.recommendations : [];
+    const summary = stringFrom(record.routing_summary) || stringFrom(record.summary);
+    const requiresApproval = record.requires_approval === true || record.approval_required === true;
+    const businessApplicationId = task.business_application_id;
+    const recommendationsSaved = [] as Json[];
+
+    for (const recommendation of recommendations) {
+      const rec = asRecord(recommendation as Json);
+      const lenderId = stringFrom(rec.lender_id) ?? `lender-${Date.now()}`;
+      const lenderName = stringFrom(rec.lender_name) ?? "Unknown lender";
+      const matchScore = numberFrom(rec.match_score) ?? null;
+      const rationale = stringFrom(rec.rationale) ?? "AI lender routing recommendation.";
+      const requiredConditions = Array.isArray(rec.required_conditions) ? rec.required_conditions.filter((item): item is string => typeof item === "string") : [];
+
+      const lenderMatch = await productionRepository.upsertLenderMatch({
+        lead_id: task.lead_id,
+        lender_id: lenderId,
+        business_application_id: businessApplicationId,
+        match_score: matchScore,
+        status: "recommended",
+        criteria_snapshot: recommendation as Json,
+        decision_at: null,
+        submitted_at: null,
+        commission_estimate: null,
+        notes: rationale
+      });
+
+      recommendationsSaved.push({
+        lender_match_id: lenderMatch.id,
+        lender_id: lenderId,
+        lender_name: lenderName,
+        match_score: matchScore,
+        rationale,
+        required_conditions: requiredConditions
+      } as Json);
+    }
+
+    if (businessApplicationId) {
+      await productionRepository.updateBusinessApplication(businessApplicationId, {
+        status: recommendations.length > 0 ? "routed" : "reviewed",
+        metadata: {
+          lender_routing_summary: summary,
+          lender_recommendations: recommendationsSaved,
+          lender_routing_completed_at: new Date().toISOString(),
+          requires_approval: requiresApproval
+        } as Json
+      });
+    }
+
+    if (requiresApproval) {
+      await productionRepository.createApproval({
+        entity_type: "business_application",
+        entity_id: businessApplicationId,
+        status: "pending",
+        reason: " lender routing recommendations require supervisor approval",
+        metadata: {
+          ai_task_id: task.id,
+          task_type: task.task_type
         } as Json
       });
     }

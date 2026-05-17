@@ -13,7 +13,12 @@ const fundingFitSchema = z.object({
   underwriting_summary: z.string(),
   internal_notes: z.string(),
   missing_information: z.array(z.string()),
-  approval_required: z.boolean()
+  approval_required: z.boolean(),
+  revenue_trend: z.enum(["increasing", "stable", "decreasing", "volatile", "unknown"]),
+  nsf_alerts: z.number().int().min(0),
+  mca_stacking_risk: z.enum(["low", "medium", "high", "critical"]),
+  estimated_approval_probability: z.number().min(0).max(100),
+  statement_insights: z.array(z.string())
 });
 
 const executiveSummarySchema = z.object({
