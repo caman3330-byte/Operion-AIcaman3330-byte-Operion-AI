@@ -80,6 +80,35 @@ export default async function ApplicationStatusPage() {
       </div>
 
       <section className="rounded-lg border border-white/10 bg-card/80 p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-white">Recent activity</h2>
+            <p className="mt-1 text-sm text-muted-foreground">AI-generated activity, lender updates, and customer interactions for this application.</p>
+          </div>
+        </div>
+        <div className="mt-5 space-y-4">
+          {workspace.activities.length === 0 ? (
+            <div className="rounded-md border border-dashed border-white/10 bg-white/[0.02] p-6 text-sm text-muted-foreground">
+              No activity recorded yet. Completed AI workflows and communications will appear here.
+            </div>
+          ) : (
+            workspace.activities.slice(0, 5).map((activity) => (
+              <div key={activity.id} className="rounded-md border border-white/10 bg-white/[0.035] p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{activity.subject}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">{activity.activity_type.replaceAll("_", " ")}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{formatDateTime(activity.created_at)}</p>
+                </div>
+                {activity.body ? <p className="mt-3 text-sm leading-6 text-muted-foreground">{activity.body}</p> : null}
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-white/10 bg-card/80 p-5">
         <DocumentUploadForm applicationId={application.id} documents={workspace.documents} />
       </section>
 
@@ -108,26 +137,28 @@ function ReadinessCard({ label, status }: { label: string; status: string }) {
 }
 
 function buildTimeline(status: string | null, createdAt: string | null, updatedAt: string | null) {
-  const order = ["submitted", "ai_review", "needs_review", "reviewing", "submitted_to_lender", "approved", "funded"];
+  const order = [
+    "new_lead",
+    "onboarding",
+    "submitted",
+    "documents_pending",
+    "ai_review",
+    "underwriting_review",
+    "reviewing",
+    "submitted_to_lender",
+    "routed",
+    "approved",
+    "funded"
+  ];
   const currentIndex = status ? order.indexOf(status) : -1;
 
   return [
-    { title: "Application submitted", date: createdAt ? formatDateTime(createdAt) : "-", status: currentIndex >= 0 ? "complete" : "upcoming" },
-    { title: "AI qualification", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 1 ? "complete" : currentIndex === 0 ? "current" : "upcoming" },
-    {
-      title: "Underwriting review",
-      date: updatedAt ? formatDateTime(updatedAt) : "-",
-      status: currentIndex >= 4 ? "complete" : currentIndex >= 2 ? "current" : "upcoming"
-    },
-    {
-      title: "Lender readiness",
-      date: updatedAt ? formatDateTime(updatedAt) : "-",
-      status: currentIndex >= 5 ? "complete" : currentIndex === 4 ? "current" : "upcoming"
-    },
-    {
-      title: "Funding",
-      date: updatedAt ? formatDateTime(updatedAt) : "-",
-      status: currentIndex >= 6 ? "complete" : currentIndex === 5 ? "current" : "upcoming"
-    }
+    { title: "Lead captured", date: createdAt ? formatDateTime(createdAt) : "-", status: currentIndex >= 0 ? "complete" : "upcoming" },
+    { title: "Merchant onboarding", date: createdAt ? formatDateTime(createdAt) : "-", status: currentIndex >= 1 ? "complete" : currentIndex === 0 ? "current" : "upcoming" },
+    { title: "Document collection", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 3 ? "complete" : currentIndex === 2 ? "current" : "upcoming" },
+    { title: "AI underwriting", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 4 ? "complete" : currentIndex === 4 ? "current" : "upcoming" },
+    { title: "Underwriting review", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 5 ? "complete" : currentIndex === 5 ? "current" : "upcoming" },
+    { title: "Lender routing", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 8 ? "complete" : currentIndex >= 6 ? "current" : "upcoming" },
+    { title: "Funding decision", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 10 ? "complete" : currentIndex === 9 ? "current" : "upcoming" }
   ];
 }

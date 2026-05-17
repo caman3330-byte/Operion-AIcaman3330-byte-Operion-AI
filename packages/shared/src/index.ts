@@ -110,11 +110,14 @@ export type UnderwritingReviewStatus = "queued" | "in_review" | "approved" | "ne
 export type AppRole = "customer" | "staff" | "supervisor" | "founder";
 export type BusinessApplicationStatus =
   | "raw"
+  | "new_lead"
+  | "onboarding"
   | "draft"
   | "submitted"
+  | "documents_pending"
   | "ai_review"
   | "needs_review"
-  | "qualified"
+  | "underwriting_review"
   | "reviewing"
   | "reviewed"
   | "submitted_to_lender"
@@ -122,6 +125,7 @@ export type BusinessApplicationStatus =
   | "approved"
   | "funded"
   | "rejected"
+  | "inactive"
   | "withdrawn";
 export type AiTaskStatus = "queued" | "running" | "completed" | "failed" | "blocked";
 export type AiTaskType =
@@ -133,7 +137,12 @@ export type AiTaskType =
   | "reporting"
   | "customer_support"
   | "crm_activity"
-  | "executive_summary";
+  | "executive_summary"
+  | "sales_review"
+  | "communication_review"
+  | "routing_review"
+  | "supervisor_review"
+  | "workflow_recovery";
 export type LenderMatchStatus = "recommended" | "approved" | "submitted" | "accepted" | "rejected" | "funded";
 export type DocumentStatus = "requested" | "uploaded" | "verified" | "rejected";
 export type FundingOfferStatus = "draft" | "presented" | "accepted" | "declined" | "expired";
@@ -657,6 +666,7 @@ export type AcquisitionSummary = {
     queued_emails: number;
     pending_approval_emails: number;
     sent_emails: number;
+    cancelled_emails: number;
     replies: number;
     positive_replies: number;
   };
@@ -1126,8 +1136,59 @@ export type DiagnosticsSummary = {
     enrichment_failures: number;
     workflow_failures: number;
   };
+  communication_health: CommunicationHealthSummary;
+  lender_health: LenderPerformanceSummary;
+  workflow_recovery: WorkflowRecoverySummary;
   bottlenecks: string[];
   recommendations: string[];
+};
+
+export type LeadTemperatureSummary = {
+  total_scores: number;
+  average_score: number;
+  hot_leads: number;
+  warm_leads: number;
+  cold_leads: number;
+  tier_counts: {
+    A: number;
+    B: number;
+    C: number;
+    D: number;
+    unknown: number;
+  };
+};
+
+export type CommunicationHealthSummary = {
+  total_messages: number;
+  sent: number;
+  delivered: number;
+  failed: number;
+  bounced: number;
+  replies: number;
+  reply_rate: number;
+  average_response_delay_ms: number | null;
+};
+
+export type LenderPerformanceSummary = {
+  total_matches: number;
+  recommended: number;
+  approved: number;
+  submitted: number;
+  accepted: number;
+  rejected: number;
+  funded: number;
+  active_lenders: number;
+  unresponsive_lenders: number;
+  average_match_score: number | null;
+};
+
+export type WorkflowRecoverySummary = {
+  total_tasks: number;
+  failed_tasks: number;
+  blocked_tasks: number;
+  retryable_tasks: number;
+  stuck_tasks: number;
+  recovery_recommended: boolean;
 };
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];

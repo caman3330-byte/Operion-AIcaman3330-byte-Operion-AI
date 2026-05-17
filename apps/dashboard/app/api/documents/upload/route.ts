@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requireCustomer } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
 import { handleRouteError, ValidationError, NotFoundError } from "@/lib/errors";
+import { enqueueFundingEmail } from "@/lib/integrations/email-automation";
 import { productionRepository } from "@/lib/repositories/production";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
@@ -67,15 +68,41 @@ export async function POST(request: Request) {
     const requestedDocuments = applicationDocuments.filter((item) => item.status === "requested" || item.status === "uploaded" || item.status === "verified");
     const readyForReview = requestedDocuments.length > 0 && requestedDocuments.every((item) => item.status === "uploaded" || item.status === "verified");
 
-    if (readyForReview && String(application.status) === "needs_review") {
+    if (readyForReview) {
       const currentMetadata = typeof application.metadata === "object" && application.metadata ? application.metadata : {};
-      await productionRepository.updateBusinessApplication(businessApplicationId, {
-        status: "reviewing",
-        metadata: {
-          ...currentMetadata,
-          document_upload_ready_at: new Date().toISOString()
-        } as Json
-      });
+      if (String(application.status) === "documents_pending" || String(application.status) === "onboarding") {
+        await productionRepository.updateBusinessApplication(businessApplicationId, {
+          status: "ai_review",
+          metadata: {
+            ...currentMetadata,
+            document_upload_ready_at: new Date().toISOString()
+          } as Json
+        });
+      } else if (String(application.status) === "needs_review") {
+        await productionRepository.updateBusinessApplication(businessApplicationId, {
+          status: "reviewing",
+          metadata: {
+            ...currentMetadata,
+            document_upload_ready_at: new Date().toISOString()
+          } as Json
+        });
+      }
+
+      try {
+        await enqueueFundingEmail({
+          to: actor.email,
+          subject: "Your funding documents are ready for review",
+          text: `Thanks for uploading your documents for application ${application.id}. Our underwriting team has moved your application back into review and will notify you after the next update.`,
+          lead_id: application.lead_id ?? null,
+          email_number: 1
+        });
+      } catch (error) {
+        console.warn("document_upload_email_failed", {
+          applicationId: application.id,
+          userId: actor.id,
+          error
+        });
+      }
     }
 
     await writeAuditLog({

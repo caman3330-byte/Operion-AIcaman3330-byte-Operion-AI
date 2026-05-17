@@ -13,6 +13,7 @@ export const navItems = [
   { href: "/supervisor", label: "Command Center", icon: Gauge },
   { href: "/acquisition", label: "Lead Sources", icon: Search },
   { href: "/leads", label: "Leads", icon: ClipboardList },
+  { href: "/merchants", label: "Merchants", icon: BadgeDollarSign },
   { href: "/lenders", label: "Lenders", icon: BadgeDollarSign },
   { href: "/outreach", label: "Outreach", icon: Mail },
   { href: "/reports", label: "Reports", icon: FileBarChart },

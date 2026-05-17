@@ -1,6 +1,7 @@
 import type {
   AcquisitionJobStatus,
   AcquisitionSummary,
+  Lead,
   LeadStatus,
   OutreachEmailStatus,
   ReplyClassification
@@ -155,6 +156,25 @@ export const acquisitionRepository = {
 
     const { data, error } = await supabase.from("leads").select("*").or(filters.join(",")).limit(10);
     if (error) throw error;
+    return data ?? [];
+  },
+
+  async findLeadByEmail(email: string) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from("leads").select("*").eq("email", email).limit(1).maybeSingle();
+    if (error) throwAcquisitionDatabaseError(error);
+    return data as Lead | null;
+  },
+
+  async cancelPendingOutreachEmailsForLead(leadId: string, reason?: string) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("outreach_email_queue")
+      .update({ status: "cancelled", last_error: reason ?? "Cancelled due to reply handling" })
+      .eq("lead_id", leadId)
+      .in("status", ["queued", "pending_approval"] as OutreachEmailStatus[])
+      .select("*");
+    if (error) throwAcquisitionDatabaseError(error);
     return data ?? [];
   },
 
@@ -330,6 +350,7 @@ export const acquisitionRepository = {
         queued_emails: countStatus(queueRows, "queued"),
         pending_approval_emails: countStatus(queueRows, "pending_approval"),
         sent_emails: countStatus(queueRows, "sent"),
+        cancelled_emails: countStatus(queueRows, "cancelled"),
         replies: replyRows.length,
         positive_replies: countStatus(replyRows, "positive")
       }

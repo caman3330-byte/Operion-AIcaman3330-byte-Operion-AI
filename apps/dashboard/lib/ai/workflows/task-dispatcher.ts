@@ -262,6 +262,25 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
     });
 
     if (businessApplicationId) {
+      await productionRepository.createCrmActivity({
+        application_id: businessApplicationId,
+        lead_id: task.lead_id ?? null,
+        actor_type: "system",
+        activity_type: "note",
+        subject: "AI qualification completed",
+        body: underwritingSummary ?? internalNotes,
+        metadata: {
+          ai_task_id: task.id,
+          decision,
+          score,
+          tier,
+          provider,
+          model
+        } as Json
+      });
+    }
+
+    if (businessApplicationId) {
       await productionRepository.updateBusinessApplication(businessApplicationId, {
         status: applicationStatus,
         metadata: {
@@ -334,12 +353,32 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
       ai_summary: underwritingSummary,
       lender_recommendations: record.lender_recommendations ?? [] as Json
     });
+
+    await productionRepository.createCrmActivity({
+      application_id: businessApplicationId,
+      lead_id: task.lead_id ?? null,
+      actor_type: "system",
+      activity_type: "note",
+      subject: "Underwriting summary generated",
+      body: underwritingSummary,
+      metadata: {
+        ai_task_id: task.id,
+        provider,
+        model,
+        revenue_trend: record.revenue_trend ?? null,
+        nsf_alerts: record.nsf_alerts ?? null,
+        mca_stacking_risk: record.mca_stacking_risk ?? null,
+        estimated_approval_probability: record.estimated_approval_probability ?? null
+      } as Json
+    });
   }
 
   if (task.task_type === "lender_recommendation" && task.lead_id && task.business_application_id) {
     const recommendations = Array.isArray(record.recommendations) ? record.recommendations : [];
     const summary = stringFrom(record.routing_summary) || stringFrom(record.summary);
     const requiresApproval = record.requires_approval === true || record.approval_required === true;
+    const provider = (result as { provider?: string }).provider ?? getTaskProvider(task.task_type);
+    const model = (result as { usage?: { model?: string } }).usage?.model ?? null;
     const businessApplicationId = task.business_application_id;
     const recommendationsSaved = [] as Json[];
 
@@ -384,6 +423,22 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
           requires_approval: requiresApproval
         } as Json
       });
+
+      await productionRepository.createCrmActivity({
+        application_id: businessApplicationId,
+        lead_id: task.lead_id ?? null,
+        actor_type: "system",
+        activity_type: "lender_update",
+        subject: "Lender recommendations generated",
+        body: summary,
+        metadata: {
+          ai_task_id: task.id,
+          provider,
+          model,
+          requires_approval: requiresApproval,
+          recommendations: recommendationsSaved
+        } as Json
+      });
     }
 
     if (requiresApproval) {
@@ -398,6 +453,76 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
         } as Json
       });
     }
+  }
+
+  if (task.task_type === "outreach_preparation" && task.business_application_id) {
+    const provider = (result as { provider?: string }).provider ?? getTaskProvider(task.task_type);
+    const model = (result as { usage?: { model?: string } }).usage?.model ?? null;
+    const subject = stringFrom(record.subject) ?? "AI outreach draft prepared";
+    const body = stringFrom(record.body_text) ?? stringFrom(record.body_html) ?? subject;
+    await productionRepository.createOutreachLog({
+      campaign_id: null,
+      lead_id: task.lead_id ?? null,
+      business_application_id: task.business_application_id,
+      channel: "email",
+      direction: "outbound",
+      subject,
+      body,
+      status: "draft",
+      provider,
+      provider_message_id: null,
+      error_message: null,
+      sent_at: null,
+      opened_at: null,
+      replied_at: null,
+      metadata: {
+        ai_task_id: task.id,
+        tone: stringFrom(record.tone),
+        personalization_points: record.personalization_points ?? [],
+        compliance_notes: record.compliance_notes ?? []
+      } as Json
+    });
+
+    await productionRepository.createCrmActivity({
+      application_id: task.business_application_id,
+      lead_id: task.lead_id ?? null,
+      actor_type: "system",
+      activity_type: "email",
+      subject: "Outreach draft created",
+      body,
+      metadata: {
+        ai_task_id: task.id,
+        provider,
+        model,
+        tone: stringFrom(record.tone),
+        personalization_points: record.personalization_points ?? [],
+        compliance_notes: record.compliance_notes ?? []
+      } as Json
+    });
+  }
+
+  if (task.task_type === "crm_activity" && (task.business_application_id || task.lead_id)) {
+    const provider = (result as { provider?: string }).provider ?? getTaskProvider(task.task_type);
+    const model = (result as { usage?: { model?: string } }).usage?.model ?? null;
+    const activityType = stringFrom(record.activity_type) ?? "note";
+    await productionRepository.createCrmActivity({
+      application_id: task.business_application_id ?? null,
+      lead_id: task.lead_id ?? null,
+      actor_type: "system",
+      activity_type: ["note", "call", "email", "status_change", "document_request", "lender_update"].includes(activityType)
+        ? (activityType as any)
+        : "note",
+      subject: stringFrom(record.subject) ?? "CRM activity recorded",
+      body: stringFrom(record.body) ?? null,
+      metadata: {
+        ai_task_id: task.id,
+        provider,
+        model,
+        next_step: stringFrom(record.next_step),
+        priority: stringFrom(record.priority),
+        sentiment: stringFrom(record.sentiment)
+      } as Json
+    });
   }
 
   if (requiresApproval(record) && task.business_application_id && task.task_type !== "lender_recommendation") {

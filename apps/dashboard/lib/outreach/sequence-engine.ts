@@ -1,4 +1,4 @@
-import type { Json, Lead, OutreachCampaign, OutreachEmailQueueItem, OutreachSequence } from "@operion/shared";
+import type { Json, Lead, OutreachCampaign, OutreachEmailQueueItem, OutreachSequence, ReplyClassification } from "@operion/shared";
 import { writeAuditLog } from "@/lib/audit";
 import { routeWorkflow } from "@/lib/agent-orchestration/orchestrator";
 import { dispatchN8nWorkflow } from "@/lib/n8n";
@@ -24,6 +24,7 @@ export interface PrepareSdrOutreachResult {
   campaign: OutreachCampaign;
   sequence: OutreachSequence;
   queue_item: OutreachEmailQueueItem;
+  queue_items: OutreachEmailQueueItem[];
   approval_required: boolean;
 }
 
@@ -58,42 +59,53 @@ const DEFAULT_CAMPAIGN_NAME = "MCA Funding SDR Outreach";
 
 export async function prepareSdrOutreach(input: PrepareSdrOutreachInput): Promise<PrepareSdrOutreachResult> {
   const [lead, campaign] = await Promise.all([leadsRepository.getById(input.leadId), resolveCampaign(input)]);
-  const [sequence, contact] = await Promise.all([resolveFirstSequence(campaign), resolveContact(lead)]);
-  const generated = await generateOutreachEmail({ lead, contact, campaign, sequence });
-  const scheduledAt = new Date(Date.now() + sequence.delay_hours * 60 * 60 * 1000).toISOString();
+  const [sequences, contact] = await Promise.all([resolveActiveSequences(campaign), resolveContact(lead)]);
+  const now = Date.now();
+  let accumulatedDelayMs = 0;
+  const approvalRequired = campaign.status !== "active";
+  const queueItems: OutreachEmailQueueItem[] = [];
 
-  const approvalRequired = sequence.requires_approval || campaign.status !== "active";
-  const approval = approvalRequired
-    ? await orchestrationRepository.createApproval({
-        approval_type: "outreach_email",
-        requested_by_agent_key: input.createdByAgentKey ?? "outreach_agent",
-        assigned_to: input.requestedBy,
-        title: `Approve outreach to ${lead.business_name}`,
-        details: {
-          lead_id: lead.id,
-          business_name: lead.business_name,
-          to_email: contact?.email ?? lead.email,
-          subject: generated.subject,
-          compliance_notes: generated.compliance_notes
-        } as Json
-      })
-    : null;
+  for (const sequence of sequences) {
+    accumulatedDelayMs += sequence.delay_hours * 60 * 60 * 1000;
+    const generated = await generateOutreachEmail({ lead, contact, campaign, sequence });
+    const scheduledAt = new Date(now + accumulatedDelayMs).toISOString();
+    const sequenceApprovalRequired = approvalRequired || sequence.requires_approval;
 
-  const queueItem = await acquisitionRepository.createEmailQueueItem({
-    campaign_id: campaign.id,
-    sequence_id: sequence.id,
-    lead_id: lead.id,
-    contact_id: contact?.id ?? null,
-    to_email: contact?.email ?? lead.email ?? "",
-    subject: generated.subject,
-    html_body: generated.html_body,
-    text_body: generated.text_body,
-    status: approvalRequired ? "pending_approval" : "queued",
-    scheduled_at: scheduledAt,
-    approval_id: approval?.id ?? null,
-    ai_generated: true,
-    created_by_agent_key: input.createdByAgentKey ?? "outreach_agent"
-  });
+    const approval = sequenceApprovalRequired
+      ? await orchestrationRepository.createApproval({
+          approval_type: "outreach_email",
+          requested_by_agent_key: input.createdByAgentKey ?? "outreach_agent",
+          assigned_to: input.requestedBy,
+          title: `Approve outreach to ${lead.business_name}`,
+          details: {
+            lead_id: lead.id,
+            business_name: lead.business_name,
+            to_email: contact?.email ?? lead.email,
+            subject: generated.subject,
+            compliance_notes: generated.compliance_notes,
+            sequence_step: sequence.step_number
+          } as Json
+        })
+      : null;
+
+    const queueItem = await acquisitionRepository.createEmailQueueItem({
+      campaign_id: campaign.id,
+      sequence_id: sequence.id,
+      lead_id: lead.id,
+      contact_id: contact?.id ?? null,
+      to_email: contact?.email ?? lead.email ?? "",
+      subject: generated.subject,
+      html_body: generated.html_body,
+      text_body: generated.text_body,
+      status: sequenceApprovalRequired ? "pending_approval" : "queued",
+      scheduled_at: scheduledAt,
+      approval_id: approval?.id ?? null,
+      ai_generated: true,
+      created_by_agent_key: input.createdByAgentKey ?? "outreach_agent"
+    });
+
+    queueItems.push(queueItem);
+  }
 
   await Promise.all([
     leadsRepository.update(lead.id, { outreach_started: true }),
@@ -105,7 +117,7 @@ export async function prepareSdrOutreach(input: PrepareSdrOutreachInput): Promis
       entityId: campaign.id,
       metadata: {
         lead_id: lead.id,
-        queue_item_id: queueItem.id,
+        queue_item_ids: queueItems.map((item) => item.id),
         approval_required: approvalRequired
       } as Json
     }),
@@ -115,7 +127,7 @@ export async function prepareSdrOutreach(input: PrepareSdrOutreachInput): Promis
       payload: {
         lead_id: lead.id,
         campaign_id: campaign.id,
-        queue_item_id: queueItem.id,
+        queue_item_ids: queueItems.map((item) => item.id),
         approval_required: approvalRequired
       } as Json
     })
@@ -123,8 +135,9 @@ export async function prepareSdrOutreach(input: PrepareSdrOutreachInput): Promis
 
   return {
     campaign,
-    sequence,
-    queue_item: queueItem,
+    sequence: sequences[0]!,
+    queue_item: queueItems[0]!,
+    queue_items: queueItems,
     approval_required: approvalRequired
   };
 }
@@ -184,6 +197,13 @@ export async function recordOutreachReply(input: RecordReplyInput) {
     } as Json
   });
 
+  if (input.leadId && shouldCancelPendingFollowUps(classification.classification)) {
+    await acquisitionRepository.cancelPendingOutreachEmailsForLead(
+      input.leadId,
+      `Cancelled pending follow-up after ${classification.classification} reply`
+    );
+  }
+
   if (classification.escalated) {
     await escalateHotReply(reply.id, input, classification.reason);
   }
@@ -192,6 +212,10 @@ export async function recordOutreachReply(input: RecordReplyInput) {
     reply,
     classification
   };
+}
+
+function shouldCancelPendingFollowUps(classification: ReplyClassification) {
+  return ["positive", "question", "negative", "opt_out", "bounce"].includes(classification);
 }
 
 async function sendQueuedEmail(item: OutreachEmailQueueItem, workerId: string) {
@@ -319,29 +343,31 @@ async function resolveCampaign(input: PrepareSdrOutreachInput) {
   });
 }
 
-async function resolveFirstSequence(campaign: OutreachCampaign) {
+async function resolveActiveSequences(campaign: OutreachCampaign) {
   const existing = await acquisitionRepository.listSequences(campaign.id);
-  const first = existing.find((sequence) => sequence.active);
-  if (first) {
-    return first;
+  const activeSequences = existing.filter((sequence) => sequence.active).sort((a, b) => a.step_number - b.step_number);
+  if (activeSequences.length > 0) {
+    return activeSequences;
   }
 
-  return acquisitionRepository.createSequence({
-    campaign_id: campaign.id,
-    step_number: 1,
-    delay_hours: 0,
-    subject_template: "Funding options for {{business_name}}",
-    body_template:
-      "Introduce Operion AI as a business funding operations team. Ask whether the business is reviewing working-capital options. Avoid guarantees.",
-    channel: "email",
-    requires_approval: true,
-    send_window: {
-      timezone: "America/New_York",
-      days: ["monday", "tuesday", "wednesday", "thursday", "friday"],
-      start_hour: 9,
-      end_hour: 16
-    } as Json
-  });
+  return [
+    await acquisitionRepository.createSequence({
+      campaign_id: campaign.id,
+      step_number: 1,
+      delay_hours: 0,
+      subject_template: "Funding options for {{business_name}}",
+      body_template:
+        "Introduce Operion AI as a business funding operations team. Ask whether the business is reviewing working-capital options. Avoid guarantees.",
+      channel: "email",
+      requires_approval: true,
+      send_window: {
+        timezone: "America/New_York",
+        days: ["monday", "tuesday", "wednesday", "thursday", "friday"],
+        start_hour: 9,
+        end_hour: 16
+      } as Json
+    })
+  ];
 }
 
 async function resolveContact(lead: Lead) {

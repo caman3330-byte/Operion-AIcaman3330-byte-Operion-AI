@@ -1,6 +1,8 @@
-import type { Json } from "@operion/shared";
+import type { Json, CommunicationHealthSummary, LeadTemperatureSummary, LenderPerformanceSummary, WorkflowRecoverySummary } from "@operion/shared";
 import { ConfigurationError, NotFoundError } from "@/lib/errors";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { orchestrationRepository } from "@/lib/repositories/orchestration";
+import { lendersRepository } from "@/lib/repositories/lenders";
 import type {
   AiTaskInsert,
   AiTaskLogInsert,
@@ -9,6 +11,7 @@ import type {
   ApprovalStatusInsert,
   BusinessApplicationInsert,
   BusinessApplicationUpdate,
+  CrmActivityInsert,
   DocumentInsert,
   DocumentUpdate,
   FundingOfferInsert,
@@ -70,6 +73,51 @@ export const productionRepository = {
     return data ?? [];
   },
 
+  async listBusinessApplicationsByStatus(statuses: string[], limit = 100) {
+    if (statuses.length === 0) return [];
+    const { data, error } = await getSupabaseAdmin()
+      .from("business_applications")
+      .select("*")
+      .in("status", statuses)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throwProductionSchemaError(error);
+    return data ?? [];
+  },
+
+  async listLenderMatchesForApplications(applicationIds: string[]) {
+    if (applicationIds.length === 0) return [];
+    const { data, error } = await getSupabaseAdmin()
+      .from("lender_matches")
+      .select("*")
+      .in("business_application_id", applicationIds)
+      .order("created_at", { ascending: false });
+    if (error) throwProductionSchemaError(error);
+    return data ?? [];
+  },
+
+  async listUnderwritingReviewsForApplications(applicationIds: string[]) {
+    if (applicationIds.length === 0) return [];
+    const { data, error } = await getSupabaseAdmin()
+      .from("underwriting_reviews")
+      .select("*")
+      .in("business_application_id", applicationIds)
+      .order("created_at", { ascending: false });
+    if (error) throwProductionSchemaError(error);
+    return data ?? [];
+  },
+
+  async listAiTasksForApplications(applicationIds: string[]) {
+    if (applicationIds.length === 0) return [];
+    const { data, error } = await getSupabaseAdmin()
+      .from("ai_tasks")
+      .select("*")
+      .in("business_application_id", applicationIds)
+      .order("created_at", { ascending: false });
+    if (error) throwProductionSchemaError(error);
+    return data ?? [];
+  },
+
   async listCustomerApplications(userId: string) {
     const { data, error } = await getSupabaseAdmin()
       .from("business_applications")
@@ -111,6 +159,130 @@ export const productionRepository = {
     return data ?? [];
   },
 
+  async getLeadTemperatureSummary(limit = 100): Promise<LeadTemperatureSummary> {
+    const leadScores = await this.listLeadScores(limit);
+    const tierCounts = leadScores.reduce(
+      (acc, score) => {
+        if (score.tier === "A") acc.A += 1;
+        else if (score.tier === "B") acc.B += 1;
+        else if (score.tier === "C") acc.C += 1;
+        else if (score.tier === "D") acc.D += 1;
+        else acc.unknown += 1;
+        return acc;
+      },
+      { A: 0, B: 0, C: 0, D: 0, unknown: 0 }
+    );
+    const totalScores = leadScores.length;
+    const averageScore = totalScores === 0 ? 0 : leadScores.reduce((sum, score) => sum + score.score, 0) / totalScores;
+    const hotLeads = leadScores.filter((score) => score.score >= 75).length;
+    const warmLeads = leadScores.filter((score) => score.score >= 50 && score.score < 75).length;
+    const coldLeads = leadScores.filter((score) => score < 50).length;
+
+    return {
+      total_scores: totalScores,
+      average_score: Number(averageScore.toFixed(2)),
+      hot_leads: hotLeads,
+      warm_leads: warmLeads,
+      cold_leads: coldLeads,
+      tier_counts: tierCounts
+    };
+  },
+
+  async getCommunicationHealthSummary(limit = 200): Promise<CommunicationHealthSummary> {
+    const { data: logs, error } = await getSupabaseAdmin()
+      .from("outreach_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) throwProductionSchemaError(error);
+    const outreachLogs = logs ?? [];
+    const normalizedStatus = (value: string | null) => (value ?? "").toLowerCase();
+
+    const totalMessages = outreachLogs.length;
+    const sent = outreachLogs.filter((log) => normalizedStatus(log.status).includes("sent") || normalizedStatus(log.status).includes("delivered")).length;
+    const delivered = outreachLogs.filter((log) => normalizedStatus(log.status).includes("delivered")).length;
+    const failed = outreachLogs.filter((log) => normalizedStatus(log.status).includes("failed")).length;
+    const bounced = outreachLogs.filter(
+      (log) => normalizedStatus(log.status).includes("bounce") || normalizedStatus(log.error_message ?? "").includes("undeliverable")
+    ).length;
+    const replies = outreachLogs.filter((log) => log.replied_at !== null).length;
+
+    const responseDelays = outreachLogs
+      .map((log) => ({ sent_at: log.sent_at, replied_at: log.replied_at }))
+      .filter((item) => item.sent_at !== null && item.replied_at !== null)
+      .map((item) => Math.max(0, Date.parse(item.replied_at!) - Date.parse(item.sent_at!)));
+
+    const averageResponseDelayMs = responseDelays.length === 0 ? null : Math.round(responseDelays.reduce((sum, delay) => sum + delay, 0) / responseDelays.length);
+    const replyRate = totalMessages === 0 ? 0 : Number(((replies / totalMessages) * 100).toFixed(2));
+
+    return {
+      total_messages: totalMessages,
+      sent,
+      delivered,
+      failed,
+      bounced,
+      replies,
+      reply_rate: replyRate,
+      average_response_delay_ms: averageResponseDelayMs
+    };
+  },
+
+  async getLenderPerformanceSummary(limit = 200): Promise<LenderPerformanceSummary> {
+    const [matches, activeLenders, allLenders] = await Promise.all([
+      this.listLenderMatches(limit),
+      this.listLenders(true),
+      this.listLenders(false)
+    ]);
+
+    const matchScoreValues = matches.filter((match) => typeof match.match_score === "number").map((match) => match.match_score as number);
+    const averageMatchScore = matchScoreValues.length === 0 ? null : Number((matchScoreValues.reduce((sum, score) => sum + score, 0) / matchScoreValues.length).toFixed(2));
+    const responsiveLenderIds = new Set(matches.filter((match) => ["recommended", "approved", "submitted", "accepted", "funded"].includes(match.status)).map((match) => match.lender_id));
+
+    return {
+      total_matches: matches.length,
+      recommended: matches.filter((match) => match.status === "recommended").length,
+      approved: matches.filter((match) => match.status === "approved").length,
+      submitted: matches.filter((match) => match.status === "submitted").length,
+      accepted: matches.filter((match) => match.status === "accepted").length,
+      rejected: matches.filter((match) => match.status === "rejected").length,
+      funded: matches.filter((match) => match.status === "funded").length,
+      active_lenders: activeLenders.length,
+      unresponsive_lenders: Math.max(0, activeLenders.length - responsiveLenderIds.size),
+      average_match_score: averageMatchScore
+    };
+  },
+
+  async getWorkflowRecoverySummary(): Promise<WorkflowRecoverySummary> {
+    const [failedTasks, blockedTasks, queuedTasks] = await Promise.all([
+      orchestrationRepository.listTasks({ status: "failed", limit: 200 }),
+      orchestrationRepository.listTasks({ status: "blocked", limit: 200 }),
+      orchestrationRepository.listTasks({ status: "queued", limit: 200 })
+    ]);
+
+    const retryableTasks = failedTasks.filter((task) => {
+      const context = task.context && typeof task.context === "object" && !Array.isArray(task.context) ? task.context : {};
+      return Number(context.runtime_attempts ?? 0) < 3;
+    }).length;
+
+    const stuckTasks = blockedTasks.filter((task) => {
+      const ageMs = Date.now() - Date.parse(task.created_at);
+      return ageMs > 24 * 60 * 60 * 1000;
+    }).length;
+
+    const totalTasks = failedTasks.length + blockedTasks.length + queuedTasks.length;
+    const recoveryRecommended = failedTasks.length > 5 || blockedTasks.length > 5 || stuckTasks > 0;
+
+    return {
+      total_tasks: totalTasks,
+      failed_tasks: failedTasks.length,
+      blocked_tasks: blockedTasks.length,
+      retryable_tasks: retryableTasks,
+      stuck_tasks: stuckTasks,
+      recovery_recommended: recoveryRecommended
+    };
+  },
+
   async createLenderMatch(payload: LenderMatchInsert) {
     const { data, error } = await getSupabaseAdmin().from("lender_matches").insert(payload).select("*").single();
     if (error) throwProductionSchemaError(error);
@@ -141,6 +313,23 @@ export const productionRepository = {
     const { data, error } = await getSupabaseAdmin().from("outreach_logs").insert(payload).select("*").single();
     if (error) throwProductionSchemaError(error);
     return data;
+  },
+
+  async createCrmActivity(payload: CrmActivityInsert) {
+    const { data, error } = await getSupabaseAdmin().from("crm_activities").insert(payload).select("*").single();
+    if (error) throwProductionSchemaError(error);
+    return data;
+  },
+
+  async listCrmActivitiesForApplications(applicationIds: string[]) {
+    if (applicationIds.length === 0) return [];
+    const { data, error } = await getSupabaseAdmin()
+      .from("crm_activities")
+      .select("*")
+      .in("application_id", applicationIds)
+      .order("created_at", { ascending: false });
+    if (error) throwProductionSchemaError(error);
+    return data ?? [];
   },
 
   async listOutreachLogs(limit = 100) {
@@ -315,6 +504,7 @@ export function throwProductionSchemaError(error: { code?: string; message?: str
       "business_applications",
       "lead_scores",
       "lender_matches",
+      "crm_activities",
       "ai_tasks",
       "ai_task_logs",
       "documents",
