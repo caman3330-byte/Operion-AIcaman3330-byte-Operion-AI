@@ -168,13 +168,13 @@ function Panel({ title, icon: Icon, children }: { title: string; icon: LucideIco
 }
 
 function buildStages(status: string | null) {
-  const order = ["submitted", "ai_review", "reviewing", "submitted_to_lender", "approved", "funded"];
-  const currentIndex = status ? Math.max(order.indexOf(status), 0) : -1;
+  const order = ["submitted", "ai_review", "needs_review", "reviewing", "submitted_to_lender", "approved", "funded"];
+  const currentIndex = status ? order.indexOf(status) : -1;
 
   return [
     { label: "Application submitted", complete: currentIndex >= 0 },
     { label: "AI qualification", complete: currentIndex >= 1 },
-    { label: "Underwriting review", complete: currentIndex >= 2 },
-    { label: "Lender matching", complete: currentIndex >= 3 }
+    { label: "Underwriting review", complete: currentIndex >= 3 },
+    { label: "Lender readiness", complete: currentIndex >= 4 }
   ];
 }

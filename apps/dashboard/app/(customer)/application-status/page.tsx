@@ -2,6 +2,7 @@ import { CheckCircle2, Clock3, FileText, Landmark, UploadCloud } from "lucide-re
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DocumentUploadForm } from "@/components/application/document-upload-form";
 import { getCustomerWorkspaceData } from "@/lib/data/customer-workspace";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
@@ -79,6 +80,10 @@ export default async function ApplicationStatusPage() {
       </div>
 
       <section className="rounded-lg border border-white/10 bg-card/80 p-5">
+        <DocumentUploadForm applicationId={application.id} documents={workspace.documents} />
+      </section>
+
+      <section className="rounded-lg border border-white/10 bg-card/80 p-5">
         <div className="flex items-center gap-3">
           <Landmark className="h-5 w-5 text-primary" />
           <h2 className="font-semibold text-white">Lender matching readiness</h2>
@@ -103,13 +108,26 @@ function ReadinessCard({ label, status }: { label: string; status: string }) {
 }
 
 function buildTimeline(status: string | null, createdAt: string | null, updatedAt: string | null) {
-  const order = ["submitted", "ai_review", "reviewing", "submitted_to_lender", "approved", "funded"];
-  const currentIndex = status ? Math.max(order.indexOf(status), 0) : -1;
+  const order = ["submitted", "ai_review", "needs_review", "reviewing", "submitted_to_lender", "approved", "funded"];
+  const currentIndex = status ? order.indexOf(status) : -1;
 
   return [
     { title: "Application submitted", date: createdAt ? formatDateTime(createdAt) : "-", status: currentIndex >= 0 ? "complete" : "upcoming" },
     { title: "AI qualification", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 1 ? "complete" : currentIndex === 0 ? "current" : "upcoming" },
-    { title: "Underwriting review", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 2 ? "complete" : currentIndex === 1 ? "current" : "upcoming" },
-    { title: "Lender matching", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 3 ? "complete" : currentIndex === 2 ? "current" : "upcoming" }
+    {
+      title: "Underwriting review",
+      date: updatedAt ? formatDateTime(updatedAt) : "-",
+      status: currentIndex >= 4 ? "complete" : currentIndex >= 2 ? "current" : "upcoming"
+    },
+    {
+      title: "Lender readiness",
+      date: updatedAt ? formatDateTime(updatedAt) : "-",
+      status: currentIndex >= 5 ? "complete" : currentIndex === 4 ? "current" : "upcoming"
+    },
+    {
+      title: "Funding",
+      date: updatedAt ? formatDateTime(updatedAt) : "-",
+      status: currentIndex >= 6 ? "complete" : currentIndex === 5 ? "current" : "upcoming"
+    }
   ];
 }

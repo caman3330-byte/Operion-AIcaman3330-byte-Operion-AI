@@ -1,4 +1,4 @@
-import type { AiTask, AiTaskStatus, Json } from "@operion/shared";
+import type { AiTask, AiTaskStatus, BusinessApplicationStatus, Json } from "@operion/shared";
 import type { AiProvider, AiTaskDispatchInput } from "@/lib/ai/types";
 import { ConfigurationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -201,7 +201,7 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
     const decision = String(record.decision ?? "review_required");
     const tier = ["A", "B", "C", "D"].includes(String(record.tier)) ? (String(record.tier) as "A" | "B" | "C" | "D") : null;
     const leadStatus = decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "reviewed";
-    const applicationStatus = decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "needs_review";
+    const applicationStatus = (decision === "qualified" ? "qualified" : decision === "declined" ? "rejected" : "needs_review") as BusinessApplicationStatus;
     const industryRisk = stringFrom(record.industry_risk);
     const fundingFit = stringFrom(record.funding_fit ?? record.funding_recommendation);
     const underwritingSummary = stringFrom(record.underwriting_summary ?? record.summary);

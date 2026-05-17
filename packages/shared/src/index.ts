@@ -113,6 +113,7 @@ export type BusinessApplicationStatus =
   | "draft"
   | "submitted"
   | "ai_review"
+  | "needs_review"
   | "qualified"
   | "reviewing"
   | "reviewed"

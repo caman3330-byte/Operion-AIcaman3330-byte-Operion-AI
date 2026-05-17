@@ -267,6 +267,9 @@ export const readinessReportSchema = z.object({
 export const fundingApplicationSchema = z.object({
   business_name: z.string().min(2).max(180),
   industry: z.string().min(2).max(120),
+  business_address: z.preprocess(emptyToUndefined, z.string().max(240).optional().nullable()),
+  time_in_business_months: z.coerce.number().int().nonnegative().optional().nullable(),
+  tax_id_last4: z.preprocess(emptyToUndefined, z.string().max(20).optional().nullable()),
   state: z.preprocess(emptyToUndefined, z.string().min(2).max(40).optional().nullable()),
   website_url: z.preprocess(emptyToUndefined, z.string().url().optional().nullable()),
   annual_revenue: z.coerce.number().nonnegative().optional().nullable(),

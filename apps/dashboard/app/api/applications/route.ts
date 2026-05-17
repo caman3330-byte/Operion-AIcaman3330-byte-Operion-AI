@@ -69,7 +69,10 @@ export async function POST(request: NextRequest) {
         source: "public_application",
         ai_qualification_ready: true,
         ai_qualification_requested_at: new Date().toISOString(),
-        schema_version: "0008"
+        schema_version: "0008",
+        business_address: payload.business_address ?? null,
+        time_in_business_months: payload.time_in_business_months ?? null,
+        tax_id_last4: payload.tax_id_last4 ?? null
       } as Json
     });
 

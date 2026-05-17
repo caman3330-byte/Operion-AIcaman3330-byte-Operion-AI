@@ -10,6 +10,7 @@ import type {
   BusinessApplicationInsert,
   BusinessApplicationUpdate,
   DocumentInsert,
+  DocumentUpdate,
   FundingOfferInsert,
   LeadScoreInsert,
   LenderMatchInsert,
@@ -82,6 +83,19 @@ export const productionRepository = {
   async getBusinessApplication(id: string) {
     const { data, error } = await getSupabaseAdmin().from("business_applications").select("*").eq("id", id).single();
     if (error || !data) throw error ?? new NotFoundError("Business application not found");
+    return data;
+  },
+
+  async getCustomerBusinessApplication(userId: string, applicationId: string) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("business_applications")
+      .select("*")
+      .eq("id", applicationId)
+      .maybeSingle();
+    if (error) throwProductionSchemaError(error);
+    if (!data || (data.user_id !== userId && data.profile_id !== userId)) {
+      throw new NotFoundError("Business application not found");
+    }
     return data;
   },
 
@@ -185,6 +199,34 @@ export const productionRepository = {
     const { data, error } = await getSupabaseAdmin().from("documents").insert(payload).select("*").single();
     if (error) throwProductionSchemaError(error);
     return data;
+  },
+
+  async getDocumentByType(businessApplicationId: string, documentType: string) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("documents")
+      .select("*")
+      .eq("business_application_id", businessApplicationId)
+      .eq("document_type", documentType)
+      .limit(1)
+      .maybeSingle();
+    if (error) throwProductionSchemaError(error);
+    return data;
+  },
+
+  async updateDocument(id: string, payload: DocumentUpdate) {
+    const { data, error } = await getSupabaseAdmin().from("documents").update(payload).eq("id", id).select("*").single();
+    if (error || !data) throw error ?? new NotFoundError("Document not found");
+    return data;
+  },
+
+  async listDocumentsForApplication(businessApplicationId: string) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("documents")
+      .select("*")
+      .eq("business_application_id", businessApplicationId)
+      .order("created_at", { ascending: false });
+    if (error) throwProductionSchemaError(error);
+    return data ?? [];
   },
 
   async listCustomerDocuments(userId: string) {

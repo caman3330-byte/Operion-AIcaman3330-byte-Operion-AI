@@ -35,6 +35,9 @@ export function ApplicationForm() {
     const payload = {
       business_name: String(formData.get("business_name") ?? ""),
       industry: String(formData.get("industry") ?? ""),
+      business_address: String(formData.get("business_address") ?? "") || null,
+      time_in_business_months: optionalNumber("time_in_business_months"),
+      tax_id_last4: String(formData.get("tax_id_last4") ?? "") || null,
       state: String(formData.get("state") ?? ""),
       website_url: String(formData.get("website_url") ?? ""),
       annual_revenue: optionalNumber("annual_revenue"),
@@ -137,8 +140,9 @@ export function ApplicationForm() {
             <option value="other">Other</option>
           </Select>
         </div>
-        <Field label="State" name="state" placeholder="NY, TX, CA..." />
+        <Field label="Business address" name="business_address" placeholder="123 Main St, City, State" />
         <Field label="Business website" name="website_url" placeholder="https://example.com" />
+        <Field label="State" name="state" placeholder="NY, TX, CA..." />
       </div>
 
       <div className={cn("grid gap-5 md:grid-cols-2", step !== 1 && "hidden")}>
@@ -157,6 +161,8 @@ export function ApplicationForm() {
             <option value="700_plus">700+</option>
           </Select>
         </div>
+        <Field label="Time in business (months)" name="time_in_business_months" type="number" min="0" />
+        <Field label="EIN last 4" name="tax_id_last4" placeholder="1234" />
         <div className="space-y-2">
           <Label htmlFor="product_type">Funding product</Label>
           <Select id="product_type" name="product_type" defaultValue="mca">
@@ -186,8 +192,7 @@ export function ApplicationForm() {
         <div className="rounded-lg border border-white/10 bg-white/[0.035] p-4 md:col-span-2">
           <p className="text-sm font-semibold text-white">Document upload queue</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Bank statement upload and bank-link verification are staged in the document workflow. This application captures the
-            data required to open the funding request and create the document checklist.
+            Bank statement upload and bank-link verification are staged in the secure document workflow. After submission, you can upload statements in your customer portal.
           </p>
         </div>
       </div>
