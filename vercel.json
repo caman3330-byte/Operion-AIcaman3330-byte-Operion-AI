@@ -1,7 +1,7 @@
 {
   "version": 3,
-  "installCommand": "npm install",
-  "buildCommand": "npm run build",
+  "installCommand": "cd ../.. && npm install",
+  "buildCommand": "cd ../.. && npm run build --workspace @operion/dashboard",
   "framework": "nextjs",
   "rootDirectory": "apps/dashboard",
   "outputDirectory": ".next"

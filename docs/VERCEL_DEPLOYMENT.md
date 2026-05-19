@@ -3,12 +3,12 @@
 ## Project Settings
 
 - Framework preset: Next.js
-- Root directory: repository root
-- Install command: `npm install`
-- Build command: `npm run build`
-- Output directory: `apps/dashboard/.next`
+- Root directory: `apps/dashboard`
+- Install command: `cd ../.. && npm install`
+- Build command: `cd ../.. && npm run build --workspace @operion/dashboard`
+- Output directory: `.next`
 
-The included `vercel.json` mirrors these settings.
+The included `vercel.json` mirrors these settings and ensures workspace dependencies are installed from the repo root before building the dashboard app.
 
 ## Environment Variables
 
@@ -16,16 +16,18 @@ Add every key from `.env.example` to Vercel. Production routes will fail closed 
 
 ## Supabase Auth Redirects
 
-In Supabase Auth settings, add the production domain as an allowed redirect origin:
+In Supabase Auth settings, add the production domains as allowed redirect origins:
 
 ```txt
 https://your-vercel-domain.vercel.app
 https://operioncapital.com
+https://www.operioncapital.com
 ```
 
 ## Cloudflare
 
-- Point `operioncapital.com` to Vercel using Cloudflare DNS.
+- Point `operioncapital.com` and `www.operioncapital.com` to Vercel using Cloudflare DNS.
+- Configure `www.operioncapital.com` as the canonical Vercel alias and redirect the root domain to `www`.
 - Keep SSL/TLS mode on Full or Full (strict).
 - Enable standard DDoS protection and caching for static assets.
 - Do not cache authenticated dashboard or API routes.
