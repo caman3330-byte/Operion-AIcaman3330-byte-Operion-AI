@@ -116,6 +116,7 @@ export type BusinessApplicationStatus =
   | "submitted"
   | "documents_pending"
   | "ai_review"
+  | "qualified"
   | "needs_review"
   | "underwriting_review"
   | "reviewing"

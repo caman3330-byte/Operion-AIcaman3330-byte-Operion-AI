@@ -1,7 +1,7 @@
 import type { Json } from "@operion/shared";
 import { readServerEnv } from "@/lib/env";
-import { ConfigurationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { safeIntegrationCall } from "@/lib/runtime/integration-guards";
 import { withRetry } from "@/lib/retry";
 
 export interface ApolloCompanyLookupInput {
@@ -24,21 +24,38 @@ export interface ApolloOutreachSyncInput {
   metadata?: Json;
 }
 
+export type ApolloLookupResult = {
+  operation: string;
+  latency_ms: number;
+  data: Json | null;
+  reason?: string;
+};
+
 export async function lookupCompanyInApollo(input: ApolloCompanyLookupInput) {
-  return apolloRequest("organization_search", "/mixed_companies/search", {
+  return safeIntegrationCall("apollo", () => apolloRequest("organization_search", "/mixed_companies/search", {
     q_organization_name: input.businessName,
     q_organization_domains: input.domain ? [input.domain] : undefined,
     page: 1,
     per_page: 5
+  }), {
+    operation: "organization_search",
+    latency_ms: 0,
+    data: null,
+    reason: "apollo_not_configured"
   });
 }
 
 export async function lookupContactInApollo(input: ApolloContactLookupInput) {
-  return apolloRequest("contact_lookup", "/people/match", {
+  return safeIntegrationCall("apollo", () => apolloRequest("contact_lookup", "/people/match", {
     name: input.name ?? undefined,
     email: input.email ?? undefined,
     domain: input.domain ?? undefined,
     organization_name: input.organizationName ?? undefined
+  }), {
+    operation: "contact_lookup",
+    latency_ms: 0,
+    data: null,
+    reason: "apollo_not_configured"
   });
 }
 
@@ -63,7 +80,7 @@ export async function enrichLeadWithApollo(input: ApolloCompanyLookupInput & Apo
 }
 
 export async function syncOutreachToApollo(input: ApolloOutreachSyncInput) {
-  return apolloRequest("outreach_sync", "/contacts", {
+  return safeIntegrationCall("apollo", () => apolloRequest("outreach_sync", "/contacts", {
     email: input.email,
     labels: ["operion_outreach"],
     custom_fields: {
@@ -72,15 +89,16 @@ export async function syncOutreachToApollo(input: ApolloOutreachSyncInput) {
       operion_outreach_status: input.status,
       operion_metadata: input.metadata ?? {}
     }
+  }), {
+    operation: "outreach_sync",
+    latency_ms: 0,
+    data: null,
+    reason: "apollo_not_configured"
   });
 }
 
 async function apolloRequest(operation: string, path: string, body: Record<string, unknown>) {
   const env = readServerEnv();
-  if (!env.APOLLO_API_KEY) {
-    throw new ConfigurationError("APOLLO_API_KEY is required before Apollo enrichment is enabled");
-  }
-
   const startedAt = Date.now();
   const response = await withRetry(
     async () =>
@@ -106,11 +124,12 @@ async function apolloRequest(operation: string, path: string, body: Record<strin
       status: response.status,
       body: parsed
     });
-    throw new ConfigurationError("Apollo request failed", {
+    return {
       operation,
-      status: response.status,
-      providerError: parsed
-    });
+      latency_ms: Date.now() - startedAt,
+      data: parsed,
+      reason: "apollo_request_failed"
+    };
   }
 
   return {

@@ -54,7 +54,13 @@ export default async function MerchantsPage() {
             {applications.map((application) => (
               <tr key={application.id} className="hover:bg-white/5">
                 <td className="px-4 py-4">
-                  <Link href={`/merchants/${application.id}`} className="font-medium text-white hover:text-primary">
+                  <Link
+                    href={{
+                      pathname: "/merchants/[applicationId]",
+                      query: { applicationId: application.id }
+                    }}
+                    className="font-medium text-white hover:text-primary"
+                  >
                     {application.business_name}
                   </Link>
                   <p className="text-xs text-muted-foreground">{application.contact_email}</p>

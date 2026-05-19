@@ -54,13 +54,15 @@ export default async function SupervisorPage() {
             <CardTitle>Production environment incomplete</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            The production environment must have Supabase configured and at least one AI provider available.
+            The production environment needs Supabase, payment, messaging, and at least one AI provider configured.
             <div className="mt-3 space-y-1 text-xs">
               <div>Supabase: {production.configurationStatus.supabase ? "configured" : "missing"}</div>
               <div>Anthropic: {production.configurationStatus.anthropic ? "configured" : "missing"}</div>
               <div>OpenAI: {production.configurationStatus.openai ? "configured" : "missing"}</div>
               <div>SendGrid: {production.configurationStatus.sendgrid ? "configured" : "missing"}</div>
               <div>Stripe: {production.configurationStatus.stripe ? "configured" : "missing"}</div>
+              <div>CRM Webhook: {production.configurationStatus.crm ? "configured" : "missing"}</div>
+              <div>Slack: {production.configurationStatus.slack ? "configured" : "missing"}</div>
               <div>n8n: {production.configurationStatus.n8n ? "configured" : "missing"}</div>
             </div>
           </CardContent>

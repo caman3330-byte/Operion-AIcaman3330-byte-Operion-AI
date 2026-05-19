@@ -3,6 +3,7 @@ import { readServerEnv } from "@/lib/env";
 import { recordApiUsage } from "@/lib/api-usage";
 import { logger } from "@/lib/logger";
 import { withRetry } from "@/lib/retry";
+import { safeIntegrationCall } from "@/lib/runtime/integration-guards";
 
 interface SendOutreachEmailInput {
   leadId: string;
@@ -14,13 +15,10 @@ interface SendOutreachEmailInput {
 
 export async function sendOutreachEmail(input: SendOutreachEmailInput) {
   const env = readServerEnv();
-  if (!env.SENDGRID_API_KEY || !env.SENDGRID_FROM_EMAIL) {
-    throw new ConfigurationError("SENDGRID_API_KEY and SENDGRID_FROM_EMAIL are required to send outreach");
-  }
 
   const startedAt = Date.now();
 
-  try {
+  const result = await safeIntegrationCall("sendgrid", async () => {
     const response = await withRetry(
       async () => {
         const sendgridResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
@@ -63,8 +61,10 @@ export async function sendOutreachEmail(input: SendOutreachEmailInput) {
       ok: true,
       status: response.status
     };
-  } catch (error) {
-    logger.error("sendgrid_outreach_failed", { leadId: input.leadId, error });
+  }, { ok: false, status: 0 });
+
+  if (!result || !result.ok) {
+    logger.debug("sendgrid_skipped_or_failed", { leadId: input.leadId, status: result?.status ?? 0 });
     await recordApiUsage({
       service: "sendgrid",
       operation: "send_email",
@@ -73,6 +73,7 @@ export async function sendOutreachEmail(input: SendOutreachEmailInput) {
       success: false,
       latencyMs: Date.now() - startedAt
     });
-    throw error;
   }
+
+  return result;
 }

@@ -1,4 +1,4 @@
-import type { Json, CommunicationHealthSummary, LeadTemperatureSummary, LenderPerformanceSummary, WorkflowRecoverySummary } from "@operion/shared";
+import type { Json, BusinessApplicationStatus, CommunicationHealthSummary, LeadTemperatureSummary, LenderPerformanceSummary, WorkflowRecoverySummary } from "@operion/shared";
 import { ConfigurationError, NotFoundError } from "@/lib/errors";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { orchestrationRepository } from "@/lib/repositories/orchestration";
@@ -73,7 +73,7 @@ export const productionRepository = {
     return data ?? [];
   },
 
-  async listBusinessApplicationsByStatus(statuses: string[], limit = 100) {
+  async listBusinessApplicationsByStatus(statuses: BusinessApplicationStatus[], limit = 100) {
     if (statuses.length === 0) return [];
     const { data, error } = await getSupabaseAdmin()
       .from("business_applications")
@@ -176,7 +176,7 @@ export const productionRepository = {
     const averageScore = totalScores === 0 ? 0 : leadScores.reduce((sum, score) => sum + score.score, 0) / totalScores;
     const hotLeads = leadScores.filter((score) => score.score >= 75).length;
     const warmLeads = leadScores.filter((score) => score.score >= 50 && score.score < 75).length;
-    const coldLeads = leadScores.filter((score) => score < 50).length;
+    const coldLeads = leadScores.filter((score) => score.score < 50).length;
 
     return {
       total_scores: totalScores,
@@ -231,13 +231,14 @@ export const productionRepository = {
   async getLenderPerformanceSummary(limit = 200): Promise<LenderPerformanceSummary> {
     const [matches, activeLenders, allLenders] = await Promise.all([
       this.listLenderMatches(limit),
-      this.listLenders(true),
-      this.listLenders(false)
+      lendersRepository.list(true),
+      lendersRepository.list(false)
     ]);
 
-    const matchScoreValues = matches.filter((match) => typeof match.match_score === "number").map((match) => match.match_score as number);
+    const normalizedMatches = matches as Array<{ status: string; match_score: number | null; lender_id: string }>;
+    const matchScoreValues = normalizedMatches.filter((match) => typeof match.match_score === "number").map((match) => match.match_score as number);
     const averageMatchScore = matchScoreValues.length === 0 ? null : Number((matchScoreValues.reduce((sum, score) => sum + score, 0) / matchScoreValues.length).toFixed(2));
-    const responsiveLenderIds = new Set(matches.filter((match) => ["recommended", "approved", "submitted", "accepted", "funded"].includes(match.status)).map((match) => match.lender_id));
+    const responsiveLenderIds = new Set(normalizedMatches.filter((match) => ["recommended", "approved", "submitted", "accepted", "funded"].includes(match.status)).map((match) => match.lender_id));
 
     return {
       total_matches: matches.length,
@@ -307,6 +308,10 @@ export const productionRepository = {
       .limit(limit);
     if (error) throwProductionSchemaError(error);
     return data ?? [];
+  },
+
+  async listLenders(activeOnly = false) {
+    return lendersRepository.list(activeOnly);
   },
 
   async createOutreachLog(payload: OutreachLogInsert) {

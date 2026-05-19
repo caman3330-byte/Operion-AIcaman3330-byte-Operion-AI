@@ -33,11 +33,12 @@ function getFundingProbability(application: any) {
   return 29;
 }
 
-export default async function MerchantDetailsPage({ params }: { params: { applicationId: string } }) {
+export default async function MerchantDetailsPage({ params }: { params: Promise<{ applicationId: string }> }) {
   let data;
+  const resolvedParams = await params;
 
   try {
-    data = await getMerchantProfileData(params.applicationId);
+    data = await getMerchantProfileData(resolvedParams.applicationId);
   } catch {
     notFound();
   }
@@ -343,7 +344,7 @@ export default async function MerchantDetailsPage({ params }: { params: { applic
       </Card>
 
       <div className="text-right">
-        <Link href="/merchants" className="text-sm font-medium text-primary hover:underline">
+        <Link href={{ pathname: "/merchants" }} className="text-sm font-medium text-primary hover:underline">
           Back to merchant pipeline
         </Link>
       </div>

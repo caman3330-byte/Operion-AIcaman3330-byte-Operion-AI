@@ -12,6 +12,8 @@ export interface ProductionSupervisorSummary {
     openai: boolean;
     sendgrid: boolean;
     stripe: boolean;
+    crm: boolean;
+    slack: boolean;
     n8n: boolean;
   };
   environmentReady: boolean;
@@ -31,7 +33,11 @@ export interface ProductionSupervisorSummary {
 
 export async function getProductionSupervisorSummary(): Promise<ProductionSupervisorSummary> {
   const configurationStatus = getConfigurationStatus();
-  const environmentReady = configurationStatus.supabase && (configurationStatus.anthropic || configurationStatus.openai);
+  const environmentReady =
+    configurationStatus.supabase &&
+    (configurationStatus.anthropic || configurationStatus.openai) &&
+    configurationStatus.sendgrid &&
+    configurationStatus.stripe;
 
   try {
     await productionRepository.ensureProductionSchema();

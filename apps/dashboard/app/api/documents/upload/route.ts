@@ -3,15 +3,18 @@ import type { Json } from "@operion/shared";
 import { NextResponse } from "next/server";
 import { requireCustomer } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
-import { handleRouteError, ValidationError, NotFoundError } from "@/lib/errors";
+import { handleRouteError, ValidationError } from "@/lib/errors";
 import { enqueueFundingEmail } from "@/lib/integrations/email-automation";
 import { productionRepository } from "@/lib/repositories/production";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import {
+  validateDocumentUpload,
+  normalizeDocumentFileName,
+  createDocumentStoragePath,
+  synthesizeDocumentMetadata
+} from "@/lib/documents/processing";
 
 export const dynamic = "force-dynamic";
-
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
-const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg"];
 const DOCUMENT_BUCKET = "documents";
 
 export async function POST(request: Request) {
@@ -26,17 +29,11 @@ export async function POST(request: Request) {
       throw new ValidationError("Missing required file upload data");
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      throw new ValidationError("Unsupported file type. Use PDF or JPG/PNG images.");
-    }
-
+    validateDocumentUpload(file, documentType, businessApplicationId);
     const buffer = Buffer.from(await file.arrayBuffer());
-    if (buffer.byteLength === 0 || buffer.byteLength > MAX_UPLOAD_BYTES) {
-      throw new ValidationError("Uploaded file must be smaller than 25MB.");
-    }
+    const safeFileName = normalizeDocumentFileName(file.name);
+    const storagePath = createDocumentStoragePath(businessApplicationId, documentType, safeFileName);
 
-    const application = await productionRepository.getCustomerBusinessApplication(actor.id, businessApplicationId);
-    const storagePath = `${businessApplicationId}/${documentType}/${Date.now()}_${encodeURIComponent(file.name)}`;
     const { error: uploadError } = await getSupabaseAdmin().storage.from(DOCUMENT_BUCKET).upload(storagePath, buffer, {
       contentType: file.type
     });
@@ -45,19 +42,22 @@ export async function POST(request: Request) {
       throw new Error(`Document storage upload failed: ${uploadError.message}`);
     }
 
+    const application = await productionRepository.getCustomerBusinessApplication(actor.id, businessApplicationId);
     const existingDocument = await productionRepository.getDocumentByType(businessApplicationId, documentType);
+    const metadata = synthesizeDocumentMetadata(safeFileName, file.type, buffer.byteLength, documentType);
     const documentPayload = {
       user_id: actor.id,
       business_application_id: businessApplicationId,
       lead_id: application.lead_id,
       document_type: documentType,
-      file_name: file.name,
+      file_name: safeFileName,
       storage_path: storagePath,
       mime_type: file.type,
       file_size: buffer.byteLength,
       status: "uploaded",
       uploaded_at: new Date().toISOString(),
-      notes: "Uploaded by customer through secure portal."
+      notes: "Uploaded by customer through secure portal.",
+      metadata: metadata.metadata as Json
     } as const;
 
     const document = existingDocument
@@ -65,28 +65,21 @@ export async function POST(request: Request) {
       : await productionRepository.createDocument(documentPayload);
 
     const applicationDocuments = await productionRepository.listDocumentsForApplication(businessApplicationId);
-    const requestedDocuments = applicationDocuments.filter((item) => item.status === "requested" || item.status === "uploaded" || item.status === "verified");
+    const requestedDocuments = applicationDocuments.filter((item) =>
+      ["requested", "uploaded", "verified"].includes(item.status)
+    );
     const readyForReview = requestedDocuments.length > 0 && requestedDocuments.every((item) => item.status === "uploaded" || item.status === "verified");
 
     if (readyForReview) {
       const currentMetadata = typeof application.metadata === "object" && application.metadata ? application.metadata : {};
-      if (String(application.status) === "documents_pending" || String(application.status) === "onboarding") {
-        await productionRepository.updateBusinessApplication(businessApplicationId, {
-          status: "ai_review",
-          metadata: {
-            ...currentMetadata,
-            document_upload_ready_at: new Date().toISOString()
-          } as Json
-        });
-      } else if (String(application.status) === "needs_review") {
-        await productionRepository.updateBusinessApplication(businessApplicationId, {
-          status: "reviewing",
-          metadata: {
-            ...currentMetadata,
-            document_upload_ready_at: new Date().toISOString()
-          } as Json
-        });
-      }
+      const nextStatus = String(application.status) === "documents_pending" || String(application.status) === "onboarding" ? "ai_review" : "reviewing";
+      await productionRepository.updateBusinessApplication(businessApplicationId, {
+        status: nextStatus,
+        metadata: {
+          ...currentMetadata,
+          document_upload_ready_at: new Date().toISOString()
+        } as Json
+      });
 
       try {
         await enqueueFundingEmail({
@@ -115,7 +108,9 @@ export async function POST(request: Request) {
         business_application_id: businessApplicationId,
         document_type: documentType,
         storage_path: storagePath,
-        application_status: application.status
+        application_status: application.status,
+        document_quality: metadata.quality,
+        ocr_status: metadata.ocrStatus
       } as Json
     });
 

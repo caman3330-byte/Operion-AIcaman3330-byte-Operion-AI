@@ -1,4 +1,3 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const customerProtectedPrefixes = [
@@ -25,42 +24,57 @@ const internalProtectedPrefixes = [
 const internalRoles = new Set(["staff", "supervisor", "founder"]);
 
 export async function middleware(request: NextRequest) {
-  const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  if (!configured) {
+  const pathname = request.nextUrl.pathname;
+
+  // Only run middleware for protected routes to avoid interfering with the public root and marketing pages.
+  if (!isCustomerProtectedRoute(pathname) && !isInternalProtectedRoute(pathname) && !pathname.startsWith("/supervisor")) {
     return NextResponse.next();
   }
 
-  let response = NextResponse.next({
-    request
-  });
+  let response = NextResponse.next();
 
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(
-        cookiesToSet: Array<{
-          name: string;
-          value: string;
-          options?: Parameters<typeof response.cookies.set>[2];
-        }>
-      ) {
-        cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => {
-          if (options) {
-            response.cookies.set(name, value, options);
-          } else {
-            response.cookies.set(name, value);
-          }
-        });
+  // Lazily import Supabase server client to avoid bundling server-only libs into middleware.
+  let createServerClient: any;
+  try {
+    ({ createServerClient } = await import("@supabase/ssr"));
+  } catch (err) {
+    // If we cannot import Supabase in the middleware runtime, let the request proceed.
+    return response;
+  }
+
+  const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  if (!configured) {
+    return response;
+  }
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(
+          cookiesToSet: Array<{
+            name: string;
+            value: string;
+            options?: Parameters<typeof response.cookies.set>[2];
+          }>
+        ) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            if (options) {
+              response.cookies.set(name, value, options);
+            } else {
+              response.cookies.set(name, value);
+            }
+          });
+        }
       }
     }
-  });
+  );
 
   const { data } = await supabase.auth.getUser();
-  const pathname = request.nextUrl.pathname;
 
   if (pathname.startsWith("/api")) {
     return response;
@@ -124,5 +138,25 @@ async function resolveRole(
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
+  matcher: [
+    "/dashboard/:path*",
+    "/application-status/:path*",
+    "/settings/:path*",
+    "/supervisor/:path*",
+    "/executive/:path*",
+    "/manager-agent/:path*",
+    "/acquisition/:path*",
+    "/leads/:path*",
+    "/lenders/:path*",
+    "/outreach/:path*",
+    "/testing/:path*",
+    "/reports/:path*",
+    "/audit/:path*",
+    "/prompts/:path*",
+    "/ai-prompts/:path*",
+    "/signin",
+    "/apply",
+    "/funding-solutions",
+    "/contact"
+  ]
 };

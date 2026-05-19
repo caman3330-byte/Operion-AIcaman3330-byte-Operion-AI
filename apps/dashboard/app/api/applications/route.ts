@@ -7,6 +7,7 @@ import { enforceRateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { productionRepository } from "@/lib/repositories/production";
 import { fundingApplicationSchema } from "@/lib/validation";
+import { recordMerchantOnboarding } from "@/lib/services/onboarding";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,16 @@ export async function POST(request: NextRequest) {
         })
       )
     );
+
+    await recordMerchantOnboarding({
+      applicationId: application.id,
+      leadId: lead.id,
+      businessName: payload.business_name,
+      ownerName: payload.owner_name ?? null,
+      contactEmail: payload.contact_email ?? null,
+      requestedAmount: payload.requested_amount,
+      fundingPurpose: payload.funding_purpose ?? null
+    });
 
     const aiTask = await productionRepository.createAiTask({
       task_type: "lead_qualification",

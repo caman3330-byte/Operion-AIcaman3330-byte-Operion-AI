@@ -3,7 +3,7 @@ import type { AiProvider, AiTaskDispatchInput } from "@/lib/ai/types";
 import { ConfigurationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { leadsRepository } from "@/lib/repositories/leads";
-import { productionRepository } from "@/lib/repositories/production";
+import { safeProductionRepository as productionRepository } from "@/lib/repositories/safe-production";
 import { routeAiWorkflow, workflowForTaskType } from "@/lib/ai/router";
 
 export interface AiTaskDispatchResult {
@@ -296,6 +296,103 @@ async function applyTaskSideEffects(task: AiTask, result: Json) {
           lifecycle_updated_at: new Date().toISOString()
         } as Json
       });
+
+      if (decision === "qualified") {
+        const lenderTask = await productionRepository.createAiTask({
+          task_type: "lender_recommendation",
+          status: "queued",
+          priority: "high",
+          lead_id: task.lead_id,
+          business_application_id: businessApplicationId,
+          assigned_agent: "sales_agent",
+          input_payload: {
+            business_name: stringFrom(taskInput.business_name) ?? "Customer lead",
+            requested_amount: taskInput.requested_amount,
+            monthly_deposits: taskInput.monthly_deposits,
+            credit_score_range: taskInput.credit_score_range,
+            industry: taskInput.industry,
+            funding_purpose: taskInput.funding_purpose
+          } as Json,
+          created_by: null
+        });
+
+        await productionRepository.createAiTaskLog({
+          ai_task_id: lenderTask.id,
+          status: "queued",
+          message: "Auto-queued lender recommendation after AI qualification",
+          provider: null,
+          model: null,
+          metadata: {
+            source: "automated_followup",
+            previous_task_id: task.id,
+            business_application_id: businessApplicationId
+          } as Json
+        });
+
+        const outreachTask = await productionRepository.createAiTask({
+          task_type: "outreach_preparation",
+          status: "queued",
+          priority: "medium",
+          lead_id: task.lead_id,
+          business_application_id: businessApplicationId,
+          assigned_agent: "sales_agent",
+          input_payload: {
+            business_name: stringFrom(taskInput.business_name) ?? "Customer lead",
+            contact_email: stringFrom(taskInput.contact_email) ?? null,
+            requested_amount: taskInput.requested_amount,
+            funding_purpose: taskInput.funding_purpose,
+            instructions: "Draft a customer-facing email that confirms next steps, document upload reminders, and current funding status."
+          } as Json,
+          created_by: null
+        });
+
+        await productionRepository.createAiTaskLog({
+          ai_task_id: outreachTask.id,
+          status: "queued",
+          message: "Auto-queued outreach preparation after AI qualification",
+          provider: null,
+          model: null,
+          metadata: {
+            source: "automated_followup",
+            previous_task_id: task.id,
+            business_application_id: businessApplicationId
+          } as Json
+        });
+      }
+
+      if (decision === "review_required") {
+        const underwritingTask = await productionRepository.createAiTask({
+          task_type: "underwriting_summary",
+          status: "queued",
+          priority: "high",
+          lead_id: task.lead_id,
+          business_application_id: businessApplicationId,
+          assigned_agent: "underwriting_agent",
+          input_payload: {
+            business_name: stringFrom(taskInput.business_name) ?? "Customer lead",
+            requested_amount: taskInput.requested_amount,
+            monthly_deposits: taskInput.monthly_deposits,
+            credit_score_range: taskInput.credit_score_range,
+            industry: taskInput.industry,
+            funding_purpose: taskInput.funding_purpose,
+            notes: internalNotes
+          } as Json,
+          created_by: null
+        });
+
+        await productionRepository.createAiTaskLog({
+          ai_task_id: underwritingTask.id,
+          status: "queued",
+          message: "Auto-queued underwriting summary for review-required qualification",
+          provider: null,
+          model: null,
+          metadata: {
+            source: "automated_followup",
+            previous_task_id: task.id,
+            business_application_id: businessApplicationId
+          } as Json
+        });
+      }
     }
   }
 

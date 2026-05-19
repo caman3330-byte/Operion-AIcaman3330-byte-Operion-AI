@@ -44,7 +44,15 @@ export async function discoverBusinesses(input: DiscoveryQuery): Promise<Discove
 async function discoverWithApollo(input: DiscoveryQuery): Promise<DiscoveryResult> {
   const env = readServerEnv();
   if (!env.APOLLO_API_KEY) {
-    throw new ConfigurationError("APOLLO_API_KEY is required for Apollo discovery");
+    logger.warn("apollo_discovery_disabled", { source: "apollo", query: input.query });
+    return {
+      sourceKey: "apollo",
+      records: [],
+      metadata: {
+        status: "disabled",
+        reason: "apollo_not_configured"
+      }
+    };
   }
 
   const startedAt = Date.now();

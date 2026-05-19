@@ -3,18 +3,49 @@ import { getConfigurationStatus } from "@/lib/env";
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
 import { apiUsageRepository } from "@/lib/repositories/api-usage";
 import { orchestrationRepository } from "@/lib/repositories/orchestration";
+import { productionRepository } from "@/lib/repositories/production";
 import { simulationRepository } from "@/lib/repositories/simulation";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export async function collectDiagnosticsSnapshot(): Promise<DiagnosticsSummary> {
-  const [controls, acquisition, tasks, approvals, traces, apiUsage, supabaseLatency] = await Promise.all([
+  const [controls, acquisition, tasks, approvals, traces, apiUsage, supabaseLatency, communicationHealth, lenderHealth, workflowRecovery] = await Promise.all([
     simulationRepository.getWorkerControls().catch(() => null),
     acquisitionRepository.summary().catch(() => null),
     orchestrationRepository.listTasks({ limit: 200 }).catch(() => []),
     orchestrationRepository.listApprovals({ limit: 200, status: "pending" }).catch(() => []),
     simulationRepository.listTraces(200).catch(() => []),
     apiUsageRepository.summary(7).catch(() => ({ total_cost_usd: 0, successful_calls: 0, failed_calls: 0, by_service: {} })),
-    measureSupabaseLatency().catch(() => null)
+    measureSupabaseLatency().catch(() => null),
+    productionRepository.getCommunicationHealthSummary(200).catch(() => ({
+      total_messages: 0,
+      sent: 0,
+      delivered: 0,
+      failed: 0,
+      bounced: 0,
+      replies: 0,
+      reply_rate: 0,
+      average_response_delay_ms: null
+    })),
+    productionRepository.getLenderPerformanceSummary(200).catch(() => ({
+      total_matches: 0,
+      recommended: 0,
+      approved: 0,
+      submitted: 0,
+      accepted: 0,
+      rejected: 0,
+      funded: 0,
+      active_lenders: 0,
+      unresponsive_lenders: 0,
+      average_match_score: null
+    })),
+    productionRepository.getWorkflowRecoverySummary().catch(() => ({
+      total_tasks: 0,
+      failed_tasks: 0,
+      blocked_tasks: 0,
+      retryable_tasks: 0,
+      stuck_tasks: 0,
+      recovery_recommended: false
+    }))
   ]);
 
   const failedTasks = tasks.filter((task) => task.status === "failed").length;
@@ -39,13 +70,34 @@ export async function collectDiagnosticsSnapshot(): Promise<DiagnosticsSummary> 
     bottlenecks.push("Failures detected across API, workflow, or task execution");
     recommendations.push("Use execution traces to isolate the failed step and replay the workflow after fixes.");
   }
-  if (!getConfigurationStatus().sendgrid) {
+  if (workflowRecovery.recovery_recommended) {
+    bottlenecks.push("Workflow recovery is recommended due to blocked or stuck tasks");
+    recommendations.push("Review failed and blocked orchestration tasks and retry the workflows after resolving root causes.");
+  }
+  const configStatus = getConfigurationStatus();
+  if (!configStatus.sendgrid) {
     bottlenecks.push("SendGrid is not configured");
     recommendations.push("Configure SendGrid before production outreach delivery.");
   }
-  if (!getConfigurationStatus().apollo) {
+  if (!configStatus.apollo) {
     bottlenecks.push("Apollo is not configured");
     recommendations.push("Configure Apollo provider mapping before live acquisition.");
+  }
+  if (!configStatus.slack) {
+    bottlenecks.push("Slack notifications are not configured");
+    recommendations.push("Configure Slack webhook delivery for operational alerts.");
+  }
+  if (!configStatus.stripe) {
+    bottlenecks.push("Stripe payments are not configured");
+    recommendations.push("Configure Stripe before invoice or settlement operations.");
+  }
+  if (!configStatus.crm) {
+    bottlenecks.push("CRM sync is not configured");
+    recommendations.push("Configure CRM webhook sync for live lead and application updates.");
+  }
+  if (!configStatus.n8n) {
+    bottlenecks.push("n8n workflow delivery is not configured");
+    recommendations.push("Configure n8n webhook endpoints for workflow orchestration and alert dispatch.");
   }
 
   const healthStatus = resolveHealthStatus({
@@ -76,6 +128,9 @@ export async function collectDiagnosticsSnapshot(): Promise<DiagnosticsSummary> 
       enrichment_failures: enrichmentFailures,
       workflow_failures: workflowFailures
     },
+    communication_health: communicationHealth,
+    lender_health: lenderHealth,
+    workflow_recovery: workflowRecovery,
     bottlenecks,
     recommendations
   };
@@ -95,6 +150,7 @@ export async function collectDiagnosticsSnapshot(): Promise<DiagnosticsSummary> 
 
 export async function generateProductionReadinessReport(createdBy: string, simulationRunId?: string | null): Promise<ProductionReadinessReport> {
   const diagnostics = await collectDiagnosticsSnapshot();
+  const configStatus = getConfigurationStatus();
   const stableSystems = [
     "TypeScript compile pipeline",
     "Founder-protected API route architecture",
@@ -104,9 +160,12 @@ export async function generateProductionReadinessReport(createdBy: string, simul
   ];
   const unstableSystems = diagnostics.bottlenecks;
   const requiredIntegrations = [
-    ...(!getConfigurationStatus().sendgrid ? ["SendGrid verified sender and API key"] : []),
-    ...(!getConfigurationStatus().apollo ? ["Apollo endpoint mapping and field normalization"] : []),
-    ...(!getConfigurationStatus().n8n ? ["n8n webhook base URL and internal API key"] : [])
+    ...(!configStatus.sendgrid ? ["SendGrid verified sender and API key"] : []),
+    ...(!configStatus.apollo ? ["Apollo endpoint mapping and field normalization"] : []),
+    ...(!configStatus.slack ? ["Slack webhook URL for alerting"] : []),
+    ...(!configStatus.stripe ? ["Stripe secret key for invoice creation"] : []),
+    ...(!configStatus.crm ? ["CRM webhook URL for sync"] : []),
+    ...(!configStatus.n8n ? ["n8n webhook base URL and internal API key"] : [])
   ];
   const scalingBottlenecks = [
     ...(diagnostics.queue_health.approvals_pending > 0 ? ["Founder approval queue throughput"] : []),

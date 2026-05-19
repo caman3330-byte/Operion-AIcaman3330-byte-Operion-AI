@@ -233,6 +233,21 @@ async function sendQueuedEmail(item: OutreachEmailQueueItem, workerId: string) {
       emailNumber: clampEmailNumber(resolveSequenceStep(sending))
     });
 
+    if (!result?.ok) {
+      const failed = await acquisitionRepository.updateEmailQueueItem(sending.id, {
+        status: "failed",
+        last_error: `send_failed:${result?.status ?? 0}`,
+        provider_message_id: String(result?.status ?? 0)
+      });
+
+      return {
+        queue_item_id: sending.id,
+        lead_id: sending.lead_id,
+        status: failed.status,
+        error: `send_failed:${result?.status ?? 0}`
+      };
+    }
+
     const sent = await acquisitionRepository.updateEmailQueueItem(sending.id, {
       status: "sent",
       sent_at: new Date().toISOString(),

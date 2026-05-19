@@ -22,7 +22,7 @@ export function Sidebar() {
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={{ pathname: item.href }}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-white/[0.06] hover:text-white",
                   active && "bg-primary/12 text-primary ring-1 ring-primary/20"
@@ -46,7 +46,7 @@ export function Sidebar() {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={{ pathname: item.href }}
               className={cn(
                 "inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-muted-foreground",
                 active && "bg-primary/12 text-primary"

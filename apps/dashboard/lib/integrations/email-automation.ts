@@ -1,6 +1,7 @@
 import { ConfigurationError } from "@/lib/errors";
 import { sendOutreachEmail } from "@/lib/sendgrid";
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
+import { isIntegrationEnabled } from "@/lib/runtime/integration-guards";
 
 export interface FundingEmailInput {
   to: string;
@@ -11,8 +12,16 @@ export interface FundingEmailInput {
 }
 
 export async function enqueueFundingEmail(input: FundingEmailInput) {
-  if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) {
-    throw new ConfigurationError("SENDGRID_API_KEY and SENDGRID_FROM_EMAIL are required before email automation is enabled");
+  if (!isIntegrationEnabled("sendgrid")) {
+    // SendGrid not configured — fallback: if lead_id present, queue in DB; otherwise return not-sent
+    if (!input.lead_id) {
+      return {
+        queued: false,
+        sent: false,
+        reason: "sendgrid_not_configured"
+      };
+    }
+    // continue — queuing relies on DB and will be handled by safe repository if DB disabled
   }
 
   const htmlBody = formatEmailHtml(input.text);
@@ -51,6 +60,15 @@ export async function enqueueFundingEmail(input: FundingEmailInput) {
     html: htmlBody,
     emailNumber
   });
+
+  if (!result) {
+    return {
+      queued: false,
+      sent: false,
+      status: 0,
+      to: input.to
+    };
+  }
 
   return {
     queued: false,

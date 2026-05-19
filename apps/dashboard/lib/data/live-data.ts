@@ -15,6 +15,11 @@ interface LiveDataResult<T> {
 }
 
 async function fromSupabase<T>(operation: string, loader: () => Promise<T>, empty: T): Promise<LiveDataResult<T>> {
+  // Allow skipping Supabase calls during build (local CI or developer machines).
+  if (process.env.SKIP_SUPABASE_DURING_BUILD === "true") {
+    return { data: empty, source: "unavailable" };
+  }
+
   if (!getConfigurationStatus().supabase) {
     return { data: empty, source: "unavailable" };
   }
