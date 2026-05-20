@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
 
+export const dynamic = "force-dynamic";
+
 export default function SupervisorLoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 text-foreground">
