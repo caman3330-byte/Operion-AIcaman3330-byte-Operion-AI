@@ -7,11 +7,11 @@ Use the root `vercel.json` to deploy the `apps/dashboard` project from the monor
 Root configuration:
 
 - `version`: `3`
-- `installCommand`: `cd ../.. && npm install`
-- `buildCommand`: `cd ../.. && npm run build --workspace @operion/dashboard`
+- `installCommand`: `npm install`
+- `buildCommand`: `npm run build`
 - `framework`: `nextjs`
-- `rootDirectory`: `apps/dashboard`
-- `outputDirectory`: `.next`
+- `rootDirectory`: `.`
+- `outputDirectory`: `apps/dashboard/.next`
 
 This ensures Vercel installs workspace dependencies from the repository root, then builds the dashboard app from the subfolder, with output produced in `apps/dashboard/.next`.
 

@@ -120,7 +120,7 @@ function isInternalProtectedRoute(pathname: string) {
 }
 
 async function resolveRole(
-  supabase: ReturnType<typeof createServerClient>,
+  supabase: any,
   userId: string,
   email: string
 ) {

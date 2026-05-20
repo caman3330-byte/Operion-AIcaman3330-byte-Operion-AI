@@ -35,14 +35,11 @@ function verifyVercelConfig() {
   const config = readJson(vercelConfigPath);
 
   assert(config.version === 3, "vercel.json must use version 3");
-  assert(config.installCommand === "cd ../.. && npm install", "vercel.json installCommand must be 'cd ../.. && npm install'");
-  assert(
-    config.buildCommand === "cd ../.. && npm run build --workspace @operion/dashboard",
-    "vercel.json buildCommand must be 'cd ../.. && npm run build --workspace @operion/dashboard'"
-  );
+  assert(config.installCommand === "npm install", "vercel.json installCommand must be 'npm install'");
+  assert(config.buildCommand === "npm run build", "vercel.json buildCommand must be 'npm run build'");
   assert(config.framework === "nextjs", "vercel.json framework must be 'nextjs'");
-  assert(config.rootDirectory === "apps/dashboard", "vercel.json rootDirectory must be 'apps/dashboard'");
-  assert(config.outputDirectory === ".next", "vercel.json outputDirectory must be '.next'");
+  assert(config.rootDirectory === ".", "vercel.json rootDirectory must be '.'");
+  assert(config.outputDirectory === "apps/dashboard/.next", "vercel.json outputDirectory must be 'apps/dashboard/.next'");
 
   console.log("✔ vercel.json is canonical for apps/dashboard monorepo deployment with workspace install/build");
 }

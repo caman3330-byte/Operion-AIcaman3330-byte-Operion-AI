@@ -28,3 +28,6 @@ dev-next.*.log
 Thumbs.db
 .idea/
 .vscode/
+**/.vercel/
+
+.vercel

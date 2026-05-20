@@ -3,12 +3,12 @@
 ## Project Settings
 
 - Framework preset: Next.js
-- Root directory: `apps/dashboard`
-- Install command: `cd ../.. && npm install`
-- Build command: `cd ../.. && npm run build --workspace @operion/dashboard`
-- Output directory: `.next`
+- Root directory: `.`
+- Install command: `npm install`
+- Build command: `npm run build`
+- Output directory: `apps/dashboard/.next`
 
-The included `vercel.json` mirrors these settings and ensures workspace dependencies are installed from the repo root before building the dashboard app.
+The included `vercel.json` mirrors these settings and ensures workspace dependencies are installed from the repository root before building the dashboard app.
 
 ## Environment Variables
 
