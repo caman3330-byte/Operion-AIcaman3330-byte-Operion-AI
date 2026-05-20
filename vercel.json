@@ -1,8 +1,11 @@
 {
-  "version": 3,
-  "framework": "nextjs",
-  "rootDirectory": ".",
+  "version": 2,
   "installCommand": "npm install",
-  "buildCommand": "npm run build",
-  "outputDirectory": "apps/dashboard/.next"
+  "buildCommand": "npm --workspace @operion/dashboard run build",
+  "builds": [
+    {
+      "src": "apps/dashboard/package.json",
+      "use": "@vercel/next"
+    }
+  ]
 }
