@@ -5,10 +5,12 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 import type { AppRole } from "@operion/shared";
 import type { Database } from "@/lib/supabase/types";
 
+export type ExtendedAppRole = AppRole | "admin" | "operator" | "analyst" | "super_admin" | "workflow";
+
 export interface FounderActor {
   id: string;
   email: string;
-  role: AppRole | "workflow";
+  role: ExtendedAppRole;
 }
 
 export async function requireFounder(request: Request): Promise<FounderActor> {
@@ -16,14 +18,14 @@ export async function requireFounder(request: Request): Promise<FounderActor> {
 }
 
 export async function requireInternalUser(request: Request): Promise<FounderActor> {
-  return requireRole(request, ["staff", "supervisor", "founder"]);
+  return requireRole(request, ["staff", "supervisor", "founder", "super_admin", "admin", "operator", "analyst"]);
 }
 
 export async function requireCustomer(request: Request): Promise<FounderActor> {
-  return requireRole(request, ["customer", "staff", "supervisor", "founder"]);
+  return requireRole(request, ["customer", "staff", "supervisor", "founder", "super_admin", "admin", "operator", "analyst", "workflow"]);
 }
 
-export async function requireRole(request: Request, allowedRoles: AppRole[]): Promise<FounderActor> {
+export async function requireRole(request: Request, allowedRoles: ExtendedAppRole[]): Promise<FounderActor> {
   const config = getConfigurationStatus();
   const adminEmail = process.env.ADMIN_EMAIL;
   const internalKey = process.env.OPERION_INTERNAL_API_KEY;
@@ -111,7 +113,7 @@ export async function getRequestUser(request: Request) {
   };
 }
 
-export async function resolveUserRole(userId: string, email: string): Promise<AppRole> {
+export async function resolveUserRole(userId: string, email: string): Promise<ExtendedAppRole> {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail && email.toLowerCase() === adminEmail.toLowerCase()) {
     return "founder";
@@ -153,6 +155,7 @@ function extractSupabaseCookieToken(cookieHeader: string) {
   );
 
   const baseAuthCookieNames = [...cookies.keys()].filter((name) => name.startsWith("sb-") && name.endsWith("-auth-token"));
+  const accessCookieNames = [...cookies.keys()].filter((name) => name.startsWith("sb-") && name.endsWith("-access-token"));
   const chunkedAuthCookieBaseNames = [
     ...new Set(
       [...cookies.keys()]
@@ -160,8 +163,16 @@ function extractSupabaseCookieToken(cookieHeader: string) {
         .map((name) => name.replace(/\.\d+$/, ""))
     )
   ];
+  const chunkedAccessCookieBaseNames = [
+    ...new Set(
+      [...cookies.keys()]
+        .filter((name) => name.startsWith("sb-") && /-access-token\.\d+$/.test(name))
+        .map((name) => name.replace(/\.\d+$/, ""))
+    )
+  ];
 
-  for (const baseName of [...baseAuthCookieNames, ...chunkedAuthCookieBaseNames]) {
+  const authCookieNames = [...baseAuthCookieNames, ...accessCookieNames, ...chunkedAuthCookieBaseNames, ...chunkedAccessCookieBaseNames];
+  for (const baseName of authCookieNames) {
     const rawValue = cookies.get(baseName) ?? readChunkedCookie(cookies, baseName);
     if (!rawValue) {
       continue;
@@ -171,9 +182,17 @@ function extractSupabaseCookieToken(cookieHeader: string) {
     if (token) {
       return token;
     }
+
+    if (isJwt(rawValue)) {
+      return rawValue;
+    }
   }
 
   return null;
+}
+
+function isJwt(value: string) {
+  return /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value);
 }
 
 function readChunkedCookie(cookies: Map<string, string>, baseName: string) {

@@ -107,7 +107,7 @@ export type NotificationChannel = "email" | "in_app" | "sms" | "webhook";
 export type NotificationStatus = "queued" | "sent" | "failed" | "read" | "archived";
 export type CrmActivityType = "note" | "call" | "email" | "status_change" | "document_request" | "lender_update";
 export type UnderwritingReviewStatus = "queued" | "in_review" | "approved" | "needs_information" | "declined" | "escalated";
-export type AppRole = "customer" | "staff" | "supervisor" | "founder";
+export type AppRole = "customer" | "staff" | "supervisor" | "founder" | "admin" | "operator" | "analyst" | "super_admin";
 export type BusinessApplicationStatus =
   | "raw"
   | "new_lead"

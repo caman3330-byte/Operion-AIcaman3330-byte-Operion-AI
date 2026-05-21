@@ -11,6 +11,13 @@ SUPABASE_SERVICE_ROLE_KEY=
 ADMIN_EMAIL=
 ```
 
+Optionally, add a database connection string or password so migrations can be applied from the repository:
+
+```env
+SUPABASE_DB_URL=
+SUPABASE_DB_PASSWORD=
+```
+
 Apply Supabase migrations `0001` through `0009` in order.
 
 ## AI Providers

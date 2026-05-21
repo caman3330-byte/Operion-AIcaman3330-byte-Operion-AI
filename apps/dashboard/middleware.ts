@@ -7,6 +7,7 @@ const customerProtectedPrefixes = [
 ];
 
 const internalProtectedPrefixes = [
+  "/admin",
   "/executive",
   "/supervisor",
   "/manager-agent",
@@ -21,16 +22,37 @@ const internalProtectedPrefixes = [
   "/ai-prompts"
 ];
 
-const internalRoles = new Set(["staff", "supervisor", "founder"]);
+const publicApiPrefixes = [
+  "/api/health",
+  "/api/applications",
+  "/api/auth/logout",
+  "/api/webhooks/sendgrid"
+];
+
+const customerApiPrefixes = [
+  "/api/documents/upload"
+];
+
+const internalRoles = new Set([
+  "staff",
+  "supervisor",
+  "founder",
+  // Backwards/forwards compatibility with expanded RBAC
+  "super_admin",
+  "admin",
+  "operator",
+  "analyst"
+]);
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Only run middleware for protected routes to avoid interfering with the public root and marketing pages.
-  if (!isCustomerProtectedRoute(pathname) && !isInternalProtectedRoute(pathname) && !pathname.startsWith("/supervisor")) {
+  if (!isProtectedRoute(pathname)) {
     return NextResponse.next();
   }
 
+  const isApiRoute = pathname.startsWith("/api");
   let response = NextResponse.next();
 
   // Lazily import Supabase server client to avoid bundling server-only libs into middleware.
@@ -38,13 +60,34 @@ export async function middleware(request: NextRequest) {
   try {
     ({ createServerClient } = await import("@supabase/ssr"));
   } catch (err) {
-    // If we cannot import Supabase in the middleware runtime, let the request proceed.
-    return response;
+    const errorPayload = { error: "middleware_auth_initialization_failed" };
+    if (isApiRoute) {
+      return new NextResponse(JSON.stringify(errorPayload), {
+        status: 500,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    const url = request.nextUrl.clone();
+    url.pathname = "/signin";
+    url.searchParams.set("auth", "middleware_error");
+    return NextResponse.redirect(url);
   }
 
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   if (!configured) {
-    return response;
+    const errorPayload = { error: "authentication_not_configured" };
+    if (isApiRoute) {
+      return new NextResponse(JSON.stringify(errorPayload), {
+        status: 503,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    const url = request.nextUrl.clone();
+    url.pathname = "/signin";
+    url.searchParams.set("auth", "not_configured");
+    return NextResponse.redirect(url);
   }
 
   const supabase = createServerClient(
@@ -75,8 +118,32 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data } = await supabase.auth.getUser();
+  const internalApiKey = process.env.OPERION_INTERNAL_API_KEY;
 
   if (pathname.startsWith("/api")) {
+    if (internalApiKey && request.headers.get("x-operion-internal-key") === internalApiKey) {
+      return response;
+    }
+
+    if (isPublicApiRoute(pathname) || isCustomerApiRoute(pathname)) {
+      return response;
+    }
+
+    if (!data.user) {
+      return new NextResponse(JSON.stringify({ error: "unauthenticated" }), {
+        status: 401,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    const role = await resolveRole(supabase, data.user.id, data.user.email ?? "");
+    if (!internalRoles.has(role)) {
+      return new NextResponse(JSON.stringify({ error: "forbidden" }), {
+        status: 403,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
     return response;
   }
 
@@ -88,6 +155,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!data.user && isInternalProtectedRoute(pathname)) {
+    // If this is an API admin route, return 401 JSON instead of redirecting.
+    if (pathname.startsWith("/api/")) {
+      return new NextResponse(JSON.stringify({ error: "unauthenticated" }), { status: 401, headers: { "content-type": "application/json" } });
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/supervisor/login";
     url.searchParams.set("redirectTo", `${pathname}${request.nextUrl.search}`);
@@ -117,6 +189,18 @@ function isInternalProtectedRoute(pathname: string) {
   }
 
   return internalProtectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isProtectedRoute(pathname: string) {
+  return isCustomerProtectedRoute(pathname) || isInternalProtectedRoute(pathname) || pathname.startsWith("/api");
+}
+
+function isPublicApiRoute(pathname: string) {
+  return publicApiPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isCustomerApiRoute(pathname: string) {
+  return customerApiPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 async function resolveRole(
@@ -154,6 +238,8 @@ export const config = {
     "/audit/:path*",
     "/prompts/:path*",
     "/ai-prompts/:path*",
+    "/admin/:path*",
+    "/api/:path*",
     "/signin",
     "/apply",
     "/funding-solutions",

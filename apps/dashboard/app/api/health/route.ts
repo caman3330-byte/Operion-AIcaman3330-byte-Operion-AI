@@ -1,38 +1,68 @@
 import { NextResponse } from "next/server";
-import { getConfigurationStatus } from "@/lib/env";
+import { getConfigurationStatus, validateSupabaseEnv } from "@/lib/env";
 import { handleRouteError } from "@/lib/errors";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+
+const MIGRATION_FILE_BY_SCHEMA: Record<string, string> = {
+  managerAgentSchema: "packages/database/migrations/0002_manager_agent_orchestration.sql",
+  multiAgentSchema: "packages/database/migrations/0003_multi_agent_architecture.sql",
+  acquisitionSchema: "packages/database/migrations/0004_lead_acquisition_outreach.sql",
+  simulationSchema: "packages/database/migrations/0005_internal_testing_simulation.sql",
+  phase1Schema: "packages/database/migrations/0006_phase1_public_mvp.sql",
+  platformSchema: "packages/database/migrations/0007_platform_separation_fintech_schema.sql",
+  productionSchema: "packages/database/migrations/0008_production_mca_platform.sql",
+  phase2Schema: "packages/database/migrations/0009_phase2_ai_operations.sql"
+};
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     const configuration = getConfigurationStatus();
-    let database: "ok" | "not_configured" | "error" = configuration.supabase ? "ok" : "not_configured";
-    let managerAgentSchema: "ok" | "not_configured" | "missing" | "error" = configuration.supabase
-      ? "ok"
-      : "not_configured";
-    let multiAgentSchema: "ok" | "not_configured" | "missing" | "error" = configuration.supabase
-      ? "ok"
-      : "not_configured";
-    let acquisitionSchema: "ok" | "not_configured" | "missing" | "error" = configuration.supabase
-      ? "ok"
-      : "not_configured";
-    let simulationSchema: "ok" | "not_configured" | "missing" | "error" = configuration.supabase
-      ? "ok"
-      : "not_configured";
-    let phase1Schema: "ok" | "not_configured" | "missing" | "error" = configuration.supabase
-      ? "ok"
-      : "not_configured";
-    let platformSchema: "ok" | "not_configured" | "missing" | "error" = configuration.supabase
-      ? "ok"
-      : "not_configured";
-    let productionSchema: "ok" | "not_configured" | "missing" | "error" = configuration.supabase
-      ? "ok"
-      : "not_configured";
-    let phase2Schema: "ok" | "not_configured" | "missing" | "error" = configuration.supabase
-      ? "ok"
-      : "not_configured";
+    const supabaseEnvValidation = validateSupabaseEnv();
+    if (!supabaseEnvValidation.success) {
+      return NextResponse.json(
+        {
+          status: "degraded",
+          timestamp: new Date().toISOString(),
+          services: {
+            database: "not_configured",
+            managerAgentSchema: "not_configured",
+            multiAgentSchema: "not_configured",
+            acquisitionSchema: "not_configured",
+            simulationSchema: "not_configured",
+            phase1Schema: "not_configured",
+            platformSchema: "not_configured",
+            productionSchema: "not_configured",
+            phase2Schema: "not_configured",
+            auth: "not_configured",
+            anthropic: configuration.anthropic ? "configured" : "not_configured",
+            openai: configuration.openai ? "configured" : "not_configured",
+            sendgrid: configuration.sendgrid ? "configured" : "not_configured",
+            crm: configuration.crm ? "configured" : "not_configured",
+            stripe: configuration.stripe ? "configured" : "not_configured",
+            apollo: configuration.apollo ? "configured" : "not_configured",
+            internalApi: configuration.internalApi ? "configured" : "not_configured",
+            slack: configuration.slack ? "configured" : "not_configured",
+            n8n: configuration.n8n ? "configured" : "not_configured"
+          },
+          diagnostics: {
+            supabaseEnv: supabaseEnvValidation.errors
+          }
+        },
+        { status: 503 }
+      );
+    }
+
+    let database: "ok" | "not_configured" | "error" = "ok";
+    let managerAgentSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let multiAgentSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let acquisitionSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let simulationSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let phase1Schema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let platformSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let productionSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let phase2Schema: "ok" | "not_configured" | "missing" | "error" = "ok";
 
     if (configuration.supabase) {
       const { error } = await getSupabaseAdmin().from("leads").select("id").limit(1);
@@ -99,6 +129,17 @@ export async function GET() {
       phase2Schema
     ];
 
+    const requiredMigrations = buildRequiredMigrationHints({
+      managerAgentSchema,
+      multiAgentSchema,
+      acquisitionSchema,
+      simulationSchema,
+      phase1Schema,
+      platformSchema,
+      productionSchema,
+      phase2Schema
+    });
+
     return NextResponse.json({
       status: schemaStates.some((state) => state === "error" || state === "missing") ? "degraded" : "ok",
       timestamp: new Date().toISOString(),
@@ -122,6 +163,9 @@ export async function GET() {
         internalApi: configuration.internalApi ? "configured" : "not_configured",
         slack: configuration.slack ? "configured" : "not_configured",
         n8n: configuration.n8n ? "configured" : "not_configured"
+      },
+      diagnostics: {
+        requiredMigrations
       }
     });
   } catch (error) {
@@ -131,4 +175,13 @@ export async function GET() {
 
 function isMissingTableError(error: { code?: string; message?: string }, tableName: string) {
   return error.code === "42P01" || error.code === "PGRST205" || Boolean(error.message?.includes(tableName));
+}
+
+function buildRequiredMigrationHints(schemaStates: Record<string, string>) {
+  return Object.entries(schemaStates).reduce((acc, [schema, state]) => {
+    if (state !== "ok" && MIGRATION_FILE_BY_SCHEMA[schema]) {
+      acc[schema] = MIGRATION_FILE_BY_SCHEMA[schema];
+    }
+    return acc;
+  }, {} as Record<string, string>);
 }

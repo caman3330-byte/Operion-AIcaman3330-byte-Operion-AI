@@ -25,6 +25,7 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [overrideOpen, setOverrideOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return leads.filter((lead) => {
@@ -42,20 +43,47 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
     setDetailOpen(true);
   }
 
-  function updateLeadStatus(leadId: string, nextStatus: LeadStatus) {
-    setLeads((current) =>
-      current.map((lead) =>
-        lead.id === leadId
-          ? {
-              ...lead,
-              status: nextStatus,
-              distribution_approved_at: nextStatus === "pending_approval" ? null : lead.distribution_approved_at,
-              updated_at: new Date().toISOString()
-            }
-          : lead
-      )
-    );
-    setSelectedLead((lead) => (lead?.id === leadId ? { ...lead, status: nextStatus, updated_at: new Date().toISOString() } : lead));
+  function updateLeadState(updated: Lead) {
+    setLeads((current) => current.map((lead) => (lead.id === updated.id ? updated : lead)));
+    setSelectedLead((current) => (current?.id === updated.id ? updated : current));
+  }
+
+  async function approveLead(leadId: string) {
+    setErrorMessage(null);
+    try {
+      const response = await fetch(`/api/leads/${leadId}/approve-distribution`, { method: "POST" });
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || "Unable to approve distribution");
+      }
+      const { data } = await response.json();
+      updateLeadState(data as Lead);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to update lead status.");
+    }
+  }
+
+  async function rejectLead(leadId: string) {
+    setErrorMessage(null);
+    try {
+      const response = await fetch(`/api/leads/${leadId}/override`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "force_archive", reason: "Rejected from supervisor dashboard" })
+      });
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || "Unable to reject lead");
+      }
+      const { data } = await response.json();
+      updateLeadState(data as Lead);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to update lead status.");
+    }
+  }
+
+  async function handleOverrideSuccess(updatedLead: Lead) {
+    updateLeadState(updatedLead);
   }
 
   return (
@@ -65,7 +93,7 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-9" placeholder="Search business, contact, email, industry" />
         </div>
-        <Select value={status} onChange={(event) => setStatus(event.target.value as LeadStatus | "all")}>
+        <Select value={status} onChange={(event) => setStatus(event.target.value as LeadStatus | "all")}> 
           <option value="all">All statuses</option>
           <option value="raw">Raw</option>
           <option value="pending_approval">Pending approval</option>
@@ -80,7 +108,7 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
           <option value="nurture">Nurture</option>
           <option value="archived">Archived</option>
         </Select>
-        <Select value={tier} onChange={(event) => setTier(event.target.value as LeadTier | "all")}>
+        <Select value={tier} onChange={(event) => setTier(event.target.value as LeadTier | "all")}> 
           <option value="all">All tiers</option>
           <option value="A">Tier A</option>
           <option value="B">Tier B</option>
@@ -88,6 +116,8 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
           <option value="D">Tier D</option>
         </Select>
       </div>
+
+      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
       {filtered.length === 0 ? (
         <EmptyState title="No leads found" description="No leads match the current production filters." />
@@ -134,10 +164,15 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         onOpenOverride={() => setOverrideOpen(true)}
-        onApprove={(leadId) => updateLeadStatus(leadId, "pending_approval")}
-        onReject={(leadId) => updateLeadStatus(leadId, "rejected_distribution")}
+        onApprove={approveLead}
+        onReject={rejectLead}
       />
-      <OverrideModal lead={selectedLead} open={overrideOpen} onOpenChange={setOverrideOpen} />
+      <OverrideModal
+        lead={selectedLead}
+        open={overrideOpen}
+        onOpenChange={setOverrideOpen}
+        onSuccess={handleOverrideSuccess}
+      />
     </div>
   );
 }

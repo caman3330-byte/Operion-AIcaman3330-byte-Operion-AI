@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ConfigurationError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 
 const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 const optionalString = z.preprocess(emptyToUndefined, z.string().min(1).optional());
@@ -10,6 +11,9 @@ const serverSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_DB_URL: optionalUrl,
+  SUPABASE_DB_PASSWORD: optionalString,
+  SUPABASE_PROJECT_REF: optionalString,
   ADMIN_EMAIL: optionalEmail,
   OPERION_INTERNAL_API_KEY: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
   ANTHROPIC_API_KEY: optionalString,
@@ -41,33 +45,72 @@ const publicSchema = z.object({
 
 const supabaseServerSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1)
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_DB_URL: optionalUrl,
+  SUPABASE_DB_PASSWORD: optionalString,
+  SUPABASE_PROJECT_REF: optionalString
 });
 
 export function readServerEnv() {
   const parsed = serverSchema.safeParse(process.env);
   if (!parsed.success) {
-    throw new ConfigurationError("Required server environment variables are missing or invalid", parsed.error.flatten());
+    const details = parsed.error.flatten();
+    logger.warn("server_env_validation_failed", { errors: details.fieldErrors });
+    throw new ConfigurationError("Required server environment variables are missing or invalid", details);
   }
 
+  logger.debug("server_env_validated", {
+    keys: ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"]
+  });
   return parsed.data;
+}
+
+export interface SupabaseEnvValidationResult {
+  success: boolean;
+  errors: Record<string, string>;
+}
+
+export function validateSupabaseEnv(): SupabaseEnvValidationResult {
+  const parsed = supabaseServerSchema.safeParse(process.env);
+  if (parsed.success) {
+    return { success: true, errors: {} };
+  }
+
+  const fieldErrors = parsed.error.flatten().fieldErrors;
+  const errors = Object.entries(fieldErrors).reduce<Record<string, string>>((acc, [key, values]) => {
+    acc[key] = values.join("; ");
+    return acc;
+  }, {});
+
+  logger.warn("supabase_env_validation_failed", { errors });
+  return { success: false, errors };
 }
 
 export function readSupabaseServerEnv() {
   const parsed = supabaseServerSchema.safeParse(process.env);
   if (!parsed.success) {
-    throw new ConfigurationError("Supabase server environment variables are missing or invalid", parsed.error.flatten());
+    const details = parsed.error.flatten();
+    logger.warn("supabase_server_env_validation_failed", { errors: details.fieldErrors });
+    throw new ConfigurationError("Supabase server environment variables are missing or invalid", details);
   }
 
+  logger.debug("supabase_server_env_validated", {
+    keys: ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
+  });
   return parsed.data;
 }
 
 export function readPublicEnv() {
   const parsed = publicSchema.safeParse(process.env);
   if (!parsed.success) {
-    throw new ConfigurationError("Required public Supabase environment variables are missing or invalid", parsed.error.flatten());
+    const details = parsed.error.flatten();
+    logger.warn("supabase_public_env_validation_failed", { errors: details.fieldErrors });
+    throw new ConfigurationError("Required public Supabase environment variables are missing or invalid", details);
   }
 
+  logger.debug("supabase_public_env_validated", {
+    keys: ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]
+  });
   return parsed.data;
 }
 

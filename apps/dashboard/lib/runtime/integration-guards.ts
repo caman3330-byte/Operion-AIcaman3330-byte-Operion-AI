@@ -37,4 +37,6 @@ export async function safeIntegrationCall<T>(name: string, fn: () => Promise<T>,
   }
 }
 
-export default { isIntegrationEnabled, safeIntegrationCall };
+const integrationGuards = { isIntegrationEnabled, safeIntegrationCall };
+
+export default integrationGuards;

@@ -5,7 +5,7 @@
 
 do $$
 begin
-  create type app_role as enum ('customer', 'staff', 'supervisor', 'founder');
+  create type app_role as enum ('customer', 'staff', 'supervisor', 'founder', 'admin', 'operator', 'analyst', 'super_admin');
 exception
   when duplicate_object then null;
 end $$;

@@ -10,6 +10,8 @@ Create a Supabase project and copy:
 
 Set them in `apps/dashboard/.env.local` for local development and in Vercel for production.
 
+Optionally set `SUPABASE_DB_URL` or `SUPABASE_DB_PASSWORD` in `apps/dashboard/.env.local` to enable `npm run supabase:push` from the repository root.
+
 ## 2. Apply Schema
 
 Run the migration in Supabase SQL Editor:
@@ -73,6 +75,12 @@ For Phase 2 AI operations, application lifecycle statuses, AI dispatcher agent a
 
 ```sql
 -- packages/database/migrations/0009_phase2_ai_operations.sql
+```
+
+Alternatively, if `SUPABASE_DB_URL` or `SUPABASE_DB_PASSWORD` is configured, you can apply pending migrations from the repository:
+
+```bash
+npm run supabase:push
 ```
 
 Then run seed data only for the initial active prompt and optional founding lenders:

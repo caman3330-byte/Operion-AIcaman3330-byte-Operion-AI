@@ -32,6 +32,11 @@ async function verifyHttpEndpoint(baseUrl, route) {
 
 function verifyVercelConfig() {
   const vercelConfigPath = path.join(root, "vercel.json");
+  if (!fs.existsSync(vercelConfigPath)) {
+    console.log("✔ No root vercel.json found; using Vercel Root Directory set to apps/dashboard.");
+    return;
+  }
+
   const config = readJson(vercelConfigPath);
 
   assert(config.version === 2, "vercel.json must use version 2");

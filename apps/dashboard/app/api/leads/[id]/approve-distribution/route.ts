@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireFounder } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
+import { dispatchN8nWorkflow } from "@/lib/n8n";
 import { handleRouteError } from "@/lib/errors";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { uuidSchema } from "@/lib/validation";
@@ -30,7 +31,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       distribution_approved_at: approvedAt
     });
 
-    // TODO: Trigger n8n 09_distribution_approval webhook when N8N_WEBHOOK_BASE_URL is configured.
+    // Trigger n8n workflow if configured (non-blocking)
+    dispatchN8nWorkflow({
+      workflowKey: "09_distribution_approval",
+      event: "distribution_approved",
+      payload: { lead_id: id, approved_at: approvedAt }
+    }).catch(() => null);
     return NextResponse.json({ data: updated });
   } catch (error) {
     return handleRouteError(error);

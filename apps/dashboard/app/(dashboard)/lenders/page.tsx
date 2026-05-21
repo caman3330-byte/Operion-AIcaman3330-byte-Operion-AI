@@ -1,5 +1,4 @@
-import { AddLenderModal } from "@/components/lenders/add-lender-modal";
-import { LendersTable } from "@/components/lenders/lenders-table";
+import { LendersManager } from "@/components/lenders/lenders-manager";
 import { getLendersData } from "@/lib/data/live-data";
 
 export const dynamic = "force-dynamic";
@@ -16,9 +15,8 @@ export default async function LendersPage() {
             Manage lender criteria, pricing, active state, and webhook readiness.
           </p>
         </div>
-        <AddLenderModal />
       </div>
-      <LendersTable lenders={lenders} />
+      <LendersManager initialLenders={lenders} />
     </div>
   );
 }

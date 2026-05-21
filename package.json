@@ -12,6 +12,8 @@
     "build": "npm --workspace @operion/shared run build && npm --workspace @operion/dashboard run build",
     "lint": "npm --workspace @operion/dashboard run lint",
     "typecheck": "npm --workspace @operion/shared run typecheck && npm --workspace @operion/dashboard run typecheck",
+    "supabase:push": "node ./scripts/supabase-migrate.js push",
+    "supabase:status": "node ./scripts/supabase-migrate.js status",
     "verify:deployment": "node ./scripts/verify-deployment.js"
   },
   "engines": {
