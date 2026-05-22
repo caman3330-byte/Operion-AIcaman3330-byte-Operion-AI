@@ -83,6 +83,19 @@ Alternatively, if `SUPABASE_DB_URL` or `SUPABASE_DB_PASSWORD` is configured, you
 npm run supabase:push
 ```
 
+To verify the remote schema before or after migration, run:
+
+```bash
+npm run supabase:inspect
+```
+
+If the `profiles` table exists but internal access still fails, reconcile the founder profile with:
+
+```bash
+npm run supabase:create-admin-user
+npm run supabase:create-admin-profile
+```
+
 Then run seed data only for the initial active prompt and optional founding lenders:
 
 ```sql

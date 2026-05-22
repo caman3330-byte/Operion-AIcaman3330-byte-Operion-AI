@@ -14,9 +14,15 @@
     "typecheck": "npm --workspace @operion/shared run typecheck && npm --workspace @operion/dashboard run typecheck",
     "supabase:push": "node ./scripts/supabase-migrate.js push",
     "supabase:status": "node ./scripts/supabase-migrate.js status",
+    "supabase:inspect": "node ./scripts/inspect-supabase-schema.mjs",
+    "supabase:create-admin-user": "node ./scripts/create-admin-user.js",
+    "supabase:create-admin-profile": "node ./scripts/create-admin-profile.js",
     "verify:deployment": "node ./scripts/verify-deployment.js"
   },
   "engines": {
     "node": ">=20.11.0"
+  },
+  "dependencies": {
+    "pg": "^8.21.0"
   }
 }

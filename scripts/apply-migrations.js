@@ -1,97 +1,63 @@
 #!/usr/bin/env node
-
-/**
- * Apply pending database migrations to Supabase
- */
-
 const fs = require('fs');
 const path = require('path');
+const { Client } = require('pg');
 
-// Load environment variables
-const envPath = path.join(__dirname, '../apps/dashboard/.env.local');
-if (!fs.existsSync(envPath)) {
-  console.error('❌ apps/dashboard/.env.local not found');
-  process.exit(1);
-}
-
-const env = {};
-fs.readFileSync(envPath, 'utf8').split('\n').forEach(line => {
-  const [key, ...valueParts] = line.split('=');
-  if (key && valueParts.length > 0) {
-    env[key] = valueParts.join('=');
+function getDatabaseUrl() {
+  if (process.env.SUPABASE_DB_URL) return process.env.SUPABASE_DB_URL;
+  if (process.env.SUPABASE_DB_PASSWORD && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    const projectHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname;
+    const dbHost = `db.${projectHost}`;
+    const password = encodeURIComponent(process.env.SUPABASE_DB_PASSWORD);
+    return `postgresql://postgres:${password}@${dbHost}:5432/postgres`;
   }
-});
-
-const {
-  NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
-  SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
-} = env;
-
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error('❌ Missing Supabase credentials');
-  process.exit(1);
+  return null;
 }
 
-// Migrations to apply (in order)
-const migrationFiles = [
-  '0004_lead_acquisition_outreach.sql',
-  '0005_internal_testing_simulation.sql',
-  '0006_phase1_public_mvp.sql',
-  '0007_platform_separation_fintech_schema.sql',
-  '0008_production_mca_platform.sql',
-  '0009_phase2_ai_operations.sql',
-];
+async function run() {
+  const dbUrl = getDatabaseUrl();
+  if (!dbUrl) {
+    console.error('Missing SUPABASE_DB_URL or SUPABASE_DB_PASSWORD+NEXT_PUBLIC_SUPABASE_URL');
+    process.exit(1);
+  }
 
-const migrationsDir = path.join(__dirname, '../packages/database/migrations');
+  const migrationsDir = path.resolve(__dirname, '../packages/database/migrations');
+  if (!fs.existsSync(migrationsDir)) {
+    console.error('Migrations directory not found:', migrationsDir);
+    process.exit(1);
+  }
 
-const applyMigrations = async () => {
-  console.log('📋 Applying pending database migrations...\n');
-  
-  for (const file of migrationFiles) {
-    const filePath = path.join(migrationsDir, file);
-    if (!fs.existsSync(filePath)) {
-      console.warn(`⚠️  Skipping ${file} - file not found`);
-      continue;
-    }
+  const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+  console.log('Found migrations:', files.join(', '));
 
+  const client = new Client({ connectionString: dbUrl });
+  await client.connect();
+
+  let anyError = false;
+  for (const file of files) {
+    const full = path.join(migrationsDir, file);
+    console.log('\n--- Applying', file);
+    const sql = fs.readFileSync(full, 'utf8');
     try {
-      console.log(`📝 Applying ${file}...`);
-      const sql = fs.readFileSync(filePath, 'utf8');
-      
-      // Execute SQL via Supabase REST API (for direct SQL execution)
-      // Note: Supabase doesn't have a direct SQL execution API in REST
-      // We need to use the PostgreSQL connection directly
-      // For now, we'll provide instructions for manual application
-      
-      console.log(`   ✓ Ready to execute (${sql.length} bytes)`);
+      await client.query(sql);
+      console.log('OK');
     } catch (err) {
-      console.error(`   ❌ Error reading migration: ${err.message}`);
+      anyError = true;
+      console.error('Error applying', file, err.message || err);
+      // Try to continue where sensible
     }
   }
 
-  console.log('\n⚠️  Note: Direct SQL execution via REST API is not available.');
-  console.log('   You need to apply migrations manually using one of these methods:\n');
-  console.log('   Option 1: Supabase SQL Editor');
-  console.log('   1. Go to https://app.supabase.com');
-  console.log('   2. Select your project');
-  console.log('   3. Go to SQL Editor');
-  console.log('   4. Copy and paste each migration file in order\n');
-  
-  console.log('   Option 2: psql (PostgreSQL CLI)');
-  console.log('   1. Connect: psql "postgresql://postgres:password@db.qvzmdrghnfjqbezneqqc.supabase.co:5432/postgres"');
-  migrationFiles.forEach(file => {
-    console.log(`   2. Execute: \\i ${file}`);
-  });
-  console.log('\n   Option 3: Use Supabase CLI');
-  console.log('   1. Install: npm install -g supabase');
-  console.log('   2. Link project: supabase link --project-ref qvzmdrghnfjqbezneqqc');
-  console.log('   3. Push migrations: supabase migration up');
-};
+  await client.end();
+  if (anyError) {
+    console.error('\nOne or more migrations failed. Inspect above logs.');
+    process.exit(1);
+  }
 
-applyMigrations().then(() => {
-  console.log('\n💡 After applying migrations:');
-  console.log('   1. Verify: npm run check:health');
-  console.log('   2. Create admin profile via script');
-  console.log('   3. Test admin login');
-  process.exit(0);
+  console.log('\nAll migrations applied (or skipped if already present).');
+}
+
+run().catch((err) => {
+  console.error('Fatal error applying migrations:', err.message || err);
+  process.exit(1);
 });
