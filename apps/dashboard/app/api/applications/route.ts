@@ -8,6 +8,7 @@ import { leadsRepository } from "@/lib/repositories/leads";
 import { productionRepository } from "@/lib/repositories/production";
 import { fundingApplicationSchema } from "@/lib/validation";
 import { recordMerchantOnboarding } from "@/lib/services/onboarding";
+import { sendMerchantConfirmationEmail } from "@/lib/email/sendgrid";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +104,18 @@ export async function POST(request: NextRequest) {
       requestedAmount: payload.requested_amount,
       fundingPurpose: payload.funding_purpose ?? null
     });
+
+    if (payload.contact_email) {
+      void sendMerchantConfirmationEmail({
+        leadId: lead.id,
+        to: payload.contact_email,
+        businessName: payload.business_name,
+        ownerName: payload.owner_name ?? null,
+        requestedAmount: payload.requested_amount ?? null,
+        fundingPurpose: payload.funding_purpose ?? null,
+        portalUrl: null
+      });
+    }
 
     const aiTask = await productionRepository.createAiTask({
       task_type: "lead_qualification",

@@ -12,6 +12,8 @@
     "build": "npm --workspace @operion/shared run build && npm --workspace @operion/dashboard run build",
     "lint": "npm --workspace @operion/dashboard run lint",
     "typecheck": "npm --workspace @operion/shared run typecheck && npm --workspace @operion/dashboard run typecheck",
+    "e2e:dashboard:login": "npm --workspace @operion/dashboard run e2e:login",
+    "e2e:dashboard:login-persistence": "npm --workspace @operion/dashboard run e2e:login:persistence",
     "supabase:push": "node ./scripts/supabase-migrate.js push",
     "supabase:status": "node ./scripts/supabase-migrate.js status",
     "supabase:inspect": "node ./scripts/inspect-supabase-schema.mjs",

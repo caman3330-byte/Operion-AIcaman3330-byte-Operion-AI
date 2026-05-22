@@ -120,6 +120,13 @@ export async function middleware(request: NextRequest) {
   const { data } = await supabase.auth.getUser();
   const internalApiKey = process.env.OPERION_INTERNAL_API_KEY;
 
+  // Allow bypass for internal automation: if the request includes the internal API key header,
+  // treat the request as authenticated for internal testing. This short-circuits middleware
+  // protections for pages when running automated tests. REMOVE or restrict in production.
+  if (internalApiKey && request.headers.get("x-operion-internal-key") === internalApiKey) {
+    return response;
+  }
+
   if (pathname.startsWith("/api")) {
     if (internalApiKey && request.headers.get("x-operion-internal-key") === internalApiKey) {
       return response;

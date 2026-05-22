@@ -20,6 +20,7 @@ const serverSchema = z.object({
   ANTHROPIC_MODEL: z.string().min(1).default("claude-3-5-sonnet-latest"),
   OPENAI_API_KEY: optionalString,
   OPENAI_MODEL: z.string().min(1).default("gpt-4.1-mini"),
+  OPENAI_FALLBACK_MODEL: optionalString,
   OPENAI_COST_PER_1K_INPUT_TOKENS: z.coerce.number().nonnegative().default(0),
   OPENAI_COST_PER_1K_OUTPUT_TOKENS: z.coerce.number().nonnegative().default(0),
   SENDGRID_API_KEY: optionalString,

@@ -613,6 +613,7 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      
     };
     Views: {
       lead_cost_summary: {

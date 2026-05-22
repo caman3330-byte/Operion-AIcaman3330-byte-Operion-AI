@@ -57,8 +57,7 @@ export function LoginForm({
       }
 
       const redirectTo = sanitizeRedirect(searchParams.get("redirectTo"), defaultRedirect);
-      router.replace(redirectTo as Parameters<typeof router.replace>[0]);
-      router.refresh();
+      await router.replace(redirectTo as Route);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to initialize Supabase Auth.");
     } finally {

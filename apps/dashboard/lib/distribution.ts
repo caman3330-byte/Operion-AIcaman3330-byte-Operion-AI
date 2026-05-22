@@ -6,6 +6,7 @@ import { lendersRepository } from "@/lib/repositories/lenders";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { withRetry } from "@/lib/retry";
 import { writeAuditLog } from "@/lib/audit";
+import { sendLenderPackageNotificationEmail } from "@/lib/email/sendgrid";
 
 interface DistributeLeadInput {
   lead: Lead;
@@ -104,6 +105,21 @@ export async function distributeLead(input: DistributeLeadInput) {
         submitted_at: delivery.ok ? new Date().toISOString() : null,
         commission_estimate: lender.price_per_lead ?? null,
         notes: delivery.ok ? "Lead submitted through lender distribution route." : "Lender webhook delivery failed or is not configured."
+      });
+    }
+
+    if (lender.contact_email) {
+      void sendLenderPackageNotificationEmail({
+        leadId: input.lead.id,
+        to: lender.contact_email,
+        lenderName: lender.company_name,
+        businessName: input.lead.business_name,
+        contactName: input.lead.contact_name ?? null,
+        contactEmail: input.lead.email ?? null,
+        requestedAmount: input.lead.requested_amount ?? null,
+        industry: input.lead.industry ?? null,
+        state: input.lead.state ?? null,
+        status: delivery.ok ? "delivered" : "failed"
       });
     }
 

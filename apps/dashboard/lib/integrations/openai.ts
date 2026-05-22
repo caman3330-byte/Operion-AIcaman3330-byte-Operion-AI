@@ -70,83 +70,109 @@ export async function qualifyApplicationWithOpenAi(input: OpenAiQualificationInp
         throw new ConfigurationError("OPENAI_API_KEY is required before live AI qualification is enabled");
       }
 
-      const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
-      const startedAt = Date.now();
-      const response = await withRetry(() =>
-        fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${apiKey}`,
-            "content-type": "application/json"
-          },
-          body: JSON.stringify({
-            model,
-            temperature: 0.15,
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are Operion Capital's MCA funding qualification analyst. Return only JSON that matches the schema. Evaluate business funding fit conservatively, highlight risk, and do not fabricate unavailable data."
-              },
-              {
-                role: "user",
-                content: JSON.stringify({
-                  business_name: input.businessName,
-                  industry: input.industry,
-                  state: input.state,
-                  requested_amount: input.requestedAmount,
-                  monthly_deposits: input.monthlyDeposits,
-                  monthly_revenue: input.monthlyRevenue,
-                  annual_revenue: input.annualRevenue,
-                  credit_score_range: input.creditScoreRange,
-                  funding_purpose: input.fundingPurpose,
-                  lead_id: input.leadId,
-                  business_application_id: input.businessApplicationId
-                })
-              }
-            ],
-            response_format: {
-              type: "json_schema",
-              json_schema: {
-                name: "operion_lead_qualification",
-                strict: true,
-                schema: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    score: { type: "integer", minimum: 0, maximum: 100 },
-                    tier: { type: "string", enum: ["A", "B", "C", "D"] },
-                    decision: { type: "string", enum: ["qualified", "needs_review", "declined"] },
-                    reason: { type: "string" },
-                    industry_risk: { type: "string", enum: ["low", "medium", "high"] },
-                    funding_fit: { type: "string", enum: ["strong", "moderate", "weak"] },
-                    underwriting_summary: { type: "string" },
-                    internal_notes: { type: "string" },
-                    lender_recommendations: {
-                      type: "array",
-                      items: { type: "string" }
-                    }
-                  },
-                  required: [
-                    "score",
-                    "tier",
-                    "decision",
-                    "reason",
-                    "industry_risk",
-                    "funding_fit",
-                    "underwriting_summary",
-                    "internal_notes",
-                    "lender_recommendations"
-                  ]
+      const primaryModel = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+      const fallbackModel = process.env.OPENAI_FALLBACK_MODEL ?? null;
+
+      async function callModel(modelToUse: string) {
+        const startedAt = Date.now();
+        const response = await withRetry(() =>
+          fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${apiKey}`,
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({
+              model: modelToUse,
+              temperature: 0.15,
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are Operion Capital's MCA funding qualification analyst. Return only JSON that matches the schema. Evaluate business funding fit conservatively, highlight risk, and do not fabricate unavailable data."
+                },
+                {
+                  role: "user",
+                  content: JSON.stringify({
+                    business_name: input.businessName,
+                    industry: input.industry,
+                    state: input.state,
+                    requested_amount: input.requestedAmount,
+                    monthly_deposits: input.monthlyDeposits,
+                    monthly_revenue: input.monthlyRevenue,
+                    annual_revenue: input.annualRevenue,
+                    credit_score_range: input.creditScoreRange,
+                    funding_purpose: input.fundingPurpose,
+                    lead_id: input.leadId,
+                    business_application_id: input.businessApplicationId
+                  })
+                }
+              ],
+              response_format: {
+                type: "json_schema",
+                json_schema: {
+                  name: "operion_lead_qualification",
+                  strict: true,
+                  schema: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      score: { type: "integer", minimum: 0, maximum: 100 },
+                      tier: { type: "string", enum: ["A", "B", "C", "D"] },
+                      decision: { type: "string", enum: ["qualified", "needs_review", "declined"] },
+                      reason: { type: "string" },
+                      industry_risk: { type: "string", enum: ["low", "medium", "high"] },
+                      funding_fit: { type: "string", enum: ["strong", "moderate", "weak"] },
+                      underwriting_summary: { type: "string" },
+                      internal_notes: { type: "string" },
+                      lender_recommendations: {
+                        type: "array",
+                        items: { type: "string" }
+                      }
+                    },
+                    required: [
+                      "score",
+                      "tier",
+                      "decision",
+                      "reason",
+                      "industry_risk",
+                      "funding_fit",
+                      "underwriting_summary",
+                      "internal_notes",
+                      "lender_recommendations"
+                    ]
+                  }
                 }
               }
-            }
+            })
           })
-        })
-      );
+        );
+        const latencyMs = Date.now() - startedAt;
+        const body = (await response.json()) as OpenAiChatResponse & { error?: { message?: string } };
+        return { response, body, latencyMs, model: modelToUse } as const;
+      }
 
-      const latencyMs = Date.now() - startedAt;
-      const body = (await response.json()) as OpenAiChatResponse & { error?: { message?: string } };
+      let callResult;
+      try {
+        callResult = await callModel(primaryModel);
+      } catch (err) {
+        logger.warn("openai_primary_model_failed", { error: err instanceof Error ? err.message : String(err), model: primaryModel });
+        if (fallbackModel && fallbackModel !== primaryModel) {
+          try {
+            callResult = await callModel(fallbackModel);
+            logger.info("openai_fallback_model_used", { model: fallbackModel });
+          } catch (err2) {
+            throw new ConfigurationError(`OpenAI qualification failed for models ${primaryModel} and ${fallbackModel}`);
+          }
+        } else {
+          throw new ConfigurationError(`OpenAI qualification failed for model ${primaryModel}`);
+        }
+      }
+
+      const latencyMs = callResult.latencyMs;
+      const body = callResult.body;
+      const response = callResult.response;
+      const model = callResult.model;
       if (!response.ok) {
         throw new ConfigurationError(body.error?.message ?? "OpenAI qualification request failed");
       }
