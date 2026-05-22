@@ -1,5 +1,6 @@
 import { logger } from '../logger';
 import { getSupabaseAdmin } from '../supabase/server';
+import type { AgentQueueStatus, Json, ManagerAgentPriority } from '@operion/shared';
 
 export type WorkflowStatus = 'pending' | 'running' | 'completed' | 'failed' | 'blocked';
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'dead_letter';
@@ -33,6 +34,74 @@ export interface WorkflowState {
   updatedAt: string;
 }
 
+function toQueuePriority(priority?: number): ManagerAgentPriority {
+  if (priority === undefined) return 'medium';
+  if (priority >= 90) return 'urgent';
+  if (priority >= 60) return 'high';
+  if (priority <= 20) return 'low';
+  return 'medium';
+}
+
+function fromQueuePriority(priority?: ManagerAgentPriority): number {
+  switch (priority) {
+    case 'urgent':
+      return 100;
+    case 'high':
+      return 75;
+    case 'low':
+      return 10;
+    case 'medium':
+    default:
+      return 50;
+  }
+}
+
+function workflowContext(input: {
+  workflowKey: string;
+  jobType: string;
+  payload: Record<string, any>;
+  maxAttempts?: number;
+}): Json {
+  return {
+    workflowPayload: input.payload as Json,
+    workflowJobType: input.jobType,
+    maxAttempts: input.maxAttempts || 3,
+  };
+}
+
+function mapQueueRowToWorkflowJob(row: any): WorkflowJob {
+  const context = (row.context || {}) as Record<string, any>;
+  const job: WorkflowJob = {
+    id: row.id,
+    workflowKey: row.workflow_key || context.workflowKey || 'unknown',
+    jobType: context.workflowJobType || row.assigned_agent_key || 'unknown',
+    status: row.status as JobStatus,
+    priority: fromQueuePriority(row.priority as ManagerAgentPriority),
+    payload: context.workflowPayload || {},
+    attempts: context.attempts || 0,
+    maxAttempts: context.maxAttempts || 3,
+    createdAt: row.created_at,
+  };
+
+  if (row.result_summary) {
+    job.result = { summary: row.result_summary };
+  }
+  if (row.error_message) {
+    job.errorMessage = row.error_message;
+  }
+  if (row.due_at) {
+    job.nextRetryAt = row.due_at;
+  }
+  if (row.started_at) {
+    job.startedAt = row.started_at;
+  }
+  if (row.completed_at) {
+    job.completedAt = row.completed_at;
+  }
+
+  return job;
+}
+
 /**
  * Create a new workflow job
  */
@@ -50,13 +119,13 @@ export async function createWorkflowJob(input: {
       .from('agent_task_queue')
       .insert({
         status: 'queued',
-        priority: input.priority || 0,
-        payload: input.payload,
-        metadata: {
-          workflowKey: input.workflowKey,
-          jobType: input.jobType,
-          maxAttempts: input.maxAttempts || 3,
-        },
+        priority: toQueuePriority(input.priority),
+        workflow_key: input.workflowKey,
+        assigned_agent_key: input.jobType,
+        department_key: 'operations',
+        title: input.jobType,
+        instructions: `Execute workflow job ${input.jobType}`,
+        context: workflowContext(input),
       })
       .select()
       .single();
@@ -96,32 +165,15 @@ export async function getWorkflowJob(jobId: string): Promise<{ job?: WorkflowJob
 
     if (error) {
       logger.error('Failed to fetch workflow job', { error: error.message });
-      return { job: undefined, error: error.message };
+      return { error: error.message };
     }
 
-    const row = data as any;
-    return {
-      job: {
-        id: row.id,
-        workflowKey: row.metadata?.workflowKey || 'unknown',
-        jobType: row.metadata?.jobType || 'unknown',
-        status: row.status as JobStatus,
-        priority: row.priority || 0,
-        payload: row.payload || {},
-        result: row.result,
-        errorMessage: row.error_message,
-        attempts: row.attempts || 0,
-        maxAttempts: row.metadata?.maxAttempts || 3,
-        createdAt: row.created_at,
-        startedAt: row.started_at,
-        completedAt: row.completed_at,
-      },
-    };
+    return { job: mapQueueRowToWorkflowJob(data) };
   } catch (error) {
     logger.error('Exception fetching workflow job', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return { job: undefined, error: 'Internal error' };
+    return { error: 'Internal error' };
   }
 }
 
@@ -139,7 +191,8 @@ export async function updateJobStatus(
   try {
     const supabase = await getSupabaseAdmin();
 
-    const updatePayload: any = { status };
+    const queueStatus: AgentQueueStatus = status === 'dead_letter' ? 'failed' : status;
+    const updatePayload: any = { status: queueStatus };
 
     if (status === 'running' && !updates?.errorMessage) {
       updatePayload.started_at = new Date().toISOString();
@@ -148,7 +201,7 @@ export async function updateJobStatus(
     if (status === 'completed') {
       updatePayload.completed_at = new Date().toISOString();
       if (updates?.result) {
-        updatePayload.result = updates.result;
+        updatePayload.result_summary = JSON.stringify(updates.result);
       }
     }
 
@@ -199,21 +252,7 @@ export async function fetchPendingJobs(limit: number = 10): Promise<{ jobs: Work
       return { jobs: [], error: error.message };
     }
 
-    const jobs: WorkflowJob[] = (data || []).map((row: any) => ({
-      id: row.id,
-      workflowKey: row.metadata?.workflowKey || 'unknown',
-      jobType: row.metadata?.jobType || 'unknown',
-      status: row.status as JobStatus,
-      priority: row.priority || 0,
-      payload: row.payload || {},
-      result: row.result,
-      errorMessage: row.error_message,
-      attempts: row.attempts || 0,
-      maxAttempts: row.metadata?.maxAttempts || 3,
-      createdAt: row.created_at,
-      startedAt: row.started_at,
-      completedAt: row.completed_at,
-    }));
+    const jobs: WorkflowJob[] = (data || []).map(mapQueueRowToWorkflowJob);
 
     return { jobs };
   } catch (error) {
@@ -234,7 +273,7 @@ export async function moveToDeadLetter(jobId: string, reason: string): Promise<{
     const { error } = await supabase
       .from('agent_task_queue')
       .update({
-        status: 'dead_letter',
+        status: 'failed',
         error_message: reason,
         completed_at: new Date().toISOString(),
       })
@@ -273,8 +312,9 @@ export async function retryJob(jobId: string): Promise<{ success: boolean; nextR
       return { success: false, error: 'Job not found' };
     }
 
-    const attempts = (jobData as any).attempts || 0;
-    const maxAttempts = (jobData as any).metadata?.maxAttempts || 3;
+    const context = (((jobData as any).context || {}) as Record<string, any>);
+    const attempts = context.attempts || 0;
+    const maxAttempts = context.maxAttempts || 3;
 
     if (attempts >= maxAttempts) {
       return await moveToDeadLetter(jobId, `Max attempts (${maxAttempts}) exceeded`);
@@ -288,9 +328,12 @@ export async function retryJob(jobId: string): Promise<{ success: boolean; nextR
       .from('agent_task_queue')
       .update({
         status: 'queued',
-        attempts: attempts + 1,
-        next_retry_at: nextRetryAt,
+        due_at: nextRetryAt,
         error_message: null,
+        context: {
+          ...context,
+          attempts: attempts + 1,
+        } as Json,
       })
       .eq('id', jobId);
 

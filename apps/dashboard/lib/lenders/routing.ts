@@ -227,29 +227,16 @@ export async function updateLenderPerformance(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await getSupabaseAdmin();
-
     const approvalRate = metrics.submissionsThisMonth > 0 ? metrics.approvalsThisMonth / metrics.submissionsThisMonth : 0;
 
-    const { error } = await supabase
-      .from('lenders')
-      .update({
-        approval_rate: approvalRate,
-        metadata: {
-          lastPerformanceUpdate: new Date().toISOString(),
-          approvalsThisMonth: metrics.approvalsThisMonth,
-          submissionsThisMonth: metrics.submissionsThisMonth,
-        },
-      })
-      .eq('id', lenderId);
-
-    if (error) {
-      logger.error('Failed to update lender performance', { error: error.message });
-      return { success: false, error: error.message };
-    }
-
-    logger.info('Lender performance updated', { lenderId, approvalRate });
-    return { success: true };
+    logger.warn('Lender performance metrics are not persisted by the current lenders schema', {
+      lenderId,
+      approvalRate,
+      approvalsThisMonth: metrics.approvalsThisMonth,
+      submissionsThisMonth: metrics.submissionsThisMonth,
+      averageFundingTime: metrics.averageFundingTime,
+    });
+    return { success: false, error: 'Lender performance persistence is not supported by the current schema' };
   } catch (error) {
     logger.error('Exception updating lender performance', {
       error: error instanceof Error ? error.message : String(error),
@@ -284,3 +271,5 @@ export async function getStateRestrictions(): Promise<Record<string, string[]>> 
     return {};
   }
 }
+
+export * from './distribution';

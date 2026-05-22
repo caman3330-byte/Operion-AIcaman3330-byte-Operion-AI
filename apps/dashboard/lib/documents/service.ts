@@ -55,7 +55,7 @@ export async function generateSignedUploadUrl(
     // Generate signed URL (valid for 1 hour)
     const { data, error } = await supabase.storage
       .from(DOCUMENT_BUCKET)
-      .createSignedUploadUrl(fileKey, 3600);
+      .createSignedUploadUrl(fileKey, { upsert: false });
 
     if (error) {
       logger.error('Failed to generate upload URL', { error: error.message });
@@ -100,10 +100,8 @@ export async function createDocumentRecord(input: {
         mime_type: input.mimeType,
         file_size: Math.round(input.fileSizeMB * 1024 * 1024),
         status: 'uploaded',
-        metadata: {
-          uploadedBy: input.uploadedBy,
-          merchantId: input.merchantId,
-        },
+        user_id: input.uploadedBy,
+        uploaded_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -272,7 +270,8 @@ export async function deleteDocument(documentId: string, hardDelete: boolean = f
     const { error } = await supabase
       .from('documents')
       .update({
-        status: 'deleted',
+        status: 'rejected',
+        notes: `Deleted at ${new Date().toISOString()}`,
       })
       .eq('id', documentId);
 

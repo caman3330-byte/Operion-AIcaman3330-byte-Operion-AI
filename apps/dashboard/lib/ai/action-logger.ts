@@ -35,14 +35,14 @@ export async function logAIAction(input: LogAIActionInput): Promise<{ success: b
       inputTokens: input.inputTokens,
       outputTokens: input.outputTokens,
       estimatedCostUsd: input.estimatedCostUsd,
-      failureReason: input.failureReason,
       retryCount: input.retryCount,
       confidenceScore: input.confidenceScore,
       promptType: input.promptType,
       workflowSource: input.workflowSource,
-      merchantId: input.merchantId,
-      dealId: input.dealId,
       metadata: input.metadata || {},
+      ...(input.failureReason ? { failureReason: input.failureReason } : {}),
+      ...(input.merchantId ? { merchantId: input.merchantId } : {}),
+      ...(input.dealId ? { dealId: input.dealId } : {}),
     };
 
     // Insert into ai_actions table (or similar operational log table)
@@ -215,9 +215,9 @@ export async function trackAIExecutionComplete(
     confidenceScore: result.confidenceScore,
     promptType: metadata.promptType as any,
     workflowSource: metadata.workflowSource,
-    merchantId: metadata.merchantId,
-    dealId: metadata.dealId,
     metadata: { executionId },
+    ...(metadata.merchantId ? { merchantId: metadata.merchantId } : {}),
+    ...(metadata.dealId ? { dealId: metadata.dealId } : {}),
   });
 }
 
@@ -246,7 +246,7 @@ export async function trackAIExecutionFailure(
     confidenceScore: 0,
     promptType: metadata.promptType as any,
     workflowSource: metadata.workflowSource,
-    merchantId: metadata.merchantId,
     metadata: { executionId, error: error.message },
+    ...(metadata.merchantId ? { merchantId: metadata.merchantId } : {}),
   });
 }
