@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const URL = process.env.DASHBOARD_URL || 'http://localhost:3001';
+const URL = process.env.DASHBOARD_URL || 'http://localhost:3000';
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();

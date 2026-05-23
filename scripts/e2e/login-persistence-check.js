@@ -2,7 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { chromium } = require('playwright');
-const URL = process.env.DASHBOARD_URL || 'http://localhost:3001';
+const URL = process.env.DASHBOARD_URL || 'http://localhost:3000';
 
 (async () => {
   const userDataDir = path.join(os.tmpdir(), 'operion-dashboard-e2e-profile');

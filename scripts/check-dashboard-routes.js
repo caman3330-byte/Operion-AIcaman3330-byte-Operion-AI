@@ -1,12 +1,13 @@
 // Simple route checker for local dashboard dev server
+const baseUrl = process.env.DASHBOARD_URL || 'http://localhost:3000';
 const urls = [
-  'http://localhost:3000/signin',
-  'http://localhost:3000/supervisor/login',
-  'http://localhost:3000/admin',
-  'http://localhost:3000/admin/leads',
-  'http://localhost:3000/admin/lenders',
-  'http://localhost:3000/admin/ai',
-  'http://localhost:3000/admin/testing'
+  { url: `${baseUrl}/signin`, expected: [200] },
+  { url: `${baseUrl}/supervisor/login`, expected: [200] },
+  { url: `${baseUrl}/admin`, expected: [307, 302] },
+  { url: `${baseUrl}/admin/leads`, expected: [307, 302] },
+  { url: `${baseUrl}/admin/lenders`, expected: [307, 302] },
+  { url: `${baseUrl}/admin/ai`, expected: [307, 302] },
+  { url: `${baseUrl}/admin/testing`, expected: [307, 302] }
 ];
 
 async function wait(ms){return new Promise(r=>setTimeout(r,ms));}
@@ -31,9 +32,10 @@ async function checkUrl(url){
 (async ()=>{
   console.log('Checking dashboard routes...');
   const results = [];
-  for(const u of urls){
-    const r = await checkUrl(u);
-    results.push(r);
+  for(const route of urls){
+    const r = await checkUrl(route.url);
+    const ok = route.expected.includes(r.status);
+    results.push({ ...r, ok });
   }
   const failed = results.filter(r=>!r.ok);
   if(failed.length){

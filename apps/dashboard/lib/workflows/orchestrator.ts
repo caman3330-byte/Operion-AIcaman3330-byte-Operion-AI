@@ -61,11 +61,17 @@ function workflowContext(input: {
   jobType: string;
   payload: Record<string, any>;
   maxAttempts?: number;
+  assignedAgentKey?: string;
+  departmentKey?: string;
+  workflowRoute?: Record<string, any>;
 }): Json {
   return {
     workflowPayload: input.payload as Json,
     workflowJobType: input.jobType,
     maxAttempts: input.maxAttempts || 3,
+    ...(input.assignedAgentKey ? { assignedAgentKey: input.assignedAgentKey } : {}),
+    ...(input.departmentKey ? { departmentKey: input.departmentKey } : {}),
+    ...(input.workflowRoute ? { workflowRoute: input.workflowRoute } : {})
   };
 }
 
@@ -114,6 +120,9 @@ export async function createWorkflowJob(input: {
 }): Promise<{ success: boolean; jobId?: string; error?: string }> {
   try {
     const supabase = await getSupabaseAdmin();
+    const route = await resolveWorkflowRoute(supabase, input.workflowKey);
+    const assignedAgentKey = route?.primary_agent_key ?? "operations_manager_agent";
+    const departmentKey = route?.department_key ?? "operations";
 
     const { data, error } = await supabase
       .from('agent_task_queue')
@@ -121,11 +130,16 @@ export async function createWorkflowJob(input: {
         status: 'queued',
         priority: toQueuePriority(input.priority),
         workflow_key: input.workflowKey,
-        assigned_agent_key: input.jobType,
-        department_key: 'operations',
+        assigned_agent_key: assignedAgentKey,
+        department_key: departmentKey,
         title: input.jobType,
         instructions: `Execute workflow job ${input.jobType}`,
-        context: workflowContext(input),
+        context: workflowContext({
+          ...input,
+          assignedAgentKey,
+          departmentKey,
+          ...(route ? { workflowRoute: route as Record<string, any> } : {})
+        }),
       })
       .select()
       .single();
@@ -175,6 +189,20 @@ export async function getWorkflowJob(jobId: string): Promise<{ job?: WorkflowJob
     });
     return { error: 'Internal error' };
   }
+}
+
+async function resolveWorkflowRoute(supabase: Awaited<ReturnType<typeof getSupabaseAdmin>>, workflowKey: string) {
+  const { data } = await supabase
+    .from('workflow_routes')
+    .select('workflow_key, department_key, primary_agent_key, fallback_agent_key, active')
+    .eq('workflow_key', workflowKey)
+    .maybeSingle();
+
+  if (!data || data.active === false) {
+    return null;
+  }
+
+  return data;
 }
 
 /**

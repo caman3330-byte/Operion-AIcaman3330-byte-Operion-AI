@@ -46,6 +46,7 @@ const internalRoles = new Set([
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const internalApiKey = process.env.OPERION_INTERNAL_API_KEY;
 
   // Only run middleware for protected routes to avoid interfering with the public root and marketing pages.
   if (!isProtectedRoute(pathname)) {
@@ -53,21 +54,92 @@ export async function middleware(request: NextRequest) {
   }
 
   const isApiRoute = pathname.startsWith("/api");
+
+  // Allow bypass for internal automation: if the request includes the internal API key header,
+  // treat the request as authenticated for internal testing. This short-circuits middleware
+  // protections for pages when running automated tests. REMOVE or restrict in production.
+  if (internalApiKey && request.headers.get("x-operion-internal-key") === internalApiKey) {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/api")) {
+    if (isPublicApiRoute(pathname) || isCustomerApiRoute(pathname)) {
+      return NextResponse.next();
+    }
+
+    // Lazily import Supabase server client only for protected API routes.
+    let createServerClient: any;
+    try {
+      ({ createServerClient } = await import("@supabase/ssr"));
+    } catch {
+      return new NextResponse(JSON.stringify({ error: "middleware_auth_initialization_failed" }), {
+        status: 500,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    if (!configured) {
+      return new NextResponse(JSON.stringify({ error: "authentication_not_configured" }), {
+        status: 503,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    let response = NextResponse.next();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(
+            cookiesToSet: Array<{
+              name: string;
+              value: string;
+              options?: Parameters<typeof response.cookies.set>[2];
+            }>
+          ) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              if (options) {
+                response.cookies.set(name, value, options);
+              } else {
+                response.cookies.set(name, value);
+              }
+            });
+          }
+        }
+      }
+    );
+
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      return new NextResponse(JSON.stringify({ error: "unauthenticated" }), {
+        status: 401,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    const role = await resolveRole(supabase, data.user.id, data.user.email ?? "");
+    if (!internalRoles.has(role)) {
+      return new NextResponse(JSON.stringify({ error: "forbidden" }), {
+        status: 403,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    return response;
+  }
+
   let response = NextResponse.next();
 
   // Lazily import Supabase server client to avoid bundling server-only libs into middleware.
   let createServerClient: any;
   try {
     ({ createServerClient } = await import("@supabase/ssr"));
-  } catch (err) {
-    const errorPayload = { error: "middleware_auth_initialization_failed" };
-    if (isApiRoute) {
-      return new NextResponse(JSON.stringify(errorPayload), {
-        status: 500,
-        headers: { "content-type": "application/json" }
-      });
-    }
-
+  } catch {
     const url = request.nextUrl.clone();
     url.pathname = "/signin";
     url.searchParams.set("auth", "middleware_error");
@@ -76,14 +148,6 @@ export async function middleware(request: NextRequest) {
 
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   if (!configured) {
-    const errorPayload = { error: "authentication_not_configured" };
-    if (isApiRoute) {
-      return new NextResponse(JSON.stringify(errorPayload), {
-        status: 503,
-        headers: { "content-type": "application/json" }
-      });
-    }
-
     const url = request.nextUrl.clone();
     url.pathname = "/signin";
     url.searchParams.set("auth", "not_configured");
@@ -118,41 +182,6 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data } = await supabase.auth.getUser();
-  const internalApiKey = process.env.OPERION_INTERNAL_API_KEY;
-
-  // Allow bypass for internal automation: if the request includes the internal API key header,
-  // treat the request as authenticated for internal testing. This short-circuits middleware
-  // protections for pages when running automated tests. REMOVE or restrict in production.
-  if (internalApiKey && request.headers.get("x-operion-internal-key") === internalApiKey) {
-    return response;
-  }
-
-  if (pathname.startsWith("/api")) {
-    if (internalApiKey && request.headers.get("x-operion-internal-key") === internalApiKey) {
-      return response;
-    }
-
-    if (isPublicApiRoute(pathname) || isCustomerApiRoute(pathname)) {
-      return response;
-    }
-
-    if (!data.user) {
-      return new NextResponse(JSON.stringify({ error: "unauthenticated" }), {
-        status: 401,
-        headers: { "content-type": "application/json" }
-      });
-    }
-
-    const role = await resolveRole(supabase, data.user.id, data.user.email ?? "");
-    if (!internalRoles.has(role)) {
-      return new NextResponse(JSON.stringify({ error: "forbidden" }), {
-        status: 403,
-        headers: { "content-type": "application/json" }
-      });
-    }
-
-    return response;
-  }
 
   if (!data.user && isCustomerProtectedRoute(pathname)) {
     const url = request.nextUrl.clone();

@@ -1,6 +1,8 @@
+const URL = process.env.DASHBOARD_URL || 'http://localhost:3000';
+
 (async () => {
   try {
-    const res = await fetch('http://localhost:3001/supervisor/login');
+    const res = await fetch(`${URL}/supervisor/login`);
     console.log('status', res.status);
     const html = await res.text();
     console.log(html.slice(0, 300));
