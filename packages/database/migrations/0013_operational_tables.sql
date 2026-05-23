@@ -1,8 +1,26 @@
 -- Operational tables for admin users, risk flags, funding pipeline, automation and email logs
+-- Production-safe and re-runnable. This file must preserve existing records.
 
-create type funding_pipeline_stage as enum ('intake','triage','underwriting','offer','funding','closed');
-create type funding_pipeline_status as enum ('open','in_progress','on_hold','closed','cancelled');
-create type risk_flag_severity as enum ('low','medium','high','critical');
+do $$
+begin
+  create type funding_pipeline_stage as enum ('intake','triage','underwriting','offer','funding','closed');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create type funding_pipeline_status as enum ('open','in_progress','on_hold','closed','cancelled');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create type risk_flag_severity as enum ('low','medium','high','critical');
+exception
+  when duplicate_object then null;
+end $$;
 
 create table if not exists admin_users (
   id uuid primary key default gen_random_uuid(),
@@ -94,29 +112,35 @@ alter table email_logs enable row level security;
 
 -- Basic RLS: internal read, admins can manage admin_users
 
-create policy if not exists "internal_read_operational" on admin_users
+drop policy if exists "internal_read_operational" on admin_users;
+create policy "internal_read_operational" on admin_users
 for select to authenticated
 using (public.is_internal_user());
 
-create policy if not exists "admin_manage_self_or_internal" on admin_users
+drop policy if exists "admin_manage_self_or_internal" on admin_users;
+create policy "admin_manage_self_or_internal" on admin_users
 for all to authenticated
 using (auth.uid() = auth.uid() or public.is_internal_user())
 with check (auth.uid() = auth.uid() or public.is_internal_user());
 
-create policy if not exists "internal_read_operational_flags" on risk_flags
+drop policy if exists "internal_read_operational_flags" on risk_flags;
+create policy "internal_read_operational_flags" on risk_flags
 for select to authenticated
 using (public.is_internal_user());
 
-create policy if not exists "internal_manage_funding_pipeline" on funding_pipeline
+drop policy if exists "internal_manage_funding_pipeline" on funding_pipeline;
+create policy "internal_manage_funding_pipeline" on funding_pipeline
 for all to authenticated
 using (public.is_internal_user())
 with check (public.is_internal_user());
 
-create policy if not exists "internal_read_automation_logs" on automation_logs
+drop policy if exists "internal_read_automation_logs" on automation_logs;
+create policy "internal_read_automation_logs" on automation_logs
 for select to authenticated
 using (public.is_internal_user());
 
-create policy if not exists "internal_read_email_logs" on email_logs
+drop policy if exists "internal_read_email_logs" on email_logs;
+create policy "internal_read_email_logs" on email_logs
 for select to authenticated
 using (public.is_internal_user());
 

@@ -11,7 +11,12 @@ const MIGRATION_FILE_BY_SCHEMA: Record<string, string> = {
   phase1Schema: "packages/database/migrations/0006_phase1_public_mvp.sql",
   platformSchema: "packages/database/migrations/0007_platform_separation_fintech_schema.sql",
   productionSchema: "packages/database/migrations/0008_production_mca_platform.sql",
-  phase2Schema: "packages/database/migrations/0009_phase2_ai_operations.sql"
+  phase2Schema: "packages/database/migrations/0009_phase2_ai_operations.sql",
+  applicationLifecycleSchema: "packages/database/migrations/0010_add_business_application_status_needs_review.sql",
+  operationalCrmSchema: "packages/database/migrations/0011_phase3_operational_crm.sql",
+  internalRolesSchema: "packages/database/migrations/0012_internal_roles_app_role.sql",
+  operationalTablesSchema: "packages/database/migrations/0013_operational_tables.sql",
+  crmBusinessApplicationLinkSchema: "packages/database/migrations/0014_crm_business_application_link.sql"
 };
 
 export const dynamic = "force-dynamic";
@@ -35,6 +40,11 @@ export async function GET() {
             platformSchema: "not_configured",
             productionSchema: "not_configured",
             phase2Schema: "not_configured",
+            applicationLifecycleSchema: "not_configured",
+            operationalCrmSchema: "not_configured",
+            internalRolesSchema: "not_configured",
+            operationalTablesSchema: "not_configured",
+            crmBusinessApplicationLinkSchema: "not_configured",
             auth: "not_configured",
             anthropic: configuration.anthropic ? "configured" : "not_configured",
             openai: configuration.openai ? "configured" : "not_configured",
@@ -63,9 +73,16 @@ export async function GET() {
     let platformSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
     let productionSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
     let phase2Schema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let applicationLifecycleSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let operationalCrmSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let internalRolesSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let operationalTablesSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let crmBusinessApplicationLinkSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
 
     if (configuration.supabase) {
-      const { error } = await getSupabaseAdmin().from("leads").select("id").limit(1);
+      const supabase = getSupabaseAdmin();
+      const rawSupabase = supabase as unknown as { from: (table: string) => any };
+      const { error } = await supabase.from("leads").select("id").limit(1);
       if (error) {
         database = "error";
       }
@@ -115,6 +132,42 @@ export async function GET() {
       } else if ((phase2Rows ?? []).length === 0) {
         phase2Schema = "missing";
       }
+
+      const { error: lifecycleSchemaError } = await getSupabaseAdmin()
+        .from("business_applications")
+        .select("id")
+        .in("status", ["needs_review", "reviewed", "routed"])
+        .limit(1);
+      if (lifecycleSchemaError) {
+        applicationLifecycleSchema = isEnumValueError(lifecycleSchemaError) ? "missing" : isMissingTableError(lifecycleSchemaError, "business_applications") ? "missing" : "error";
+      }
+
+      const { error: operationalCrmSchemaError } = await getSupabaseAdmin().from("crm_activities").select("id").limit(1);
+      if (operationalCrmSchemaError) {
+        operationalCrmSchema = isMissingTableError(operationalCrmSchemaError, "crm_activities") ? "missing" : "error";
+      }
+
+      const { error: internalRolesSchemaError } = await getSupabaseAdmin()
+        .from("profiles")
+        .select("id")
+        .in("role", ["admin", "operator", "analyst", "super_admin"])
+        .limit(1);
+      if (internalRolesSchemaError) {
+        internalRolesSchema = isEnumValueError(internalRolesSchemaError) ? "missing" : isMissingTableError(internalRolesSchemaError, "profiles") ? "missing" : "error";
+      }
+
+      const { error: operationalTablesSchemaError } = await rawSupabase.from("funding_pipeline").select("id").limit(1);
+      if (operationalTablesSchemaError) {
+        operationalTablesSchema = isMissingTableError(operationalTablesSchemaError, "funding_pipeline") ? "missing" : "error";
+      }
+
+      const { error: crmBusinessApplicationLinkSchemaError } = await getSupabaseAdmin()
+        .from("crm_activities")
+        .select("business_application_id")
+        .limit(1);
+      if (crmBusinessApplicationLinkSchemaError) {
+        crmBusinessApplicationLinkSchema = isMissingColumnError(crmBusinessApplicationLinkSchemaError) ? "missing" : "error";
+      }
     }
 
     const schemaStates = [
@@ -126,7 +179,12 @@ export async function GET() {
       phase1Schema,
       platformSchema,
       productionSchema,
-      phase2Schema
+      phase2Schema,
+      applicationLifecycleSchema,
+      operationalCrmSchema,
+      internalRolesSchema,
+      operationalTablesSchema,
+      crmBusinessApplicationLinkSchema
     ];
 
     const requiredMigrations = buildRequiredMigrationHints({
@@ -137,7 +195,12 @@ export async function GET() {
       phase1Schema,
       platformSchema,
       productionSchema,
-      phase2Schema
+      phase2Schema,
+      applicationLifecycleSchema,
+      operationalCrmSchema,
+      internalRolesSchema,
+      operationalTablesSchema,
+      crmBusinessApplicationLinkSchema
     });
 
     return NextResponse.json({
@@ -153,6 +216,11 @@ export async function GET() {
         platformSchema,
         productionSchema,
         phase2Schema,
+        applicationLifecycleSchema,
+        operationalCrmSchema,
+        internalRolesSchema,
+        operationalTablesSchema,
+        crmBusinessApplicationLinkSchema,
         auth: configuration.auth ? "configured" : "not_configured",
         anthropic: configuration.anthropic ? "configured" : "not_configured",
         openai: configuration.openai ? "configured" : "not_configured",
@@ -165,6 +233,8 @@ export async function GET() {
         n8n: configuration.n8n ? "configured" : "not_configured"
       },
       diagnostics: {
+        latestMigration: "0014_crm_business_application_link.sql",
+        expectedMigrations: Object.values(MIGRATION_FILE_BY_SCHEMA),
         requiredMigrations
       }
     });
@@ -175,6 +245,14 @@ export async function GET() {
 
 function isMissingTableError(error: { code?: string; message?: string }, tableName: string) {
   return error.code === "42P01" || error.code === "PGRST205" || Boolean(error.message?.includes(tableName));
+}
+
+function isEnumValueError(error: { code?: string; message?: string }) {
+  return error.code === "22P02" || Boolean(error.message?.includes("invalid input value for enum"));
+}
+
+function isMissingColumnError(error: { code?: string; message?: string }) {
+  return error.code === "42703" || error.code === "PGRST204" || Boolean(error.message?.toLowerCase().includes("could not find") && error.message.toLowerCase().includes("column"));
 }
 
 function buildRequiredMigrationHints(schemaStates: Record<string, string>) {

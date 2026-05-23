@@ -81,7 +81,7 @@ export async function runClaudeJson<TSchema extends z.ZodTypeAny>(request: Claud
   }
 
   const parsed = parseClaudeJson(text, request.operation);
-  const data = request.zodSchema.parse(parsed) as z.infer<TSchema>;
+  const data = parseClaudeStructuredPayload(request.zodSchema, parsed) as z.infer<TSchema>;
   const inputTokens = response.usage?.input_tokens ?? null;
   const outputTokens = response.usage?.output_tokens ?? null;
 
@@ -122,4 +122,29 @@ function parseClaudeJson(text: string, operation: string) {
     operation,
     preview: trimmed.slice(0, 500)
   });
+}
+
+function parseClaudeStructuredPayload<TSchema extends z.ZodTypeAny>(schema: TSchema, parsed: unknown) {
+  const direct = schema.safeParse(parsed);
+  if (direct.success) return direct.data;
+
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const record = parsed as Record<string, unknown>;
+    const wrapperKeys = ["data", "result", "output", "analysis", "funding_fit_analysis", "underwriting_analysis", "response"];
+    for (const key of wrapperKeys) {
+      const candidate = record[key];
+      if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+        const nested = schema.safeParse(candidate);
+        if (nested.success) return nested.data;
+      }
+    }
+
+    const objectValues = Object.values(record).filter((value) => value && typeof value === "object" && !Array.isArray(value));
+    if (objectValues.length === 1) {
+      const nested = schema.safeParse(objectValues[0]);
+      if (nested.success) return nested.data;
+    }
+  }
+
+  return schema.parse(parsed);
 }

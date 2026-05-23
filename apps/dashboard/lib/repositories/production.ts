@@ -321,17 +321,18 @@ export const productionRepository = {
   },
 
   async createCrmActivity(payload: CrmActivityInsert) {
-    const { data, error } = await getSupabaseAdmin().from("crm_activities").insert(payload).select("*").single();
+    const { data, error } = await getSupabaseAdmin().from("crm_activities").insert(await normalizeCrmActivityPayload(payload)).select("*").single();
     if (error) throwProductionSchemaError(error);
     return data;
   },
 
   async listCrmActivitiesForApplications(applicationIds: string[]) {
     if (applicationIds.length === 0) return [];
+    const idList = applicationIds.join(",");
     const { data, error } = await getSupabaseAdmin()
       .from("crm_activities")
       .select("*")
-      .in("application_id", applicationIds)
+      .or(`application_id.in.(${idList}),business_application_id.in.(${idList})`)
       .order("created_at", { ascending: false });
     if (error) throwProductionSchemaError(error);
     return data ?? [];
@@ -368,7 +369,11 @@ export const productionRepository = {
   },
 
   async createUnderwritingReview(payload: UnderwritingReviewInsert) {
-    const { data, error } = await getSupabaseAdmin().from("underwriting_reviews").insert(payload).select("*").single();
+    const { data, error } = await getSupabaseAdmin()
+      .from("underwriting_reviews")
+      .insert(await normalizeUnderwritingReviewPayload(payload))
+      .select("*")
+      .single();
     if (error) throwProductionSchemaError(error);
     return data;
   },
@@ -501,34 +506,65 @@ export function isProductionSchemaMissing(error: unknown) {
 
 export function throwProductionSchemaError(error: { code?: string; message?: string }): never {
   const message = error.message ?? "";
-  if (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    [
-      "profiles",
-      "business_applications",
-      "lead_scores",
-      "lender_matches",
-      "crm_activities",
-      "notifications",
-      "underwriting_reviews",
-      "outreach_logs",
-      "ai_tasks",
-      "ai_task_logs",
-      "documents",
-      "funding_offers",
-      "approval_statuses",
-      "audit_logs",
-      "api_usage_logs"
-    ].some((table) => message.includes(table))
-  ) {
+  if (isMissingProductionRelationError(error)) {
     throw new ConfigurationError("Production MCA platform migration 0008 has not been applied to Supabase", {
       migration: PRODUCTION_MIGRATION,
-      prerequisite: "packages/database/migrations/0007_platform_separation_fintech_schema.sql"
+      prerequisite: "packages/database/migrations/0007_platform_separation_fintech_schema.sql",
+      originalError: {
+        code: error.code,
+        message
+      }
     });
   }
 
   throw error;
+}
+
+function isMissingProductionRelationError(error: { code?: string; message?: string }) {
+  const message = (error.message ?? "").toLowerCase();
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    message.includes("could not find the table") ||
+    message.includes("relation") && message.includes("does not exist") ||
+    message.includes("schema cache") && message.includes("could not find")
+  );
+}
+
+async function normalizeCrmActivityPayload(payload: CrmActivityInsert): Promise<CrmActivityInsert> {
+  const businessApplicationId = await resolveBusinessApplicationId(payload.application_id ?? null, payload.business_application_id ?? null);
+  if (!businessApplicationId) return payload;
+
+  return {
+    ...payload,
+    application_id: payload.application_id && payload.application_id !== businessApplicationId ? payload.application_id : null,
+    business_application_id: businessApplicationId
+  };
+}
+
+async function normalizeUnderwritingReviewPayload(payload: UnderwritingReviewInsert): Promise<UnderwritingReviewInsert> {
+  const businessApplicationId = await resolveBusinessApplicationId(payload.application_id ?? null, payload.business_application_id ?? null);
+  if (!businessApplicationId) return payload;
+
+  return {
+    ...payload,
+    application_id: payload.application_id && payload.application_id !== businessApplicationId ? payload.application_id : null,
+    business_application_id: businessApplicationId
+  };
+}
+
+async function resolveBusinessApplicationId(legacyApplicationId: string | null, businessApplicationId: string | null) {
+  if (businessApplicationId) return businessApplicationId;
+  if (!legacyApplicationId) return null;
+
+  const { data, error } = await getSupabaseAdmin()
+    .from("business_applications")
+    .select("id")
+    .eq("id", legacyApplicationId)
+    .maybeSingle();
+
+  if (error) throwProductionSchemaError(error);
+  return data?.id ?? null;
 }
 
 export function asJson(value: unknown): Json {

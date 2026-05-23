@@ -67,7 +67,12 @@ const expectedTables = [
   'outreach_campaigns',
   'outreach_sequences',
   'outreach_email_queue',
-  'outreach_replies'
+  'outreach_replies',
+  'admin_users',
+  'risk_flags',
+  'funding_pipeline',
+  'automation_logs',
+  'email_logs'
 ];
 
 async function checkTableExists(table) {

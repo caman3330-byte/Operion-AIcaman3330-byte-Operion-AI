@@ -999,6 +999,7 @@ export type NotificationRecord = {
 export type CrmActivity = {
   id: string;
   application_id: string | null;
+  business_application_id?: string | null;
   business_id: string | null;
   lead_id: string | null;
   actor_id: string | null;

@@ -77,7 +77,7 @@ export async function transitionMerchantLifecycle(input: LifecycleTransitionInpu
 
     await trackCRMActivity({
       applicationId: input.applicationId,
-      businessId: input.businessId ?? current.business_id ?? input.applicationId,
+      businessId: input.businessId ?? current.business_id ?? null,
       actorId: input.actorId,
       actorType: "operator",
       activityType: "status_change",
@@ -108,7 +108,7 @@ export async function addOperationalNote(input: {
 }) {
   return trackCRMActivity({
     applicationId: input.applicationId,
-    businessId: input.businessId ?? input.applicationId,
+    businessId: input.businessId ?? null,
     actorId: input.actorId,
     actorType: "operator",
     activityType: "note",
@@ -121,7 +121,7 @@ export async function addOperationalNote(input: {
 export async function scheduleFollowUp(input: FollowUpInput): Promise<{ success: boolean; error?: string }> {
   return trackCRMActivity({
     applicationId: input.applicationId,
-    businessId: input.businessId ?? input.applicationId,
+    businessId: input.businessId ?? null,
     actorId: input.actorId,
     actorType: "operator",
     activityType: "call",
@@ -137,7 +137,7 @@ export async function listActivityFeed(applicationId: string, limit = 50) {
     const { data, error } = await supabase
       .from("crm_activities")
       .select("*")
-      .eq("application_id", applicationId)
+      .or(`application_id.eq.${applicationId},business_application_id.eq.${applicationId}`)
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error) return { activities: [], error: error.message };

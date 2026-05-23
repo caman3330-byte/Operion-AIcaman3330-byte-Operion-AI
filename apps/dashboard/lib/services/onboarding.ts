@@ -12,7 +12,8 @@ export async function recordMerchantOnboarding(input: {
   fundingPurpose?: string | null;
 }) {
   await productionRepository.createCrmActivity({
-    application_id: input.applicationId,
+    application_id: null,
+    business_application_id: input.applicationId,
     lead_id: input.leadId,
     actor_type: "system",
     activity_type: "status_change",

@@ -56,7 +56,7 @@ export async function updateDealStage(input: DealStageUpdate): Promise<{ success
 
 export async function trackCRMActivity(input: {
   applicationId: string;
-  businessId: string;
+  businessId?: string | null;
   actorId: string;
   actorType: string;
   activityType: CrmActivityType;
@@ -66,9 +66,11 @@ export async function trackCRMActivity(input: {
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await getSupabaseAdmin();
+    const applicationTarget = await resolveApplicationTarget(input.applicationId);
     const { error } = await supabase.from('crm_activities').insert({
-      application_id: input.applicationId,
-      business_id: input.businessId,
+      application_id: applicationTarget.legacyApplicationId,
+      business_application_id: applicationTarget.businessApplicationId,
+      business_id: input.businessId ?? null,
       actor_id: input.actorId,
       actor_type: input.actorType,
       activity_type: input.activityType,
@@ -102,7 +104,7 @@ export async function detectStaleLead(applicationId: string, staleThresholdHours
     const { data, error } = await supabase
       .from('crm_activities')
       .select('created_at')
-      .eq('application_id', applicationId)
+      .or(`application_id.eq.${applicationId},business_application_id.eq.${applicationId}`)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -123,4 +125,25 @@ export async function detectStaleLead(applicationId: string, staleThresholdHours
     });
     return false;
   }
+}
+
+async function resolveApplicationTarget(applicationId: string) {
+  const supabase = await getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from('business_applications')
+    .select('id')
+    .eq('id', applicationId)
+    .maybeSingle();
+
+  if (!error && data?.id) {
+    return {
+      businessApplicationId: applicationId,
+      legacyApplicationId: null
+    };
+  }
+
+  return {
+    businessApplicationId: null,
+    legacyApplicationId: applicationId
+  };
 }

@@ -17,6 +17,9 @@
     "supabase:push": "node ./scripts/supabase-migrate.js push",
     "supabase:status": "node ./scripts/supabase-migrate.js status",
     "supabase:inspect": "node ./scripts/inspect-supabase-schema.mjs",
+    "supabase:validate-schema": "node ./scripts/validate-production-schema.mjs",
+    "supabase:apply": "node ./scripts/apply-migrations.js",
+    "supabase:reconcile-ledger": "node ./scripts/reconcile-migration-ledger.mjs",
     "supabase:create-admin-user": "node ./scripts/create-admin-user.js",
     "supabase:create-admin-profile": "node ./scripts/create-admin-profile.js",
     "verify:deployment": "node ./scripts/verify-deployment.js"
