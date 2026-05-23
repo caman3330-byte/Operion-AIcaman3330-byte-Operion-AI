@@ -28,6 +28,18 @@ export async function runOperationalSupabaseSmokeTest(input: {
   await recordCheck(checks, "ai_task_logs_read", async () =>
     supabase.from("ai_task_logs").select("id").limit(1)
   );
+  await recordCheck(checks, "underwriting_reviews_read", async () =>
+    supabase.from("underwriting_reviews").select("id").limit(1)
+  );
+  await recordCheck(checks, "lender_matches_read", async () =>
+    supabase.from("lender_matches").select("id").limit(1)
+  );
+  await recordCheck(checks, "funding_offers_read", async () =>
+    supabase.from("funding_offers").select("id").limit(1)
+  );
+  await recordCheck(checks, "api_usage_logs_read", async () =>
+    supabase.from("api_usage_logs").select("id").limit(1)
+  );
 
   if (input.executeWrites) {
     if (!input.merchant) {

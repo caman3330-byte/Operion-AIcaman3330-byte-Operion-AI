@@ -30,6 +30,14 @@ const providerHealthJsonSchema = {
 };
 
 export type AiProviderTestTarget = "openai" | "claude" | "both";
+export type AiProviderFailureCategory =
+  | "none"
+  | "structured_output"
+  | "provider_auth"
+  | "provider_rate_limit"
+  | "latency"
+  | "provider_unavailable"
+  | "provider_error";
 
 export interface AiProviderTestResult {
   provider: "openai" | "claude";
@@ -40,6 +48,8 @@ export interface AiProviderTestResult {
   estimatedCostUsd: number;
   model?: string;
   error?: string;
+  failureCategory?: AiProviderFailureCategory;
+  fallbackAttempted?: boolean;
 }
 
 export async function validateAiProviders(input: {
@@ -80,12 +90,13 @@ export async function validateAiPromptSuite(input: {
 
   for (const prompt of prompts) {
     let promptResult: AiProviderTestResult | null = null;
-    for (const provider of preferredProviders) {
+    for (const [providerIndex, provider] of preferredProviders.entries()) {
       promptResult = provider === "openai"
         ? await validateOpenAiPrompt(prompt)
         : await validateClaudePrompt(prompt);
       results.push({
         ...promptResult,
+        fallbackAttempted: providerIndex > 0,
         ...(promptResult.error ? { error: `${prompt.kind}: ${promptResult.error}` } : {})
       });
       if (promptResult.success || input.fallback === false) break;
@@ -122,9 +133,11 @@ async function validateOpenAiProvider(): Promise<AiProviderTestResult> {
       inputTokens: response.usage.inputTokens,
       outputTokens: response.usage.outputTokens,
       estimatedCostUsd: response.usage.estimatedCostUsd,
-      model: response.usage.model
+      model: response.usage.model,
+      failureCategory: "none"
     };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
       provider: "openai",
       success: false,
@@ -132,7 +145,8 @@ async function validateOpenAiProvider(): Promise<AiProviderTestResult> {
       inputTokens: null,
       outputTokens: null,
       estimatedCostUsd: 0,
-      error: error instanceof Error ? error.message : String(error)
+      error: message,
+      failureCategory: categorizeProviderFailure(message, Date.now() - startedAt)
     };
   }
 }
@@ -153,9 +167,11 @@ async function validateClaudeProvider(): Promise<AiProviderTestResult> {
       inputTokens: response.usage.inputTokens,
       outputTokens: response.usage.outputTokens,
       estimatedCostUsd: response.usage.estimatedCostUsd,
-      model: response.usage.model
+      model: response.usage.model,
+      failureCategory: "none"
     };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
       provider: "claude",
       success: false,
@@ -163,7 +179,8 @@ async function validateClaudeProvider(): Promise<AiProviderTestResult> {
       inputTokens: null,
       outputTokens: null,
       estimatedCostUsd: 0,
-      error: error instanceof Error ? error.message : String(error)
+      error: message,
+      failureCategory: categorizeProviderFailure(message, Date.now() - startedAt)
     };
   }
 }
@@ -186,9 +203,11 @@ async function validateOpenAiPrompt(prompt: OperationalPrompt): Promise<AiProvid
       inputTokens: response.usage.inputTokens,
       outputTokens: response.usage.outputTokens,
       estimatedCostUsd: response.usage.estimatedCostUsd,
-      model: response.usage.model
+      model: response.usage.model,
+      failureCategory: "none"
     };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
       provider: "openai",
       success: false,
@@ -196,7 +215,8 @@ async function validateOpenAiPrompt(prompt: OperationalPrompt): Promise<AiProvid
       inputTokens: null,
       outputTokens: null,
       estimatedCostUsd: 0,
-      error: error instanceof Error ? error.message : String(error)
+      error: message,
+      failureCategory: categorizeProviderFailure(message, Date.now() - startedAt)
     };
   }
 }
@@ -217,9 +237,11 @@ async function validateClaudePrompt(prompt: OperationalPrompt): Promise<AiProvid
       inputTokens: response.usage.inputTokens,
       outputTokens: response.usage.outputTokens,
       estimatedCostUsd: response.usage.estimatedCostUsd,
-      model: response.usage.model
+      model: response.usage.model,
+      failureCategory: "none"
     };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
       provider: "claude",
       success: false,
@@ -227,7 +249,8 @@ async function validateClaudePrompt(prompt: OperationalPrompt): Promise<AiProvid
       inputTokens: null,
       outputTokens: null,
       estimatedCostUsd: 0,
-      error: error instanceof Error ? error.message : String(error)
+      error: message,
+      failureCategory: categorizeProviderFailure(message, Date.now() - startedAt)
     };
   }
 }
@@ -246,9 +269,21 @@ async function logProviderValidation(result: AiProviderTestResult) {
     metadata: {
       provider: result.provider,
       success: result.success,
+      failureCategory: result.failureCategory ?? "none",
+      fallbackAttempted: result.fallbackAttempted ?? false,
       error: result.error ?? null
     }
   });
+}
+
+function categorizeProviderFailure(message: string, latencyMs: number): AiProviderFailureCategory {
+  const text = message.toLowerCase();
+  if (text.includes("schema") || text.includes("json") || text.includes("parse") || text.includes("structured")) return "structured_output";
+  if (text.includes("auth") || text.includes("api key") || text.includes("401") || text.includes("403")) return "provider_auth";
+  if (text.includes("rate") || text.includes("quota") || text.includes("429")) return "provider_rate_limit";
+  if (text.includes("timeout") || latencyMs > 30_000) return "latency";
+  if (text.includes("not configured") || text.includes("missing")) return "provider_unavailable";
+  return "provider_error";
 }
 
 function buildValidationPrompts(): OperationalPrompt[] {

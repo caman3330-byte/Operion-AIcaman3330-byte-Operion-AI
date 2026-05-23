@@ -1,6 +1,7 @@
 import { validateAiProviders } from "../ai/execution-validation";
 import { getOperationalDiagnostics } from "../observability/events";
 import { getOperatorDashboardSummary } from "../operator-dashboard/service";
+import { getLaunchMonitoringSnapshot } from "./monitoring";
 import { runOperationalSupabaseSmokeTest } from "./supabase-smoke";
 import type { MerchantSubmissionInput } from "../intake/types";
 
@@ -25,9 +26,20 @@ export async function runPrelaunchOperationalValidation(input: {
 
   await capture(checks, "operator_dashboard_summary", "error", () => getOperatorDashboardSummary({ limit: 25 }));
   await capture(checks, "operational_diagnostics", "error", () => getOperationalDiagnostics());
+  await capture(checks, "launch_monitoring_snapshot", "error", () => getLaunchMonitoringSnapshot({ limit: 25 }));
+
+  const writeSmokeAllowed = input.includeWriteSmokeTest && canRunWriteSmokeTest();
+  if (input.includeWriteSmokeTest && !writeSmokeAllowed) {
+    checks.push({
+      name: "staging_write_guard",
+      success: false,
+      severity: "error",
+      error: "Write smoke tests are disabled in production unless OPERION_ALLOW_PRODUCTION_SMOKE_WRITES=true."
+    });
+  }
 
   const smoke = await runOperationalSupabaseSmokeTest({
-    executeWrites: input.includeWriteSmokeTest,
+    executeWrites: writeSmokeAllowed,
     ...(input.merchant ? { merchant: input.merchant } : {})
   });
   checks.push({
@@ -82,4 +94,8 @@ async function capture(
       error: error instanceof Error ? error.message : String(error)
     });
   }
+}
+
+function canRunWriteSmokeTest() {
+  return process.env.NODE_ENV !== "production" || process.env.OPERION_ALLOW_PRODUCTION_SMOKE_WRITES === "true";
 }

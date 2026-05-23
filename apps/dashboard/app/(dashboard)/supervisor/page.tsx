@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { getSupervisorSummary } from "@/lib/agent-orchestration/orchestrator";
 import { getProductionSupervisorSummary } from "@/lib/data/supervisor-command";
+import { getOperatorDashboardSummary } from "@/lib/operator-dashboard/service";
+import { getLaunchMonitoringSnapshot } from "@/lib/operations/monitoring";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +21,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export const dynamic = "force-dynamic";
 
 export default async function SupervisorPage() {
-  const [summary, production] = await Promise.all([getSupervisorSummary(), getProductionSupervisorSummary()]);
+  const [summary, production, operator, monitoring] = await Promise.all([
+    getSupervisorSummary(),
+    getProductionSupervisorSummary(),
+    getOperatorDashboardSummary({ limit: 10 }),
+    getLaunchMonitoringSnapshot({ limit: 100 })
+  ]);
 
   return (
     <div className="space-y-6">
@@ -91,6 +98,102 @@ export default async function SupervisorPage() {
         <MetricCard title="Lender Matches" value={String(production.lenderMatches)} detail="Recommended or submitted matches" icon={Route} />
         <MetricCard title="Outreach Events" value={String(production.outreachLogs)} detail="Production outreach logs" icon={AlertTriangle} />
         <MetricCard title="AI/API Cost" value={formatCurrency(production.estimatedAiCostUsd)} detail="Tracked in api_usage_logs" icon={CircleDollarSign} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title="Launch Health" value={monitoring.health} detail={`${monitoring.alerts.length} active operational alert(s)`} icon={CheckCircle2} tone={monitoring.health === "critical" ? "danger" : monitoring.health === "degraded" ? "warning" : "success"} />
+        <MetricCard title="Workflow Failures" value={String(monitoring.counters.workflowFailures)} detail={`${monitoring.counters.retryCount} retry event(s)`} icon={Route} tone={monitoring.counters.workflowFailures > 0 ? "danger" : "success"} />
+        <MetricCard title="AI Failures" value={String(monitoring.counters.aiExecutionFailures)} detail={`${operator.ai.metrics.averageLatencyMs ?? 0}ms avg latency`} icon={Bot} tone={monitoring.counters.aiExecutionFailures > 0 ? "warning" : "success"} />
+        <MetricCard title="Stale Leads" value={String(monitoring.counters.staleLeads)} detail="Intake + underwriting threshold" icon={Clock3} tone={monitoring.counters.staleLeads > 0 ? "warning" : "success"} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Launch Monitoring Alerts</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {monitoring.alerts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No launch-blocking operational alerts in the current monitoring window.</p>
+            ) : (
+              monitoring.alerts.map((alert) => (
+                <div key={alert.category} className="rounded-md border p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{alert.title}</p>
+                    <Badge variant={alert.severity === "critical" ? "destructive" : alert.severity === "warn" ? "warning" : "secondary"}>
+                      {alert.count} {alert.severity}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{alert.detail}</p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Execution QA</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">Average Confidence</p>
+                <p className="mt-1 text-lg font-semibold">{operator.ai.metrics.averageConfidenceScore ?? "n/a"}</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">Providers</p>
+                <p className="mt-1 text-lg font-semibold">{Object.keys(operator.ai.metrics.byProvider).length}</p>
+              </div>
+            </div>
+            {Object.entries(operator.ai.metrics.failureCategories).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No categorized AI failures in the current review window.</p>
+            ) : (
+              Object.entries(operator.ai.metrics.failureCategories).map(([category, count]) => (
+                <div key={category} className="flex items-center justify-between rounded-md border px-3 py-2">
+                  <span className="text-sm font-medium">{category.replaceAll("_", " ")}</span>
+                  <Badge variant="warning">{count}</Badge>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <OperationalQueuePanel
+          title="Underwriting Queue"
+          emptyText="No underwriting reviews waiting in the current window."
+          items={operator.underwriting.queue.items.map((item) => ({
+            id: item.applicationId,
+            label: item.businessName,
+            detail: `${item.status} / ${formatCurrency(item.requestedAmount)} / ${item.riskTier}`,
+            tone: item.stale || item.riskTier === "critical" ? "warning" : "secondary"
+          }))}
+          nextOffset={operator.underwriting.queue.pagination.nextOffset}
+        />
+        <OperationalQueuePanel
+          title="Intake Review"
+          emptyText="No intake records waiting for operator review."
+          items={operator.crm.intakeQueue.items.map((item) => ({
+            id: item.id,
+            label: item.business_name,
+            detail: `${item.status} / ${item.industry} / ${formatCurrency(item.requested_amount)}`,
+            tone: "secondary"
+          }))}
+          nextOffset={operator.crm.intakeQueue.pagination.nextOffset}
+        />
+        <OperationalQueuePanel
+          title="Workflow Monitor"
+          emptyText="No workflow traces in the current review window."
+          items={operator.workflows.traces.items.map((item) => ({
+            id: item.id,
+            label: `${item.workflow_key} / ${item.step_key}`,
+            detail: `${item.status} / ${item.latency_ms ?? 0}ms`,
+            tone: item.status === "failed" ? "destructive" : item.status === "retried" ? "warning" : "secondary"
+          }))}
+          nextOffset={operator.workflows.traces.pagination.nextOffset}
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -268,6 +371,49 @@ function QueuePanel({ title, tasks }: { title: string; tasks: Array<{ id: string
             <div key={task.id} className="rounded-md border p-3">
               <p className="text-sm font-medium">{task.title}</p>
               <p className="mt-1 text-xs text-muted-foreground">{task.assigned_agent_key}</p>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OperationalQueuePanel({
+  title,
+  emptyText,
+  items,
+  nextOffset
+}: {
+  title: string;
+  emptyText: string;
+  items: Array<{
+    id: string;
+    label: string;
+    detail: string;
+    tone: "secondary" | "warning" | "destructive";
+  }>;
+  nextOffset: number | null;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle>{title}</CardTitle>
+          {nextOffset !== null ? <Badge variant="outline">More</Badge> : null}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{emptyText}</p>
+        ) : (
+          items.map((item) => (
+            <div key={item.id} className="rounded-md border p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="min-w-0 text-sm font-medium">{item.label}</p>
+                <Badge variant={item.tone}>{item.tone}</Badge>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
             </div>
           ))
         )}

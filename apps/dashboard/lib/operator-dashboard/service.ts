@@ -1,5 +1,6 @@
 import type { AiTaskLog, BusinessApplication, CrmActivity, CrmActivityType, LenderMatch, WorkflowExecutionTrace, WorkflowTraceStatus } from "@operion/shared";
 import { getOperationsAnalyticsSnapshot } from "../analytics/service";
+import { categorizeAiExecutionFailure } from "../operations/ai-failure-categories";
 import { getSupabaseAdmin } from "../supabase/server";
 import {
   getAiExecutionReviewFeed,
@@ -100,7 +101,11 @@ export async function getAiControlCenterDashboard(
       failedExecutions: executions.items.filter((item) => item.status === "failed").length,
       averageLatencyMs,
       averageConfidenceScore: average(confidenceScores),
-      byProvider: countBy(executions.items, (item) => item.provider ?? "unknown")
+      byProvider: countBy(executions.items, (item) => item.provider ?? "unknown"),
+      failureCategories: countBy(
+        executions.items.filter((item) => item.status === "failed" || item.status === "blocked"),
+        (item) => categorizeAiExecutionFailure(item)
+      )
     }
   };
 }

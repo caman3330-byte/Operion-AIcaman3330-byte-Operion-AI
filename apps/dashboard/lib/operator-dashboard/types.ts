@@ -59,6 +59,7 @@ export interface AiControlCenterDashboard {
     averageLatencyMs: number | null;
     averageConfidenceScore: number | null;
     byProvider: Record<string, number>;
+    failureCategories: Record<string, number>;
   };
 }
 

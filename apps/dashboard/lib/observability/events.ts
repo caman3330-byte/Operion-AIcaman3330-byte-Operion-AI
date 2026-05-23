@@ -2,6 +2,7 @@ import type { Json } from "@operion/shared";
 import { getOperationsAnalyticsSnapshot } from "../analytics/service";
 import { logAIAction } from "../ai/action-logger";
 import { logger } from "../logger";
+import { getLaunchMonitoringSnapshot } from "../operations/monitoring";
 import { getSupabaseAdmin } from "../supabase/server";
 
 export type OperationalEventSeverity = "info" | "warn" | "error";
@@ -149,20 +150,29 @@ export async function trackRetry(input: RetryTrackingInput): Promise<{ success: 
 }
 
 export async function getOperationalDiagnostics() {
-  const snapshot = await getOperationsAnalyticsSnapshot();
+  const [snapshot, launchMonitoringResult] = await Promise.all([
+    getOperationsAnalyticsSnapshot(),
+    getLaunchMonitoringSnapshot({ limit: 100 }).catch((error) => ({
+      error: error instanceof Error ? error.message : String(error)
+    }))
+  ]);
   if (!snapshot.snapshot) return snapshot;
+  const launchMonitoring = "error" in launchMonitoringResult ? null : launchMonitoringResult;
 
   const issues = [
     snapshot.snapshot.aiExecution.failureRate > 0.15 ? "AI execution failure rate exceeds 15%" : undefined,
     snapshot.snapshot.workflowPerformance.failed > snapshot.snapshot.workflowPerformance.completed * 0.2 ? "Workflow failures are elevated" : undefined,
-    snapshot.snapshot.submissions.staleLeadCount > 10 ? "Stale lead count requires operator attention" : undefined
+    snapshot.snapshot.submissions.staleLeadCount > 10 ? "Stale lead count requires operator attention" : undefined,
+    launchMonitoringResult && "error" in launchMonitoringResult ? `Launch monitoring unavailable: ${launchMonitoringResult.error}` : undefined,
+    ...(launchMonitoring?.alerts.map((alert) => alert.title) ?? [])
   ].filter((issue): issue is string => Boolean(issue));
 
   return {
     diagnostics: {
-      health: issues.length === 0 ? "healthy" : issues.length === 1 ? "degraded" : "critical",
+      health: launchMonitoring?.health === "critical" || issues.length > 1 ? "critical" : issues.length === 1 ? "degraded" : "healthy",
       issues,
-      snapshot: snapshot.snapshot
+      snapshot: snapshot.snapshot,
+      launchMonitoring
     }
   };
 }
