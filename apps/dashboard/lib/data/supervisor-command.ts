@@ -29,6 +29,20 @@ export interface ProductionSupervisorSummary {
   lenderMatches: number;
   outreachLogs: number;
   estimatedAiCostUsd: number;
+  lifecycle: {
+    raw: number;
+    qualified: number;
+    reviewed: number;
+    routed: number;
+    funded: number;
+    rejected: number;
+  };
+  emailOperations: {
+    sendgridConfigured: boolean;
+    sent: number;
+    failed: number;
+    replies: number;
+  };
 }
 
 export async function getProductionSupervisorSummary(): Promise<ProductionSupervisorSummary> {
@@ -52,6 +66,9 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
       productionRepository.listApiUsage(500)
     ]);
 
+    const lifecycle = summarizeLifecycle(applications);
+    const emailOperations = summarizeEmailOperations(outreachLogs, configurationStatus.sendgrid);
+
     return {
       source: "supabase",
       migrationRequired: false,
@@ -68,7 +85,9 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
       underwritingQueue: reviews.filter((review) => review.status === "queued" || review.status === "in_review" || review.status === "escalated").length,
       lenderMatches: matches.length,
       outreachLogs: outreachLogs.length,
-      estimatedAiCostUsd: usage.reduce((total, item) => total + Number(item.estimated_cost_usd ?? 0), 0)
+      estimatedAiCostUsd: usage.reduce((total, item) => total + Number(item.estimated_cost_usd ?? 0), 0),
+      lifecycle,
+      emailOperations
     };
   } catch (error) {
     logger.warn("production_supervisor_summary_unavailable", { error });
@@ -88,7 +107,58 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
       underwritingQueue: 0,
       lenderMatches: 0,
       outreachLogs: 0,
-      estimatedAiCostUsd: 0
+      estimatedAiCostUsd: 0,
+      lifecycle: emptyLifecycle(),
+      emailOperations: {
+        sendgridConfigured: configurationStatus.sendgrid,
+        sent: 0,
+        failed: 0,
+        replies: 0
+      }
     };
   }
+}
+
+function summarizeLifecycle(applications: Array<{ status: string }>) {
+  const lifecycle = emptyLifecycle();
+  for (const application of applications) {
+    const status = application.status;
+    if (["raw", "new_lead", "onboarding", "draft", "submitted", "documents_pending"].includes(status)) {
+      lifecycle.raw += 1;
+    } else if (["ai_review", "qualified", "needs_review", "underwriting_review", "reviewing"].includes(status)) {
+      lifecycle.qualified += 1;
+    } else if (["reviewed", "approved"].includes(status)) {
+      lifecycle.reviewed += 1;
+    } else if (["submitted_to_lender", "routed"].includes(status)) {
+      lifecycle.routed += 1;
+    } else if (status === "funded") {
+      lifecycle.funded += 1;
+    } else if (["rejected", "withdrawn", "inactive"].includes(status)) {
+      lifecycle.rejected += 1;
+    }
+  }
+  return lifecycle;
+}
+
+function summarizeEmailOperations(
+  outreachLogs: Array<{ status: string | null; replied_at?: string | null }>,
+  sendgridConfigured: boolean
+) {
+  return {
+    sendgridConfigured,
+    sent: outreachLogs.filter((log) => ["sent", "delivered"].some((status) => (log.status ?? "").toLowerCase().includes(status))).length,
+    failed: outreachLogs.filter((log) => (log.status ?? "").toLowerCase().includes("failed")).length,
+    replies: outreachLogs.filter((log) => Boolean(log.replied_at)).length
+  };
+}
+
+function emptyLifecycle() {
+  return {
+    raw: 0,
+    qualified: 0,
+    reviewed: 0,
+    routed: 0,
+    funded: 0,
+    rejected: 0
+  };
 }

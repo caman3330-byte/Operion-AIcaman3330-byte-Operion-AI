@@ -55,10 +55,7 @@ export default async function MerchantsPage() {
               <tr key={application.id} className="hover:bg-white/5">
                 <td className="px-4 py-4">
                   <Link
-                    href={{
-                      pathname: "/merchants/[applicationId]",
-                      query: { applicationId: application.id }
-                    }}
+                    href={`/merchants/${application.id}`}
                     className="font-medium text-white hover:text-primary"
                   >
                     {application.business_name}
@@ -69,7 +66,7 @@ export default async function MerchantsPage() {
                   <Badge variant={statusVariant(application.status)}>{application.status.replaceAll("_", " ")}</Badge>
                 </td>
                 <td className="px-4 py-4 text-white">{formatCurrency(Number(application.requested_amount))}</td>
-                <td className="px-4 py-4 text-muted-foreground">{application.state ?? "—"}</td>
+                <td className="px-4 py-4 text-muted-foreground">{application.state ?? "N/A"}</td>
                 <td className="px-4 py-4 text-muted-foreground">{formatDateTime(application.updated_at)}</td>
               </tr>
             ))}

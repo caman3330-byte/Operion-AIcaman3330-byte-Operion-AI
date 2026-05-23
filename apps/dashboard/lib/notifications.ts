@@ -3,6 +3,7 @@ import { createAlert } from "@/lib/alerts";
 import { readServerEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { recordApiUsage } from "@/lib/api-usage";
+import { renderOperionEmail } from "@/lib/email/templates";
 
 interface NotifyFounderInput {
   severity: AlertSeverity;
@@ -52,6 +53,18 @@ async function sendEmailNotification(input: NotifyFounderInput) {
   }
 
   const startedAt = Date.now();
+  const email = renderOperionEmail({
+    subject: `[Operion AI] ${input.title}`,
+    preheader: input.message,
+    title: input.title,
+    intro: [input.message],
+    sections: [
+      { label: "Severity", value: input.severity },
+      { label: "Alert type", value: input.alertType }
+    ],
+    brand: "internal"
+  });
+
   const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
     method: "POST",
     headers: {
@@ -61,8 +74,11 @@ async function sendEmailNotification(input: NotifyFounderInput) {
     body: JSON.stringify({
       personalizations: [{ to: [{ email: env.ADMIN_EMAIL }] }],
       from: { email: env.SENDGRID_FROM_EMAIL },
-      subject: `[Operion AI] ${input.title}`,
-      content: [{ type: "text/plain", value: input.message }]
+      subject: email.subject,
+      content: [
+        { type: "text/plain", value: email.text },
+        { type: "text/html", value: email.html }
+      ]
     })
   });
 

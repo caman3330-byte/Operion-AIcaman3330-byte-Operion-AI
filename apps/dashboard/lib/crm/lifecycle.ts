@@ -34,15 +34,40 @@ export interface FundingPipelineSnapshot {
 export async function transitionMerchantLifecycle(input: LifecycleTransitionInput): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await getSupabaseAdmin();
+    const { data: current, error: readError } = await supabase
+      .from("business_applications")
+      .select("status,metadata,business_id")
+      .eq("id", input.applicationId)
+      .maybeSingle();
+    if (readError) return { success: false, error: readError.message };
+    if (!current) return { success: false, error: "Business application not found" };
+
+    const transitionedAt = new Date().toISOString();
+    const previousMetadata = isRecord(current.metadata) ? current.metadata : {};
+    const previousLifecycle = isRecord(previousMetadata.lifecycle) ? previousMetadata.lifecycle : {};
+    const history = Array.isArray(previousLifecycle.history) ? previousLifecycle.history : [];
+    const fromStatus = input.fromStatus ?? current.status;
     const updatePayload = {
       status: input.toStatus,
       metadata: {
+        ...previousMetadata,
         lifecycle: {
-          previousStatus: input.fromStatus ?? null,
+          ...previousLifecycle,
+          previousStatus: fromStatus,
           currentStatus: input.toStatus,
           reason: input.reason ?? null,
           transitionedBy: input.actorId,
-          transitionedAt: new Date().toISOString()
+          transitionedAt,
+          history: [
+            ...history.slice(-24),
+            {
+              fromStatus,
+              toStatus: input.toStatus,
+              reason: input.reason ?? null,
+              actorId: input.actorId,
+              transitionedAt
+            }
+          ]
         }
       } as Json
     };
@@ -52,7 +77,7 @@ export async function transitionMerchantLifecycle(input: LifecycleTransitionInpu
 
     await trackCRMActivity({
       applicationId: input.applicationId,
-      businessId: input.businessId ?? input.applicationId,
+      businessId: input.businessId ?? current.business_id ?? input.applicationId,
       actorId: input.actorId,
       actorType: "operator",
       activityType: "status_change",
@@ -67,6 +92,10 @@ export async function transitionMerchantLifecycle(input: LifecycleTransitionInpu
     logger.error("Exception transitioning merchant lifecycle", { error: error instanceof Error ? error.message : String(error) });
     return { success: false, error: "Internal error" };
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 export async function addOperationalNote(input: {

@@ -6,6 +6,7 @@ import {
   CircleDollarSign,
   Clock3,
   FileText,
+  Mail,
   Route,
   XCircle
 } from "lucide-react";
@@ -98,6 +99,41 @@ export default async function SupervisorPage() {
         <MetricCard title="Lender Matches" value={String(production.lenderMatches)} detail="Recommended or submitted matches" icon={Route} />
         <MetricCard title="Outreach Events" value={String(production.outreachLogs)} detail="Production outreach logs" icon={AlertTriangle} />
         <MetricCard title="AI/API Cost" value={formatCurrency(production.estimatedAiCostUsd)} detail="Tracked in api_usage_logs" icon={CircleDollarSign} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>MCA Operations Flow</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            {Object.entries(production.lifecycle).map(([stage, count]) => (
+              <div key={stage} className="rounded-md border p-3">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{stage.replaceAll("_", " ")}</p>
+                <p className="mt-2 text-2xl font-semibold text-white">{count}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                Email Operations
+              </CardTitle>
+              <Badge variant={production.emailOperations.sendgridConfigured ? "success" : "warning"}>
+                {production.emailOperations.sendgridConfigured ? "SendGrid ready" : "SendGrid missing"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-3">
+            <MiniMetric label="Sent" value={production.emailOperations.sent} />
+            <MiniMetric label="Failed" value={production.emailOperations.failed} />
+            <MiniMetric label="Replies" value={production.emailOperations.replies} />
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -376,6 +412,15 @@ function QueuePanel({ title, tasks }: { title: string; tasks: Array<{ id: string
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border p-3">
+      <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-xl font-semibold text-white">{value}</p>
+    </div>
   );
 }
 

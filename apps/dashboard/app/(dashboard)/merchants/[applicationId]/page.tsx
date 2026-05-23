@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LifecycleControls } from "@/components/merchants/lifecycle-controls";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -119,6 +120,9 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
                   <p className="text-xs text-muted-foreground">AI tasks</p>
                   <p className="mt-2 text-2xl font-semibold text-white">{aiTasks.length}</p>
                 </div>
+              </div>
+              <div className="mt-4">
+                <LifecycleControls applicationId={application.id} currentStatus={application.status} />
               </div>
             </CardContent>
           </Card>

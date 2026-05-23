@@ -1,5 +1,6 @@
-import { readServerEnv } from "@/lib/env";
 import { recordApiUsage } from "@/lib/api-usage";
+import { readServerEnv } from "@/lib/env";
+import { renderOperionEmail, renderParagraphEmail } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { withRetry } from "@/lib/retry";
 import { safeIntegrationCall } from "@/lib/runtime/integration-guards";
@@ -93,27 +94,6 @@ async function sendSendGridEmail(input: SendEmailInput): Promise<SendGridResult>
   return result ?? { ok: false, status: 0 };
 }
 
-function formatEmailHtml(text: string) {
-  return `<div style="font-family: Arial, Helvetica, sans-serif; color: #111; line-height: 1.5; font-size: 16px;">
-    ${text
-      .trim()
-      .split(/\n{2,}/)
-      .map((paragraph) => `<p style="margin: 0 0 16px;">${escapeHtml(paragraph).replace(/\n/g, "<br />")}</p>`)
-      .join("")}
-    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-    <p style="font-size: 13px; color: #6b7280; margin: 0;">Operion AI • Email delivery powered by SendGrid</p>
-  </div>`;
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
 function formatCurrency(value: number | null | undefined) {
   if (value === null || value === undefined) {
     return "N/A";
@@ -148,11 +128,19 @@ export async function sendOutreachEmail(input: {
 }
 
 export async function sendTestEmail(input: { to: string; subject: string; text: string }) {
+  const email = renderParagraphEmail({
+    subject: input.subject,
+    preheader: "Operion internal email delivery verification.",
+    title: "Email delivery test",
+    text: input.text,
+    brand: "internal"
+  });
+
   return sendSendGridEmail({
     to: input.to,
-    subject: input.subject,
-    html: formatEmailHtml(input.text),
-    text: input.text,
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
     operation: "test_email",
     customArgs: {
       email_type: "test"
@@ -170,25 +158,29 @@ export async function sendMerchantConfirmationEmail(input: {
   portalUrl?: string | null;
 }) {
   const subject = `Your Operion funding application is received for ${input.businessName}`;
-  const bodyLines = [
-    `Hi ${input.ownerName ? input.ownerName : "there"},`,
-    `Thanks for submitting your funding application for ${input.businessName}. We received your details and will begin underwriting and lender matching right away.`,
-    input.requestedAmount
-      ? `Requested funding amount: ${formatCurrency(input.requestedAmount)}.`
-      : "",
-    input.fundingPurpose ? `Funding purpose: ${escapeHtml(input.fundingPurpose)}.` : "",
-    `Next step: upload your bank statements, government ID, and business bank account verification documents as soon as possible to keep your application moving.`,
-    input.portalUrl
-      ? `You can track your application and upload required documents through the Operion portal: ${input.portalUrl}`
-      : "You can track your application status through the Operion portal.",
-    `If you have any questions, reply to this email and we will follow up.`
-  ].filter(Boolean).join("\n\n");
+  const email = renderOperionEmail({
+    subject,
+    preheader: `We received the funding application for ${input.businessName}.`,
+    title: "Application received",
+    intro: [
+      `Hi ${input.ownerName ? input.ownerName : "there"},`,
+      `Thanks for submitting your funding application for ${input.businessName}. Our team will begin underwriting review and lender matching right away.`,
+      "Next step: upload bank statements, government ID, and business bank account verification documents as soon as they are available. This helps keep your application moving."
+    ],
+    sections: [
+      { label: "Business", value: input.businessName },
+      ...(input.requestedAmount ? [{ label: "Requested amount", value: formatCurrency(input.requestedAmount) }] : []),
+      ...(input.fundingPurpose ? [{ label: "Funding purpose", value: input.fundingPurpose }] : [])
+    ],
+    ...(input.portalUrl ? { cta: { label: "Track application", url: input.portalUrl } } : {}),
+    brand: "capital"
+  });
 
   return sendSendGridEmail({
     to: input.to,
-    subject,
-    html: formatEmailHtml(bodyLines),
-    text: bodyLines,
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
     leadId: input.leadId,
     operation: "merchant_confirmation_email",
     customArgs: {
@@ -210,24 +202,31 @@ export async function sendLenderPackageNotificationEmail(input: {
   status: "delivered" | "failed" | "pending";
 }) {
   const subject = `New Operion lead package: ${input.businessName}`;
-  const bodyLines = [
-    `Hi ${input.lenderName},`,
-    `Operion has matched a new funding lead for your review.`,
-    `Business: ${input.businessName}`,
-    `Contact: ${input.contactName ?? "Not provided"}`,
-    `Email: ${input.contactEmail ?? "Not provided"}`,
-    `Requested amount: ${formatCurrency(input.requestedAmount ?? null)}`,
-    `Industry: ${input.industry ?? "Not provided"}`,
-    `State: ${input.state ?? "Not provided"}`,
-    `Delivery status: ${input.status}.`,
-    `Please review the lead in the Operion lender dashboard and respond if you want to submit this opportunity.`
-  ].join("\n\n");
+  const email = renderOperionEmail({
+    subject,
+    preheader: `${input.businessName} has been matched for lender review.`,
+    title: "New funding lead package",
+    intro: [
+      `Hi ${input.lenderName},`,
+      "Operion Capital has matched a new business funding lead for your review. Please evaluate the opportunity and respond with your submission decision."
+    ],
+    sections: [
+      { label: "Business", value: input.businessName },
+      { label: "Contact", value: input.contactName ?? "Not provided" },
+      { label: "Email", value: input.contactEmail ?? "Not provided" },
+      { label: "Requested amount", value: formatCurrency(input.requestedAmount ?? null) },
+      { label: "Industry", value: input.industry ?? "Not provided" },
+      { label: "State", value: input.state ?? "Not provided" },
+      { label: "Delivery status", value: input.status }
+    ],
+    brand: "capital"
+  });
 
   return sendSendGridEmail({
     to: input.to,
-    subject,
-    html: formatEmailHtml(bodyLines),
-    text: bodyLines,
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
     leadId: input.leadId,
     operation: "lender_package_notification_email",
     customArgs: {

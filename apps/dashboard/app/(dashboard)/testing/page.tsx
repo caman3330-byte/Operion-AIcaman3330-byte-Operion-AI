@@ -1,4 +1,5 @@
 import { Activity, AlertTriangle, DatabaseZap, Gauge, ListChecks, PauseCircle, Route, TimerReset } from "lucide-react";
+import { OperationalTestControls } from "@/components/admin/operational-test-controls";
 import { SimulationControls } from "@/components/testing/simulation-controls";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,15 @@ export default async function TestingPage() {
           </CardHeader>
           <CardContent>
             <SimulationControls />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Prelaunch Validation Controls</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <OperationalTestControls />
           </CardContent>
         </Card>
 

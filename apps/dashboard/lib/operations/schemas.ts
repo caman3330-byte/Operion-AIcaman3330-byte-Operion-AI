@@ -81,6 +81,32 @@ export const workflowExecutionSchema = z.object({
   errorMessage: z.string().optional()
 });
 
+export const lifecycleTransitionSchema = z.object({
+  applicationId: z.string().uuid(),
+  toStatus: z.enum([
+    "raw",
+    "new_lead",
+    "onboarding",
+    "draft",
+    "submitted",
+    "documents_pending",
+    "ai_review",
+    "qualified",
+    "needs_review",
+    "underwriting_review",
+    "reviewing",
+    "reviewed",
+    "submitted_to_lender",
+    "routed",
+    "approved",
+    "funded",
+    "rejected",
+    "inactive",
+    "withdrawn"
+  ]),
+  reason: z.string().max(1000).optional()
+});
+
 export const aiExecutionTestSchema = z.object({
   provider: z.enum(["openai", "claude", "both"]).default("both"),
   persistLog: z.boolean().default(true),

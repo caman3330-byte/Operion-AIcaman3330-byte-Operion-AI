@@ -55,11 +55,12 @@ export async function middleware(request: NextRequest) {
 
   const isApiRoute = pathname.startsWith("/api");
 
-  // Allow bypass for internal automation: if the request includes the internal API key header,
-  // treat the request as authenticated for internal testing. This short-circuits middleware
-  // protections for pages when running automated tests. REMOVE or restrict in production.
+  // Allow signed server-to-server automation requests through protected APIs.
+  // Page bypass is kept for local automated testing only.
   if (internalApiKey && request.headers.get("x-operion-internal-key") === internalApiKey) {
-    return NextResponse.next();
+    if (isApiRoute || process.env.NODE_ENV !== "production") {
+      return NextResponse.next();
+    }
   }
 
   if (pathname.startsWith("/api")) {

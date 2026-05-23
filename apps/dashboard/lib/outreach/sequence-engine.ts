@@ -55,7 +55,7 @@ export interface RecordReplyInput {
   rawPayload?: Json;
 }
 
-const DEFAULT_CAMPAIGN_NAME = "MCA Funding SDR Outreach";
+const DEFAULT_CAMPAIGN_NAME = "Operion Capital Funding Outreach";
 
 export async function prepareSdrOutreach(input: PrepareSdrOutreachInput): Promise<PrepareSdrOutreachResult> {
   const [lead, campaign] = await Promise.all([leadsRepository.getById(input.leadId), resolveCampaign(input)]);
@@ -348,7 +348,7 @@ async function resolveCampaign(input: PrepareSdrOutreachInput) {
 
   return acquisitionRepository.createCampaign({
     name: DEFAULT_CAMPAIGN_NAME,
-    description: "Founder-approved MCA/business funding outbound campaign for AI SDR generated outreach.",
+    description: "Founder-approved MCA/business funding outbound campaign for AI-assisted SDR outreach.",
     status: "pending_approval",
     audience_filter: {
       minimum_quality_score: 60,
@@ -372,7 +372,7 @@ async function resolveActiveSequences(campaign: OutreachCampaign) {
       delay_hours: 0,
       subject_template: "Funding options for {{business_name}}",
       body_template:
-        "Introduce Operion AI as a business funding operations team. Ask whether the business is reviewing working-capital options. Avoid guarantees.",
+        "Introduce Operion Capital as a business funding team. Ask whether the business is reviewing working-capital options. Avoid guarantees.",
       channel: "email",
       requires_approval: true,
       send_window: {
