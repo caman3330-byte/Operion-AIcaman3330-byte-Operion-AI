@@ -28,6 +28,11 @@ const adminProtectedPrefixes = [
   "/api/admin"
 ];
 
+const operationalTestingPrefixes = [
+  "/admin/testing",
+  "/testing"
+];
+
 const publicApiPrefixes = [
   "/api/health",
   "/api/applications",
@@ -139,7 +144,7 @@ export async function middleware(request: NextRequest) {
         headers: { "content-type": "application/json" }
       });
     }
-    if (isAdminProtectedRoute(pathname) && !adminRoles.has(role)) {
+    if (isAdminProtectedRoute(pathname) && !isOperationalTestingRoute(pathname) && !adminRoles.has(role)) {
       return new NextResponse(JSON.stringify({ error: "admin_role_required" }), {
         status: 403,
         headers: { "content-type": "application/json" }
@@ -226,7 +231,7 @@ export async function middleware(request: NextRequest) {
       url.searchParams.set("auth", "insufficient_role");
       return NextResponse.redirect(url);
     }
-    if (isAdminProtectedRoute(pathname) && !adminRoles.has(role)) {
+    if (isAdminProtectedRoute(pathname) && !isOperationalTestingRoute(pathname) && !adminRoles.has(role)) {
       const url = request.nextUrl.clone();
       url.pathname = "/supervisor";
       url.searchParams.set("auth", "admin_role_required");
@@ -251,6 +256,10 @@ function isInternalProtectedRoute(pathname: string) {
 
 function isAdminProtectedRoute(pathname: string) {
   return adminProtectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isOperationalTestingRoute(pathname: string) {
+  return operationalTestingPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 function isProtectedRoute(pathname: string) {

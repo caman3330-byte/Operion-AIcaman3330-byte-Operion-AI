@@ -10,10 +10,10 @@ import {
   LockKeyhole,
   Network,
   ShieldCheck,
-  Sparkles,
-  Timer
+  Sparkles
 } from "lucide-react";
 import { MotionDiv, MotionSection } from "@/components/marketing/motion-shell";
+import { OperionMark } from "@/components/brand/operion-logo";
 import { PublicShell } from "@/components/marketing/public-shell";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { Button } from "@/components/ui/button";
@@ -32,8 +32,8 @@ const process = [
     icon: FileCheck2
   },
   {
-    title: "AI-assisted underwriting readiness",
-    text: "Operion structures your funding profile so required information is clear, complete, and ready for review.",
+    title: "Funding analysis",
+    text: "Operion structures your funding profile so required information is clear, complete, and ready for lender review.",
     icon: Sparkles
   },
   {
@@ -71,21 +71,20 @@ export default function HomePage() {
   return (
     <PublicShell>
       <main>
-        <section className="relative isolate overflow-hidden px-4 pb-16 pt-14 sm:px-6 lg:px-8 lg:pb-24 lg:pt-20">
+        <section className="relative isolate overflow-hidden px-4 pb-20 pt-16 sm:px-6 lg:px-8 lg:pb-28 lg:pt-24">
           <div className="fintech-grid absolute inset-0" />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
+          <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-[1fr_0.72fr] lg:items-center">
             <MotionDiv className="relative z-10">
-              <div className="inline-flex items-center gap-2 rounded-md border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
-                AI-powered business funding
+                Private capital infrastructure
               </div>
-              <h1 className="mt-6 max-w-4xl text-5xl font-semibold tracking-normal text-white sm:text-6xl lg:text-7xl">
-                Intelligent capital access for modern businesses.
+              <h1 className="mt-8 max-w-5xl font-serif text-5xl font-medium leading-[1.02] tracking-normal text-white sm:text-6xl lg:text-7xl">
+                Private capital access for growth-focused businesses.
               </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-                Operion Capital helps business owners apply for MCA funding and business loans, prepare lender-ready profiles,
-                and move through the funding process with speed, clarity, and trust.
+              <p className="mt-7 max-w-2xl text-lg leading-8 text-muted-foreground">
+                Operion Capital prepares business funding requests with secure intake, private funding analysis, and lender matching infrastructure built for speed and discretion.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button asChild size="lg">
@@ -98,8 +97,8 @@ export default function HomePage() {
                   <Link href="/funding-solutions">Explore solutions</Link>
                 </Button>
               </div>
-              <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
-                {["Encrypted application", "AI-assisted review", "Lender matching"].map((item) => (
+              <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
+                {["Encrypted intake", "Private review", "Lender matching"].map((item) => (
                   <div key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
                     <BadgeCheck className="h-4 w-4 text-primary" />
                     {item}
@@ -109,54 +108,30 @@ export default function HomePage() {
             </MotionDiv>
 
             <MotionDiv delay={0.12} className="relative z-10">
-              <div className="glass-panel rounded-lg p-3">
-                <div className="rounded-md border border-white/10 bg-slate-950/80 p-4">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                    <div>
-                      <p className="text-sm font-semibold text-white">Funding intelligence workspace</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Application readiness and lender matching</p>
-                    </div>
-                    <span className="rounded-md bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">Live profile</span>
+              <div className="capital-gold-sheen rounded-lg border border-primary/20 p-8 shadow-2xl shadow-black/30">
+                <div className="mx-auto flex max-w-sm flex-col items-center text-center">
+                  <OperionMark className="h-20 w-20" />
+                  <p className="mt-7 font-serif text-2xl font-medium tracking-[0.24em] text-white">OPERION</p>
+                  <div className="mt-3 flex w-full items-center gap-4">
+                    <span className="h-px flex-1 bg-primary/45" />
+                    <span className="text-xs font-semibold uppercase tracking-[0.42em] text-primary">Capital</span>
+                    <span className="h-px flex-1 bg-primary/45" />
                   </div>
-                  <div className="grid gap-3 py-4 sm:grid-cols-3">
-                    {[
-                      ["Requested", "$125k"],
-                      ["Deposits", "$62k/mo"],
-                      ["Readiness", "86%"]
-                    ].map(([label, value]) => (
-                      <div key={label} className="rounded-md border border-white/10 bg-white/[0.035] p-3">
-                        <p className="text-xs text-muted-foreground">{label}</p>
-                        <p className="mt-1 text-xl font-semibold text-white">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
-                    <div className="rounded-md border border-white/10 bg-white/[0.035] p-4">
-                      <div className="mb-4 flex items-center justify-between">
-                        <p className="text-sm font-semibold text-white">Review sequence</p>
-                        <Timer className="h-4 w-4 text-primary" />
-                      </div>
-                      {["Business data verified", "Revenue profile structured", "Lender routing prepared"].map((item) => (
-                        <div key={item} className="mb-3 flex items-center gap-3 last:mb-0">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 text-primary">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="text-sm text-muted-foreground">{item}</span>
-                        </div>
-                      ))}
+                  <p className="mt-8 text-sm leading-6 text-muted-foreground">
+                    Secure funding preparation, lender-ready documentation, and private matching support for revenue-generating businesses.
+                  </p>
+                </div>
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                  {[
+                    ["Review", "24-48h"],
+                    ["Capital", "$10k-$500k"],
+                    ["Access", "Private"]
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-md border border-white/10 bg-black/25 p-4 text-center">
+                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+                      <p className="mt-2 font-serif text-xl text-white">{value}</p>
                     </div>
-                    <div className="rounded-md border border-white/10 bg-white/[0.035] p-4">
-                      <p className="text-sm font-semibold text-white">Potential paths</p>
-                      <div className="mt-4 space-y-3">
-                        {["MCA funding", "Business loan", "Line of credit"].map((path) => (
-                          <div key={path} className="flex items-center justify-between gap-3 text-sm">
-                            <span className="text-muted-foreground">{path}</span>
-                            <span className="h-2 w-16 rounded-full bg-primary/50" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </MotionDiv>
@@ -194,7 +169,7 @@ export default function HomePage() {
         <MotionSection className="border-y border-white/10 bg-black/20 px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr]">
             <SectionHeading
-              eyebrow="AI-assisted underwriting"
+              eyebrow="Funding analysis"
               title="Cleaner borrower profiles before lender review."
               description="The platform organizes application details, revenue signals, deposit data, industry context, and funding goals into a structured profile designed for faster review."
             />

@@ -14,26 +14,26 @@ const publicLinks = [
 export function PublicShell({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn("fintech-shell min-h-screen text-foreground", className)}>
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/35 backdrop-blur-2xl">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3" aria-label="Operion Capital home">
-            <OperionLogo />
+            <OperionLogo showTagline={false} />
           </Link>
-          <nav className="hidden items-center gap-7 md:flex">
+          <nav className="hidden items-center gap-8 md:flex">
             {publicLinks.map((item) => (
-              <Link key={item.href} href={item.href as Route} className="text-sm font-medium text-muted-foreground transition hover:text-white">
+              <Link key={item.href} href={item.href as Route} className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground transition hover:text-primary">
                 {item.label}
               </Link>
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" className="hidden sm:inline-flex">
+            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
               <Link href="/signin">
                 <LockKeyhole className="h-4 w-4" />
                 Login
               </Link>
             </Button>
-            <Button asChild>
+            <Button asChild size="sm">
               <Link href="/apply">
                 Apply
                 <ArrowRight className="h-4 w-4" />
@@ -50,8 +50,7 @@ export function PublicShell({ children, className }: { children: React.ReactNode
               <OperionLogo showTagline={false} />
             </div>
             <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
-              Intelligent capital access for modern businesses through secure applications, AI-assisted underwriting readiness,
-              and lender matching infrastructure.
+              Private capital access for growth-focused businesses through secure applications, funding analysis, and lender matching infrastructure.
             </p>
           </div>
           <FooterGroup title="Platform" links={[["Apply", "/apply"], ["Funding Solutions", "/funding-solutions"], ["Status", "/application-status"]]} />

@@ -6,11 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 type ResultState = {
   status: "idle" | "success" | "error";
   title: string;
   detail: string;
+  httpStatus?: number;
+  timestamp?: string;
+  payload?: unknown;
+  sender?: string | null;
+  deliveryState?: string | null;
 };
 
 export function OperationalTestControls() {
@@ -55,24 +61,36 @@ export function OperationalTestControls() {
       try {
         const response = await request();
         const payload = await response.json().catch(() => ({}));
+        const data = payload?.data && typeof payload.data === "object" ? payload.data : null;
         if (!response.ok) {
           setMessage({
             status: "error",
             title,
-            detail: payload?.error?.message ?? payload?.error ?? `Request failed with ${response.status}`
+            detail: payload?.error?.message ?? payload?.error ?? `Request failed with ${response.status}`,
+            httpStatus: response.status,
+            timestamp: new Date().toISOString(),
+            payload,
+            sender: readSender(data),
+            deliveryState: readString(data, "delivery_state")
           });
           return;
         }
         setMessage({
           status: "success",
           title,
-          detail: summarizePayload(payload)
+          detail: summarizePayload(payload),
+          httpStatus: response.status,
+          timestamp: new Date().toISOString(),
+          payload,
+          sender: readSender(data),
+          deliveryState: readString(data, "delivery_state")
         });
       } catch (error) {
         setMessage({
           status: "error",
           title,
-          detail: error instanceof Error ? error.message : "Request failed"
+          detail: error instanceof Error ? error.message : "Request failed",
+          timestamp: new Date().toISOString()
         });
       }
     });
@@ -141,6 +159,7 @@ export function OperationalTestControls() {
               runCheck("SendGrid delivery test", () =>
                 fetch("/api/test-email", {
                   method: "POST",
+                  credentials: "same-origin",
                   headers: { "content-type": "application/json" },
                   body: JSON.stringify({
                     to: emailTo,
@@ -165,6 +184,7 @@ export function OperationalTestControls() {
             runCheck("Read-only Supabase smoke test", () =>
               fetch("/api/operations/smoke-test", {
                 method: "POST",
+                credentials: "same-origin",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({ executeWrites: false })
               })
@@ -181,6 +201,7 @@ export function OperationalTestControls() {
             runCheck("Prelaunch validation", () =>
               fetch("/api/operations/prelaunch/validate", {
                 method: "POST",
+                credentials: "same-origin",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({
                   includeAiValidation: includeAi,
@@ -197,15 +218,54 @@ export function OperationalTestControls() {
         </Button>
       </div>
 
-      <div className={message.status === "error" ? "rounded-md border border-destructive bg-destructive/10 p-3" : "rounded-md border p-3"}>
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className={message.status === "error" ? "h-4 w-4 text-destructive" : "h-4 w-4 text-primary"} />
-          <p className="text-sm font-medium">{message.title}</p>
+      <div className={message.status === "error" ? "rounded-md border border-destructive bg-destructive/10 p-4" : "rounded-md border p-4"}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className={message.status === "error" ? "h-4 w-4 text-destructive" : "h-4 w-4 text-primary"} />
+            <p className="text-sm font-medium">{message.title}</p>
+          </div>
+          <Badge variant={message.status === "error" ? "destructive" : message.status === "success" ? "success" : "secondary"}>
+            {message.httpStatus ? `HTTP ${message.httpStatus}` : message.status}
+          </Badge>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">{message.detail}</p>
+        <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+          <div>
+            <span className="font-medium text-foreground">Sender:</span> {message.sender ?? "n/a"}
+          </div>
+          <div>
+            <span className="font-medium text-foreground">Delivery:</span> {message.deliveryState ?? "n/a"}
+          </div>
+          <div>
+            <span className="font-medium text-foreground">Timestamp:</span> {message.timestamp ? new Date(message.timestamp).toLocaleString() : "n/a"}
+          </div>
+        </div>
+        {message.payload ? (
+          <details className="mt-3 rounded-md border bg-black/20 p-3">
+            <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Response payload</summary>
+            <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
+              {JSON.stringify(message.payload, null, 2)}
+            </pre>
+          </details>
+        ) : null}
       </div>
     </div>
   );
+}
+
+function readSender(data: unknown) {
+  if (!data || typeof data !== "object" || !("sender" in data)) return null;
+  const sender = (data as { sender?: unknown }).sender;
+  if (!sender || typeof sender !== "object") return null;
+  const email = "email" in sender && typeof sender.email === "string" ? sender.email : null;
+  const name = "name" in sender && typeof sender.name === "string" ? sender.name : null;
+  return [name, email].filter(Boolean).join(" / ") || null;
+}
+
+function readString(data: unknown, key: string) {
+  if (!data || typeof data !== "object" || !(key in data)) return null;
+  const value = (data as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : null;
 }
 
 function summarizePayload(payload: unknown) {

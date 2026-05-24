@@ -9,6 +9,17 @@ import { safeIntegrationCall } from "@/lib/runtime/integration-guards";
 export interface SendGridResult {
   ok: boolean;
   status: number;
+  operation?: string;
+  provider?: "sendgrid";
+  sender?: {
+    email: string;
+    name: string;
+    replyTo?: string;
+    purpose: OperionEmailPurpose;
+  };
+  messageId?: string | null;
+  error?: string | null;
+  timestamp?: string;
 }
 
 interface SendEmailInput {
@@ -26,55 +37,88 @@ interface SendEmailInput {
 async function sendSendGridEmail(input: SendEmailInput): Promise<SendGridResult> {
   const env = readServerEnv();
   const startedAt = Date.now();
-  const sender = resolveOperionSender(input.purpose ?? inferEmailPurposeFromOperation(input.operation), env.SENDGRID_FROM_EMAIL);
+  const purpose = input.purpose ?? inferEmailPurposeFromOperation(input.operation);
+  const sender = resolveOperionSender(purpose, env.SENDGRID_FROM_EMAIL);
+  const baseResult = {
+    operation: input.operation,
+    provider: "sendgrid" as const,
+    sender: {
+      email: sender.email,
+      name: sender.name,
+      ...(sender.replyTo ? { replyTo: sender.replyTo } : {}),
+      purpose
+    },
+    timestamp: new Date().toISOString()
+  };
 
   const result = await safeIntegrationCall<SendGridResult>(
     "sendgrid",
     async () => {
-      const response = await withRetry(
-        async () => {
-          const sendgridResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
-            method: "POST",
-            headers: {
-              authorization: `Bearer ${env.SENDGRID_API_KEY}`,
-              "content-type": "application/json"
-            },
-            body: JSON.stringify({
-              personalizations: [
-                {
-                  to: [{ email: input.to }],
-                  custom_args: {
-                    ...input.customArgs,
-                    lead_id: input.leadId,
-                    email_number: input.emailNumber ? String(input.emailNumber) : undefined
+      let lastStatus = 0;
+      try {
+        const response = await withRetry(
+          async () => {
+            const sendgridResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
+              method: "POST",
+              headers: {
+                authorization: `Bearer ${env.SENDGRID_API_KEY}`,
+                "content-type": "application/json"
+              },
+              body: JSON.stringify({
+                personalizations: [
+                  {
+                    to: [{ email: input.to }],
+                    custom_args: {
+                      ...input.customArgs,
+                      lead_id: input.leadId,
+                      email_number: input.emailNumber ? String(input.emailNumber) : undefined
+                    }
                   }
-                }
-              ],
-              from: { email: sender.email, name: sender.name },
-              reply_to: sender.replyTo ? { email: sender.replyTo } : undefined,
-              subject: input.subject,
-              content: [
-                { type: "text/plain", value: input.text },
-                { type: "text/html", value: input.html }
-              ]
-            })
-          });
+                ],
+                from: { email: sender.email, name: sender.name },
+                reply_to: sender.replyTo ? { email: sender.replyTo } : undefined,
+                subject: input.subject,
+                content: [
+                  { type: "text/plain", value: input.text },
+                  { type: "text/html", value: input.html }
+                ]
+              })
+            });
+            lastStatus = sendgridResponse.status;
 
-          if (!sendgridResponse.ok) {
-            throw new Error(`SendGrid request failed with ${sendgridResponse.status}`);
-          }
+            if (!sendgridResponse.ok) {
+              const errorText = await sendgridResponse.text().catch(() => "");
+              throw new Error(`SendGrid request failed with ${sendgridResponse.status}${errorText ? `: ${errorText.slice(0, 300)}` : ""}`);
+            }
 
-          return sendgridResponse;
-        },
-        { operation: `sendgrid.${input.operation}`, baseDelayMs: 500 }
-      );
+            return sendgridResponse;
+          },
+          { operation: `sendgrid.${input.operation}`, baseDelayMs: 500 }
+        );
 
-      return {
-        ok: true,
-        status: response.status
-      };
+        return {
+          ...baseResult,
+          ok: true,
+          status: response.status,
+          messageId: response.headers.get("x-message-id")
+        };
+      } catch (error) {
+        return {
+          ...baseResult,
+          ok: false,
+          status: lastStatus,
+          messageId: null,
+          error: error instanceof Error ? error.message : "SendGrid request failed"
+        };
+      }
     },
-    { ok: false, status: 0 }
+    {
+      ...baseResult,
+      ok: false,
+      status: 0,
+      messageId: null,
+      error: "SendGrid integration is disabled or unavailable"
+    }
   );
 
   const success = result?.ok ?? false;
@@ -95,7 +139,13 @@ async function sendSendGridEmail(input: SendEmailInput): Promise<SendGridResult>
     });
   }
 
-  return result ?? { ok: false, status: 0 };
+  return result ?? {
+    ...baseResult,
+    ok: false,
+    status: 0,
+    messageId: null,
+    error: "SendGrid returned no result"
+  };
 }
 
 function formatCurrency(value: number | null | undefined) {

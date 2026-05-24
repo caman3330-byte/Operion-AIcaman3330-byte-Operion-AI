@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireInternalUser } from "@/lib/auth";
+import { getConfigurationStatus } from "@/lib/env";
 import { handleRouteError } from "@/lib/errors";
 import { sendTestEmail } from "@/lib/email/sendgrid";
 
@@ -29,7 +30,7 @@ const testEmailSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    await requireInternalUser(request);
+    const actor = await requireInternalUser(request);
     const payload = testEmailSchema.parse(await request.json());
     const emailPayload: Parameters<typeof sendTestEmail>[0] = {
       to: payload.to,
@@ -43,13 +44,46 @@ export async function POST(request: NextRequest) {
 
     if (!result.ok) {
       return NextResponse.json(
-        { error: "SendGrid sending failed. Verify SENDGRID_API_KEY and SENDGRID_FROM_EMAIL.", status: result.status },
+        {
+          error: "SendGrid sending failed. Verify SENDGRID_API_KEY, sender authentication, and role sender routing.",
+          status: result.status,
+          data: buildDebugPayload({ result, actor, purpose: payload.purpose ?? "internal_ai_alert" })
+        },
         { status: 502 }
       );
     }
 
-    return NextResponse.json({ data: result });
+    return NextResponse.json({ data: buildDebugPayload({ result, actor, purpose: payload.purpose ?? "internal_ai_alert" }) });
   } catch (error) {
     return handleRouteError(error);
   }
+}
+
+function buildDebugPayload(input: {
+  result: Awaited<ReturnType<typeof sendTestEmail>>;
+  actor: Awaited<ReturnType<typeof requireInternalUser>>;
+  purpose: NonNullable<z.infer<typeof testEmailSchema>["purpose"]>;
+}) {
+  const config = getConfigurationStatus();
+  return {
+    ok: input.result.ok,
+    status: input.result.status,
+    provider: input.result.provider ?? "sendgrid",
+    operation: input.result.operation ?? "test_email",
+    message_id: input.result.messageId ?? null,
+    error: input.result.error ?? null,
+    delivery_state: input.result.ok ? "accepted_by_sendgrid" : "failed_before_acceptance",
+    sender: input.result.sender ?? null,
+    requested_purpose: input.purpose,
+    actor: {
+      role: input.actor.role,
+      email: input.actor.email
+    },
+    environment: {
+      sendgrid_configured: config.sendgrid,
+      auth_configured: config.auth,
+      source: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown"
+    },
+    timestamp: input.result.timestamp ?? new Date().toISOString()
+  };
 }
