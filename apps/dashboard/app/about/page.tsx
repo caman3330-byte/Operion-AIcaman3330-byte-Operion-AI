@@ -10,7 +10,7 @@ const principles = [
     icon: Building2
   },
   {
-    title: "AI-assisted clarity",
+    title: "Private funding clarity",
     text: "We use intelligent software architecture to organize applications, reduce friction, and prepare stronger funding profiles.",
     icon: Sparkles
   },
@@ -35,7 +35,7 @@ export default function AboutPage() {
             <SectionHeading
               eyebrow="About Operion Capital"
               title="A modern funding platform for business owners who need speed and structure."
-              description="Operion Capital brings premium fintech software, AI-assisted underwriting readiness, and lender matching infrastructure into a focused business funding experience."
+              description="Operion Capital brings premium fintech infrastructure, private funding analysis, and lender matching into a focused business funding experience."
             />
           </div>
         </section>
@@ -45,7 +45,7 @@ export default function AboutPage() {
             {principles.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="rounded-lg border border-white/10 bg-card/80 p-5">
+                <div key={item.title} className="rounded-lg border border-primary/15 bg-black/30 p-5">
                   <Icon className="h-5 w-5 text-primary" />
                   <h2 className="mt-5 font-semibold text-white">{item.title}</h2>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.text}</p>
@@ -62,12 +62,12 @@ export default function AboutPage() {
               title="Institutional process without unnecessary complexity."
               description="The Phase 1 foundation focuses on application quality, secure customer onboarding, funding status visibility, lender-readiness, and clean operational handoffs."
             />
-            <div className="rounded-lg border border-white/10 bg-card/80 p-6">
+            <div className="rounded-lg border border-primary/15 bg-black/30 p-6">
               <div className="grid gap-4 sm:grid-cols-3">
                 {[
                   ["Secure", "Protected application and customer access"],
                   ["Structured", "Clean data model for funding review"],
-                  ["Scalable", "Ready for lender routing and AI qualification"]
+                  ["Scalable", "Ready for lender routing and funding qualification"]
                 ].map(([title, text]) => (
                   <div key={title}>
                     <p className="text-lg font-semibold text-white">{title}</p>

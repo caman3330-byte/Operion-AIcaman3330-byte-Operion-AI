@@ -2,7 +2,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "Operion Capital",
-  description: "AI-powered MCA funding, business loans, and lender matching for growing businesses."
+  description: "Private capital access, business funding preparation, and lender matching for growth-focused businesses."
 };
 
 export default function RootLayout({

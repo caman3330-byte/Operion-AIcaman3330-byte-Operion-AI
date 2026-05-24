@@ -11,11 +11,11 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-white/10 bg-card/80 backdrop-blur-xl md:flex md:flex-col">
-        <div className="border-b border-white/10 px-5 py-5">
-          <OperionLogo brand="internal" />
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-80 border-r border-primary/15 bg-black/50 backdrop-blur-2xl md:flex md:flex-col">
+        <div className="border-b border-primary/15 px-6 py-7">
+          <OperionLogo size="md" />
         </div>
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -24,8 +24,8 @@ export function Sidebar() {
                 key={item.href}
                 href={{ pathname: item.href }}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-white/[0.06] hover:text-white",
-                  active && "bg-primary/12 text-primary ring-1 ring-primary/20"
+                  "flex items-center gap-3 rounded-md px-3.5 py-3 text-sm font-medium text-muted-foreground transition hover:bg-primary/[0.08] hover:text-primary",
+                  active && "bg-primary/12 text-primary ring-1 ring-primary/25"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -34,12 +34,12 @@ export function Sidebar() {
             );
           })}
         </nav>
-        <div className="border-t border-white/10 p-4 text-xs text-muted-foreground">
-          Internal command center
-          <span className="mt-1 block">Qualification, routing, and underwriting</span>
+        <div className="border-t border-primary/15 p-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+          Private Capital Access
+          <span className="mt-2 block normal-case tracking-normal">Funding operations, routing, and review systems</span>
         </div>
       </aside>
-      <nav className="sticky top-16 z-30 flex gap-2 overflow-x-auto border-b border-white/10 bg-card/90 px-4 py-2 backdrop-blur md:hidden">
+      <nav className="sticky top-16 z-30 flex gap-2 overflow-x-auto border-b border-primary/15 bg-black/85 px-4 py-2 backdrop-blur md:hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

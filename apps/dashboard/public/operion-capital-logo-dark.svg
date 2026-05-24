@@ -1,20 +1,28 @@
-<svg width="900" height="260" viewBox="0 0 900 260" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="900" height="260" rx="18" fill="#050505"/>
-  <g transform="translate(384 35)">
-    <circle cx="52" cy="52" r="37" stroke="url(#gold)" stroke-width="8"/>
-    <path d="M68 20c19 0 34 14 38 32M106 52c-4 18-19 32-38 32" stroke="url(#gold)" stroke-width="8" stroke-linecap="round"/>
-    <path d="M61 17v72" stroke="#F6E6B8" stroke-width="2" stroke-linecap="round" opacity=".72"/>
+<svg width="980" height="340" viewBox="0 0 980 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="980" height="340" rx="18" fill="#030303"/>
+  <g transform="translate(454 42)">
+    <rect x="4" y="4" width="64" height="64" rx="16" fill="#030303" stroke="#DAB96B" stroke-width="1.2"/>
+    <rect x="8.5" y="8.5" width="55" height="55" rx="13" stroke="url(#frame)" stroke-width=".8" opacity=".58"/>
+    <circle cx="29.5" cy="36" r="15.8" stroke="url(#gold)" stroke-width="4.8"/>
+    <path d="M45.1 20.6c8 1.2 14.05 7.7 14.85 15.65M59.95 36.25c-.82 7.9-6.86 14.36-14.85 15.6" stroke="url(#gold)" stroke-width="4.8" stroke-linecap="round"/>
+    <path d="M40.05 21.2c-4.38 3.88-7.12 9.12-7.12 14.8 0 5.64 2.74 10.9 7.12 14.8" stroke="#F7E7B7" stroke-width="1.28" stroke-linecap="round" opacity=".62"/>
   </g>
-  <text x="450" y="162" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="54" letter-spacing="18" fill="#F7F2EA">OPERION</text>
-  <line x1="314" y1="199" x2="382" y2="199" stroke="#D7B76A" stroke-width="2"/>
-  <text x="450" y="207" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" letter-spacing="13" fill="#D7B76A">CAPITAL</text>
-  <line x1="518" y1="199" x2="586" y2="199" stroke="#D7B76A" stroke-width="2"/>
+  <text x="490" y="188" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="55" font-weight="500" letter-spacing="18" fill="#F7F2EA">OPERION CAPITAL</text>
+  <line x1="318" y1="239" x2="414" y2="239" stroke="#D7B76A" stroke-width="1.6"/>
+  <text x="490" y="248" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="11" fill="#D7B76A">PRIVATE CAPITAL ACCESS</text>
+  <line x1="566" y1="239" x2="662" y2="239" stroke="#D7B76A" stroke-width="1.6"/>
   <defs>
-    <linearGradient id="gold" x1="15" y1="14" x2="106" y2="90" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF0B8"/>
-      <stop offset=".35" stop-color="#D7B76A"/>
-      <stop offset=".72" stop-color="#A78335"/>
-      <stop offset="1" stop-color="#F7E6B3"/>
+    <linearGradient id="gold" x1="13" y1="16" x2="61" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF4BF"/>
+      <stop offset=".28" stop-color="#E4C56F"/>
+      <stop offset=".58" stop-color="#A77D2E"/>
+      <stop offset=".82" stop-color="#D9B764"/>
+      <stop offset="1" stop-color="#FFF0BC"/>
+    </linearGradient>
+    <linearGradient id="frame" x1="13" y1="10" x2="61" y2="65" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8E7AF"/>
+      <stop offset=".55" stop-color="#7B6028"/>
+      <stop offset="1" stop-color="#E6C570"/>
     </linearGradient>
   </defs>
 </svg>

@@ -83,13 +83,13 @@ const senderCatalog: Record<
   internal_ai_alert: {
     envKey: "ALERTS",
     localPart: "alerts",
-    name: "Operion AI Alerts",
+    name: "Operion Capital Alerts",
     replyToLocalPart: "admin"
   },
   operational_summary: {
     envKey: "SYSTEM",
     localPart: "system",
-    name: "Operion AI System",
+    name: "Operion Capital System",
     replyToLocalPart: "admin"
   }
 };

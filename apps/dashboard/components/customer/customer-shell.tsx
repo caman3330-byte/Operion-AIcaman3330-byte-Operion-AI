@@ -20,13 +20,13 @@ export function CustomerShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-white/10 bg-card/75 backdrop-blur-xl lg:flex lg:flex-col">
-        <div className="border-b border-white/10 px-5 py-5">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-80 border-r border-primary/15 bg-black/50 backdrop-blur-2xl lg:flex lg:flex-col">
+        <div className="border-b border-primary/15 px-6 py-7">
           <Link href="/" className="flex items-center gap-3">
-            <OperionLogo />
+            <OperionLogo size="md" />
           </Link>
         </div>
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="flex-1 space-y-1 p-4">
           {customerNav.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -35,7 +35,7 @@ export function CustomerShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href as Route}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-white/[0.06] hover:text-white",
+                  "flex items-center gap-3 rounded-md px-3.5 py-3 text-sm font-medium text-muted-foreground transition hover:bg-primary/[0.08] hover:text-primary",
                   active && "bg-primary/12 text-primary ring-1 ring-primary/20"
                 )}
               >
@@ -46,7 +46,7 @@ export function CustomerShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="p-4">
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+          <div className="rounded-lg border border-primary/15 bg-black/30 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-white">
               <UploadCloud className="h-4 w-4 text-primary" />
               Documents
@@ -59,11 +59,11 @@ export function CustomerShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="lg:pl-72">
-        <header className="sticky top-0 z-30 border-b border-white/10 bg-background/80 backdrop-blur-xl">
-          <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="lg:pl-80">
+        <header className="sticky top-0 z-30 border-b border-primary/15 bg-black/45 backdrop-blur-2xl">
+          <div className="flex min-h-16 items-center justify-between gap-4 px-4 py-2 sm:px-6 lg:px-8">
             <Link href="/" className="flex items-center gap-2 lg:hidden">
-              <OperionLogo showTagline={false} />
+              <OperionLogo size="sm" showTagline={false} collapseWordmarkOnMobile />
             </Link>
             <nav className="hidden items-center gap-2 lg:flex">
               <span className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-muted-foreground">

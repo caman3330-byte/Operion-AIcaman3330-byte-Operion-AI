@@ -65,16 +65,18 @@
 @layer components {
   .fintech-shell {
     background:
-      linear-gradient(180deg, rgba(15, 23, 42, 0.42), rgba(2, 6, 23, 0) 36rem),
+      radial-gradient(circle at 50% -12%, rgba(215, 183, 106, 0.16), transparent 30rem),
+      radial-gradient(circle at 88% 18%, rgba(215, 183, 106, 0.09), transparent 22rem),
+      linear-gradient(180deg, rgba(8, 8, 7, 0.92), rgba(2, 4, 9, 0) 38rem),
       hsl(var(--background));
   }
 
   .fintech-grid {
     background-image:
-      linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-    background-size: 44px 44px;
-    mask-image: linear-gradient(to bottom, black, transparent 72%);
+      linear-gradient(rgba(215, 183, 106, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(215, 183, 106, 0.045) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: linear-gradient(to bottom, black, transparent 68%);
   }
 
   .glass-panel {
@@ -83,8 +85,20 @@
 
   .capital-gold-sheen {
     background:
-      linear-gradient(135deg, rgba(215, 183, 106, 0.16), rgba(255, 255, 255, 0.03) 44%, rgba(16, 185, 129, 0.08)),
+      radial-gradient(circle at 50% 0%, rgba(255, 240, 184, 0.12), transparent 18rem),
+      linear-gradient(135deg, rgba(215, 183, 106, 0.13), rgba(255, 255, 255, 0.025) 42%, rgba(3, 3, 3, 0.82)),
       hsl(var(--card));
+  }
+
+  .capital-cinematic {
+    background:
+      radial-gradient(circle at 50% 12%, rgba(215, 183, 106, 0.14), transparent 27rem),
+      radial-gradient(circle at 12% 40%, rgba(255, 244, 191, 0.07), transparent 22rem),
+      linear-gradient(180deg, rgba(3, 3, 3, 0.78), rgba(2, 6, 23, 0.98));
+  }
+
+  .capital-divider {
+    background: linear-gradient(90deg, transparent, rgba(215, 183, 106, 0.78), transparent);
   }
 
   .premium-ring {

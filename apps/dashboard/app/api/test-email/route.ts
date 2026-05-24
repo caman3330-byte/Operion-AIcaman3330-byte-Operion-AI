@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const testEmailSchema = z.object({
   to: z.string().email(),
-  subject: z.string().min(1).max(240).optional().default("Operion AI test message"),
+  subject: z.string().min(1).max(240).optional().default("Operion Capital test message"),
   text: z.string().min(1).max(8000),
   purpose: z
     .enum([

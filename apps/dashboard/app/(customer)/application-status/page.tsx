@@ -156,8 +156,8 @@ function buildTimeline(status: string | null, createdAt: string | null, updatedA
     { title: "Lead captured", date: createdAt ? formatDateTime(createdAt) : "-", status: currentIndex >= 0 ? "complete" : "upcoming" },
     { title: "Merchant onboarding", date: createdAt ? formatDateTime(createdAt) : "-", status: currentIndex >= 1 ? "complete" : currentIndex === 0 ? "current" : "upcoming" },
     { title: "Document collection", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 3 ? "complete" : currentIndex === 2 ? "current" : "upcoming" },
-    { title: "AI underwriting", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 4 ? "complete" : currentIndex === 4 ? "current" : "upcoming" },
-    { title: "Underwriting review", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 5 ? "complete" : currentIndex === 5 ? "current" : "upcoming" },
+    { title: "Funding analysis", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 4 ? "complete" : currentIndex === 4 ? "current" : "upcoming" },
+    { title: "Private review", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 5 ? "complete" : currentIndex === 5 ? "current" : "upcoming" },
     { title: "Lender routing", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 8 ? "complete" : currentIndex >= 6 ? "current" : "upcoming" },
     { title: "Funding decision", date: updatedAt ? formatDateTime(updatedAt) : "-", status: currentIndex >= 10 ? "complete" : currentIndex === 9 ? "current" : "upcoming" }
   ];

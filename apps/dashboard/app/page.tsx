@@ -13,7 +13,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { MotionDiv, MotionSection } from "@/components/marketing/motion-shell";
-import { OperionMark } from "@/components/brand/operion-logo";
+import { OperionLogo } from "@/components/brand/operion-logo";
 import { PublicShell } from "@/components/marketing/public-shell";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { Button } from "@/components/ui/button";
@@ -71,22 +71,24 @@ export default function HomePage() {
   return (
     <PublicShell>
       <main>
-        <section className="relative isolate overflow-hidden px-4 pb-20 pt-16 sm:px-6 lg:px-8 lg:pb-28 lg:pt-24">
+        <section className="capital-cinematic relative isolate overflow-hidden px-4 pb-24 pt-[4.5rem] sm:px-6 sm:pt-20 lg:px-8 lg:pb-32 lg:pt-28">
           <div className="fintech-grid absolute inset-0" />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
-          <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-[1fr_0.72fr] lg:items-center">
-            <MotionDiv className="relative z-10">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+          <div className="absolute inset-x-0 bottom-0 h-px capital-divider" />
+          <div className="absolute left-1/2 top-20 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+          <div className="mx-auto max-w-6xl">
+            <MotionDiv className="relative z-10 flex flex-col items-center text-center">
+              <OperionLogo size="lg" layout="stacked" />
+              <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-black/35 px-5 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary shadow-lg shadow-black/20 backdrop-blur">
                 <Sparkles className="h-3.5 w-3.5" />
                 Private capital infrastructure
               </div>
-              <h1 className="mt-8 max-w-5xl font-serif text-5xl font-medium leading-[1.02] tracking-normal text-white sm:text-6xl lg:text-7xl">
+              <h1 className="mt-9 max-w-5xl font-serif text-5xl font-medium leading-[1.04] tracking-normal text-white sm:text-6xl lg:text-7xl">
                 Private capital access for growth-focused businesses.
               </h1>
-              <p className="mt-7 max-w-2xl text-lg leading-8 text-muted-foreground">
+              <p className="mt-8 max-w-3xl text-lg leading-8 text-muted-foreground sm:text-xl sm:leading-9">
                 Operion Capital prepares business funding requests with secure intake, private funding analysis, and lender matching infrastructure built for speed and discretion.
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-10 flex flex-wrap justify-center gap-3">
                 <Button asChild size="lg">
                   <Link href="/apply">
                     Start application
@@ -97,42 +99,13 @@ export default function HomePage() {
                   <Link href="/funding-solutions">Explore solutions</Link>
                 </Button>
               </div>
-              <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
+              <div className="mt-12 grid w-full max-w-3xl gap-3 sm:grid-cols-3">
                 {["Encrypted intake", "Private review", "Lender matching"].map((item) => (
-                  <div key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div key={item} className="flex items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.025] px-4 py-3 text-sm text-muted-foreground">
                     <BadgeCheck className="h-4 w-4 text-primary" />
                     {item}
                   </div>
                 ))}
-              </div>
-            </MotionDiv>
-
-            <MotionDiv delay={0.12} className="relative z-10">
-              <div className="capital-gold-sheen rounded-lg border border-primary/20 p-8 shadow-2xl shadow-black/30">
-                <div className="mx-auto flex max-w-sm flex-col items-center text-center">
-                  <OperionMark className="h-20 w-20" />
-                  <p className="mt-7 font-serif text-2xl font-medium tracking-[0.24em] text-white">OPERION</p>
-                  <div className="mt-3 flex w-full items-center gap-4">
-                    <span className="h-px flex-1 bg-primary/45" />
-                    <span className="text-xs font-semibold uppercase tracking-[0.42em] text-primary">Capital</span>
-                    <span className="h-px flex-1 bg-primary/45" />
-                  </div>
-                  <p className="mt-8 text-sm leading-6 text-muted-foreground">
-                    Secure funding preparation, lender-ready documentation, and private matching support for revenue-generating businesses.
-                  </p>
-                </div>
-                <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                  {[
-                    ["Review", "24-48h"],
-                    ["Capital", "$10k-$500k"],
-                    ["Access", "Private"]
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-md border border-white/10 bg-black/25 p-4 text-center">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
-                      <p className="mt-2 font-serif text-xl text-white">{value}</p>
-                    </div>
-                  ))}
-                </div>
               </div>
             </MotionDiv>
           </div>
@@ -273,7 +246,7 @@ export default function HomePage() {
               <div>
                 <h2 className="text-3xl font-semibold tracking-normal text-white">Ready to see your funding options?</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Start with a secure application and get your business profile ready for AI-assisted review and lender matching.
+                  Start with a secure application and get your business profile ready for private funding analysis and lender matching.
                 </p>
               </div>
               <Button asChild size="lg">

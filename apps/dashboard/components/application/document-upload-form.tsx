@@ -102,10 +102,10 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
   }
 
   return (
-    <div className="rounded-lg border border-white/10 bg-card/80 p-5">
+    <div className="rounded-lg border border-primary/15 bg-black/35 p-6 shadow-2xl shadow-black/20">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-white">{variant === "portal" ? "Secure upload" : "Upload documents"}</p>
+          <p className="font-serif text-lg font-medium text-white">{variant === "portal" ? "Secure upload" : "Upload documents"}</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Submit bank statements, voided checks, driver license, and processing statements through 256-bit encrypted uploads and
             secure signed-access document handling.
@@ -116,7 +116,7 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         {documentsByType.map((item) => (
-          <div key={item.value} className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.025] px-3 py-2">
+          <div key={item.value} className="flex items-center justify-between gap-3 rounded-md border border-primary/15 bg-white/[0.02] px-3 py-2">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-white">{item.label}</p>
               <p className="text-xs text-muted-foreground">{item.record?.file_name ?? "Awaiting upload"}</p>
@@ -159,8 +159,8 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
             handleFiles(Array.from(event.dataTransfer.files ?? []));
           }}
           className={cn(
-            "flex min-h-44 w-full flex-col items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/[0.025] px-6 py-8 text-center transition",
-            isDragging ? "border-primary/70 bg-primary/10" : "hover:border-primary/40 hover:bg-white/[0.045]"
+            "flex min-h-44 w-full flex-col items-center justify-center rounded-lg border border-dashed border-primary/20 bg-white/[0.02] px-6 py-8 text-center transition",
+            isDragging ? "border-primary/70 bg-primary/10" : "hover:border-primary/45 hover:bg-primary/[0.06]"
           )}
         >
           <UploadCloud className="h-8 w-8 text-primary" />
@@ -183,7 +183,7 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
         {files.length > 0 ? (
           <div className="space-y-2">
             {files.map((selectedFile) => (
-              <div key={`${selectedFile.name}-${selectedFile.size}`} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.035] p-3">
+              <div key={`${selectedFile.name}-${selectedFile.size}`} className="flex items-center justify-between rounded-lg border border-primary/15 bg-white/[0.025] p-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <FileText className="h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0">
@@ -250,7 +250,7 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
         ) : null}
 
         {uploadedDocuments.length > 0 ? (
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-primary/15 bg-white/[0.025] p-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" />
               <p>

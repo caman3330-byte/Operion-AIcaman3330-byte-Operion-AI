@@ -14,14 +14,14 @@ const publicLinks = [
 export function PublicShell({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn("fintech-shell min-h-screen text-foreground", className)}>
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/35 backdrop-blur-2xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-3" aria-label="Operion Capital home">
-            <OperionLogo showTagline={false} />
+      <header className="sticky top-0 z-40 border-b border-primary/15 bg-black/55 backdrop-blur-2xl">
+        <div className="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-5 px-4 py-3 sm:px-6 lg:px-8">
+          <Link href="/" className="flex min-w-0 items-center" aria-label="Operion Capital home">
+            <OperionLogo size="sm" showTagline={false} collapseWordmarkOnMobile />
           </Link>
-          <nav className="hidden items-center gap-8 md:flex">
+          <nav className="hidden items-center gap-10 md:flex">
             {publicLinks.map((item) => (
-              <Link key={item.href} href={item.href as Route} className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground transition hover:text-primary">
+              <Link key={item.href} href={item.href as Route} className="relative text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground transition after:absolute after:-bottom-2 after:left-1/2 after:h-px after:w-0 after:-translate-x-1/2 after:bg-primary after:transition-all hover:text-primary hover:after:w-8">
                 {item.label}
               </Link>
             ))}
@@ -33,7 +33,7 @@ export function PublicShell({ children, className }: { children: React.ReactNode
                 Login
               </Link>
             </Button>
-            <Button asChild size="sm">
+            <Button asChild size="sm" className="px-4">
               <Link href="/apply">
                 Apply
                 <ArrowRight className="h-4 w-4" />
@@ -43,11 +43,11 @@ export function PublicShell({ children, className }: { children: React.ReactNode
         </div>
       </header>
       {children}
-      <footer className="border-t border-white/10 bg-black/20 px-4 py-10 sm:px-6 lg:px-8">
+      <footer className="border-t border-primary/15 bg-black/35 px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1.2fr_0.8fr_0.8fr_0.8fr]">
           <div>
             <div className="flex items-center gap-3">
-              <OperionLogo showTagline={false} />
+              <OperionLogo size="md" />
             </div>
             <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
               Private capital access for growth-focused businesses through secure applications, funding analysis, and lender matching infrastructure.

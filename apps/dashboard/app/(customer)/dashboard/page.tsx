@@ -38,7 +38,7 @@ export default async function CustomerDashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Metric title="Requested funding" value={requestedFunding} detail={latestApplication?.product_type.replaceAll("_", " ") ?? "No request"} icon={FileText} />
         <Metric title="Profile readiness" value={`${readiness}%`} detail={`${requestedDocuments} document requests open`} icon={CheckCircle2} />
-        <Metric title="Review stage" value={latestApplication?.status.replaceAll("_", " ") ?? "Not started"} detail="Supabase application status" icon={Bot} />
+        <Metric title="Review stage" value={latestApplication?.status.replaceAll("_", " ") ?? "Not started"} detail="Application status" icon={Bot} />
         <Metric title="Funding offers" value={String(workspace.offers.length)} detail="Offers stored for this account" icon={Landmark} />
       </div>
 
@@ -46,7 +46,7 @@ export default async function CustomerDashboardPage() {
         <section className="rounded-lg border border-white/10 bg-card/80 p-6">
           <h2 className="text-xl font-semibold text-white">No funding application yet</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Submit a funding application to create a lead, AI qualification task, document checklist, and internal review workflow.
+            Submit a funding application to create a secure funding profile, document checklist, and review workflow.
           </p>
           <Button asChild className="mt-5">
             <Link href="/apply">Apply for funding</Link>
@@ -84,10 +84,10 @@ export default async function CustomerDashboardPage() {
           <section className="rounded-lg border border-white/10 bg-card/80 p-5">
             <div className="flex items-center gap-3">
               <Bot className="h-5 w-5 text-primary" />
-              <h2 className="font-semibold text-white">AI funding assistant</h2>
+              <h2 className="font-semibold text-white">Funding assistant</h2>
             </div>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              AI qualification runs after submission and writes its score, summary, and review task to the internal underwriting queue.
+              Funding analysis runs after submission and prepares your profile for internal review and lender matching.
             </p>
             <div className="mt-5 rounded-md border border-primary/20 bg-primary/10 p-4">
               <p className="text-sm font-semibold text-white">Next best action</p>

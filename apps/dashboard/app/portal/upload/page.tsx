@@ -15,17 +15,17 @@ export default async function MerchantUploadPortalPage({ searchParams }: { searc
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-background text-foreground">
-        <div className="mx-auto grid min-h-screen w-full max-w-6xl gap-8 px-5 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <section>
-            <OperionLogo />
-            <div className="mt-8">
+      <main className="capital-cinematic min-h-screen text-foreground">
+        <div className="mx-auto grid min-h-screen w-full max-w-6xl gap-10 px-5 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <section className="min-w-0">
+            <OperionLogo size="lg" collapseWordmarkOnMobile />
+            <div className="mt-10">
               <Badge variant="outline">Secure merchant portal</Badge>
             </div>
-            <h1 className="mt-5 max-w-2xl text-4xl font-semibold tracking-normal text-white sm:text-5xl">
+            <h1 className="mt-6 max-w-full font-serif text-3xl font-medium leading-tight tracking-normal text-white sm:max-w-2xl sm:text-5xl">
               Secure merchant document upload
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
+            <p className="mt-6 max-w-xl text-base leading-8 text-muted-foreground">
               Upload funding documents through encrypted, signed-access handling. Existing links expire automatically and every upload is
               attached to your funding review audit trail.
             </p>
@@ -35,7 +35,7 @@ export default async function MerchantUploadPortalPage({ searchParams }: { searc
                 ["Signed access only", "short-lived URLs"],
                 ["Private lender review", "secure document handling"]
               ].map(([label, value]) => (
-                <div key={label} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+                <div key={label} className="rounded-lg border border-primary/15 bg-black/30 p-4">
                   <p className="text-xs text-muted-foreground">{label}</p>
                   <p className="mt-2 text-sm font-semibold text-white">{value}</p>
                 </div>
@@ -51,13 +51,15 @@ export default async function MerchantUploadPortalPage({ searchParams }: { searc
   const documents = await productionRepository.listDocumentsForApplication(session.application.id);
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="capital-cinematic min-h-screen text-foreground">
       <div className="mx-auto w-full max-w-6xl px-5 py-8">
-        <div className="mb-6 flex flex-col gap-4 rounded-lg border border-white/10 bg-white/[0.035] p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 flex flex-col gap-5 rounded-lg border border-primary/15 bg-black/35 p-6 shadow-2xl shadow-black/20 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <OperionLogo showTagline={false} />
-            <Badge variant="success">Secure session active</Badge>
-            <h1 className="mt-3 text-3xl font-semibold tracking-normal text-white">{session.application.business_name}</h1>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <OperionLogo size="md" collapseWordmarkOnMobile />
+              <Badge variant="success">Secure session active</Badge>
+            </div>
+            <h1 className="mt-4 font-serif text-3xl font-medium tracking-normal text-white">{session.application.business_name}</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Requested amount: {formatCurrency(Number(session.application.requested_amount))} / Status: {session.application.status.replaceAll("_", " ")}
             </p>
@@ -114,7 +116,7 @@ export default async function MerchantUploadPortalPage({ searchParams }: { searc
               <h2 className="font-semibold text-white">Security</h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 Files are stored in private Supabase Storage buckets. Operators can view documents only through short-lived signed URLs,
-                and document records are prepared for future OCR, NSF detection, revenue analysis, and AI-assisted funding review.
+                and document records are prepared for future OCR, NSF detection, revenue analysis, and funding review automation.
               </p>
             </div>
           </section>

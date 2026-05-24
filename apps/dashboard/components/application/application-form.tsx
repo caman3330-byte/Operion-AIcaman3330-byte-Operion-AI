@@ -79,9 +79,9 @@ export function ApplicationForm() {
 
   if (submitted) {
     return (
-      <div className="rounded-lg border border-primary/20 bg-primary/10 p-8 text-center">
+      <div className="rounded-lg border border-primary/20 bg-black/35 p-9 text-center shadow-2xl shadow-black/20">
         <CheckCircle2 className="mx-auto h-10 w-10 text-primary" />
-        <h2 className="mt-4 text-2xl font-semibold tracking-normal text-white">Application received</h2>
+        <h2 className="mt-4 font-serif text-2xl font-medium tracking-normal text-white">Application received</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           Operion Capital has your funding request. We sent a secure upload link to your email so you can continue document
           submission without creating a portal password.
@@ -99,20 +99,20 @@ export function ApplicationForm() {
   }
 
   return (
-    <form className="rounded-lg border border-white/10 bg-card/85 p-5 shadow-2xl shadow-black/15" onSubmit={handleSubmit} noValidate>
+    <form className="rounded-lg border border-primary/15 bg-black/35 p-6 shadow-2xl shadow-black/20 backdrop-blur" onSubmit={handleSubmit} noValidate>
       <div className="mb-6">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-primary">Secure application</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-normal text-white">{currentStep.title}</h2>
+            <h2 className="mt-1 font-serif text-2xl font-medium tracking-normal text-white">{currentStep.title}</h2>
           </div>
           <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-muted-foreground">
             <LockKeyhole className="h-3.5 w-3.5 text-primary" />
             Encrypted
           </div>
         </div>
-        <div className="mt-5 h-2 rounded-full bg-white/10">
-          <div className="h-2 rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
+        <div className="mt-5 h-1.5 rounded-full bg-white/10">
+          <div className="h-1.5 rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-4">
           {steps.map((item, index) => (
@@ -121,8 +121,8 @@ export function ApplicationForm() {
               type="button"
               onClick={() => setStep(index)}
               className={cn(
-                "rounded-md border border-white/10 px-3 py-2 text-left transition",
-                index === step ? "bg-primary/12 text-primary" : "bg-white/[0.025] text-muted-foreground hover:bg-white/[0.05]"
+                "rounded-md border border-primary/15 px-3 py-2 text-left transition",
+                index === step ? "bg-primary/12 text-primary" : "bg-white/[0.02] text-muted-foreground hover:bg-primary/[0.06]"
               )}
             >
               <span className="block text-xs font-semibold">{item.title}</span>
@@ -200,7 +200,7 @@ export function ApplicationForm() {
       <div className={cn("grid gap-5 md:grid-cols-2", step !== 3 && "hidden")}>
         <Field label="Primary bank" name="bank_name" placeholder="Bank name" />
         <Field label="Average daily balance" name="average_daily_balance" type="number" min="0" />
-        <div className="rounded-lg border border-white/10 bg-white/[0.035] p-4 md:col-span-2">
+        <div className="rounded-lg border border-primary/15 bg-white/[0.025] p-4 md:col-span-2">
           <p className="text-sm font-semibold text-white">Document upload queue</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Bank statement upload and bank-link verification are staged in the secure document workflow. After submission, you can upload statements in your customer portal.
@@ -208,7 +208,7 @@ export function ApplicationForm() {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-primary/15 pt-5">
         <Button type="button" variant="outline" disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>
           <ArrowLeft className="h-4 w-4" />
           Back

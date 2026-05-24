@@ -97,7 +97,7 @@ export async function POST(request: Request) {
         await enqueueFundingEmail({
           to: actorEmail,
           subject: "Your funding documents are ready for review",
-          text: `Thanks for uploading your ${getDocumentTypeLabel(documentType).toLowerCase()} for application ${application.id}. Our underwriting team has moved your application into underwriting review and will notify you after the next update.`,
+          text: `Thanks for uploading your ${getDocumentTypeLabel(documentType).toLowerCase()} for application ${application.id}. Our funding review team has moved your application into private review and will notify you after the next update.`,
           lead_id: application.lead_id ?? null,
           email_number: 1,
           purpose: "application_status_update"

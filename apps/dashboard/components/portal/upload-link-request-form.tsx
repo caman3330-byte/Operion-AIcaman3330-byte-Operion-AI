@@ -41,10 +41,10 @@ export function UploadLinkRequestForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-white/10 bg-card/80 p-5 shadow-xl shadow-black/10">
+    <form onSubmit={handleSubmit} className="rounded-lg border border-primary/15 bg-black/35 p-6 shadow-2xl shadow-black/20 backdrop-blur">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-white">Request secure upload link</p>
+          <p className="font-serif text-lg font-medium text-white">Request secure upload link</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Enter the application ID and applicant email used on the funding application.
           </p>
