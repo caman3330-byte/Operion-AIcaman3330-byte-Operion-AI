@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { ArrowRight, LockKeyhole } from "lucide-react";
+import { OperionLogo } from "@/components/brand/operion-logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -16,13 +17,7 @@ export function PublicShell({ children, className }: { children: React.ReactNode
       <header className="sticky top-0 z-40 border-b border-white/10 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3" aria-label="Operion Capital home">
-            <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-sm font-black text-primary-foreground">
-              OC
-            </span>
-            <span>
-              <span className="block text-sm font-semibold text-white">Operion Capital</span>
-              <span className="hidden text-xs text-muted-foreground sm:block">AI-powered business funding</span>
-            </span>
+            <OperionLogo />
           </Link>
           <nav className="hidden items-center gap-7 md:flex">
             {publicLinks.map((item) => (
@@ -52,10 +47,7 @@ export function PublicShell({ children, className }: { children: React.ReactNode
         <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1.2fr_0.8fr_0.8fr_0.8fr]">
           <div>
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-sm font-black text-primary-foreground">
-                OC
-              </span>
-              <span className="font-semibold text-white">Operion Capital</span>
+              <OperionLogo showTagline={false} />
             </div>
             <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
               Intelligent capital access for modern businesses through secure applications, AI-assisted underwriting readiness,
@@ -67,7 +59,7 @@ export function PublicShell({ children, className }: { children: React.ReactNode
           <div>
             <p className="text-sm font-semibold text-white">Security</p>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Encrypted application intake, protected customer access, and bank-level security practices prepared for production launch.
+              Encrypted application intake, protected customer access, secure lender distribution, and signed-access document handling.
             </p>
           </div>
         </div>

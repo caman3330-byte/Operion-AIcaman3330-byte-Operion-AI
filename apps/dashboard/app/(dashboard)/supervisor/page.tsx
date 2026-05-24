@@ -143,6 +143,36 @@ export default async function SupervisorPage() {
         <MetricCard title="Stale Leads" value={String(monitoring.counters.staleLeads)} detail="Intake + underwriting threshold" icon={Clock3} tone={monitoring.counters.staleLeads > 0 ? "warning" : "success"} />
       </div>
 
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-4 w-4 text-primary" />
+              AI Operations Manager
+            </CardTitle>
+            <Badge variant={summary.failed_tasks > 0 || monitoring.counters.workflowFailures > 0 ? "warning" : "success"}>
+              {summary.failed_tasks > 0 || monitoring.counters.workflowFailures > 0 ? "Intervention watch" : "Launch-ready routing"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+          {[
+            ["Lead AI", `${production.leads} leads`, `${monitoring.counters.staleLeads} stale review signal(s)`],
+            ["Outreach AI", `${production.emailOperations.sent} sent`, `${production.emailOperations.replies} reply event(s)`],
+            ["CRM AI", `${production.applications} applications`, `${production.lifecycle.reviewed ?? 0} reviewed stage`],
+            ["Lender AI", `${production.lenderMatches} matches`, `${production.pendingApprovals} approval gate(s)`],
+            ["Document AI", `${production.underwritingQueue} reviews`, "OCR and statement hooks prepared"],
+            ["Operations AI", `${summary.queued_tasks} queued`, `${summary.running_tasks} running task(s)`]
+          ].map(([label, value, detail]) => (
+            <div key={label} className="rounded-md border bg-white/[0.025] p-3">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+              <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
           <CardHeader>

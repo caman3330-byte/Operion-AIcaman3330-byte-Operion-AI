@@ -400,6 +400,12 @@ export const productionRepository = {
     return data;
   },
 
+  async getDocument(id: string) {
+    const { data, error } = await getSupabaseAdmin().from("documents").select("*").eq("id", id).single();
+    if (error || !data) throw error ?? new NotFoundError("Document not found");
+    return data;
+  },
+
   async getDocumentByType(businessApplicationId: string, documentType: string) {
     const { data, error } = await getSupabaseAdmin()
       .from("documents")

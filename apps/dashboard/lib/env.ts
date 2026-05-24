@@ -124,7 +124,9 @@ export function getConfigurationStatus() {
     auth: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
     openai: Boolean(process.env.OPENAI_API_KEY),
-    sendgrid: Boolean(process.env.SENDGRID_API_KEY) && Boolean(process.env.SENDGRID_FROM_EMAIL),
+    sendgrid:
+      Boolean(process.env.SENDGRID_API_KEY) &&
+      Boolean(process.env.SENDGRID_FROM_EMAIL || process.env.OPERION_EMAIL_DOMAIN || process.env.OPERION_EMAIL_FUNDING),
     crm: Boolean(process.env.CRM_WEBHOOK_URL),
     stripe: Boolean(process.env.STRIPE_SECRET_KEY),
     apollo: Boolean(process.env.APOLLO_API_KEY),

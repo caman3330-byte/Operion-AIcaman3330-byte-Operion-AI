@@ -47,6 +47,23 @@ Apollo integration methods live in `apps/dashboard/lib/integrations/apollo.ts`:
 - `enrichLeadWithApollo`
 - `syncOutreachToApollo`
 
+## SendGrid Role Mailboxes
+
+```env
+SENDGRID_API_KEY=
+SENDGRID_FROM_EMAIL=
+OPERION_EMAIL_DOMAIN=operioncapital.com
+OPERION_EMAIL_FUNDING=funding@operioncapital.com
+OPERION_EMAIL_SUPPORT=support@operioncapital.com
+OPERION_EMAIL_LENDERS=lenders@operioncapital.com
+OPERION_EMAIL_PARTNERS=partners@operioncapital.com
+OPERION_EMAIL_SUBMISSIONS=submissions@operioncapital.com
+OPERION_EMAIL_ALERTS=alerts@operioncapital.com
+OPERION_EMAIL_SYSTEM=system@operioncapital.com
+```
+
+The platform routes merchant outreach and document requests through `funding@`, support through `support@`, lender communications through `lenders@` or `submissions@`, and internal automation through `alerts@` or `system@`.
+
 ## Server-To-Server Automation
 
 ```env

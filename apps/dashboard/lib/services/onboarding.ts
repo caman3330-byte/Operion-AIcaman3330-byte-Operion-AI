@@ -27,7 +27,7 @@ export async function recordMerchantOnboarding(input: {
   });
 
   if (input.contactEmail) {
-    const reminderText = `Thank you for submitting your funding application. We requested your bank statements, government ID, and business bank account details to complete underwriting. Please upload the documents as soon as possible to accelerate funding and lender matching.`;
+    const reminderText = `Thank you for submitting your funding application. We requested your bank statements, voided check, driver license, and processing statements to complete underwriting. Please upload the documents as soon as possible to accelerate funding and lender matching.`;
 
     try {
       await enqueueFundingEmail({
@@ -35,7 +35,8 @@ export async function recordMerchantOnboarding(input: {
         subject: "Next steps: upload your funding documents",
         text: reminderText,
         lead_id: input.leadId,
-        email_number: 1
+        email_number: 1,
+        purpose: "document_upload_request"
       });
     } catch {
       // Email automation is best-effort when SendGrid is configured

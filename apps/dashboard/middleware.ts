@@ -8,6 +8,7 @@ const customerProtectedPrefixes = [
 
 const internalProtectedPrefixes = [
   "/admin",
+  "/operations",
   "/executive",
   "/supervisor",
   "/manager-agent",
@@ -25,12 +26,13 @@ const internalProtectedPrefixes = [
 const publicApiPrefixes = [
   "/api/health",
   "/api/applications",
+  "/api/portal/upload-link",
   "/api/auth/logout",
   "/api/webhooks/sendgrid"
 ];
 
 const customerApiPrefixes = [
-  "/api/documents/upload"
+  "/api/documents"
 ];
 
 const internalRoles = new Set([
@@ -276,6 +278,7 @@ export const config = {
     "/prompts/:path*",
     "/ai-prompts/:path*",
     "/admin/:path*",
+    "/operations/:path*",
     "/api/:path*",
     "/signin",
     "/apply",

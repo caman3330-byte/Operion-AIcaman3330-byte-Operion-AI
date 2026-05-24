@@ -60,7 +60,8 @@ const requiredTables = [
   "risk_flags",
   "funding_pipeline",
   "automation_logs",
-  "email_logs"
+  "email_logs",
+  "merchant_upload_sessions"
 ];
 
 const requiredColumns = {
@@ -111,7 +112,19 @@ const requiredColumns = {
   lender_matches: ["lead_id", "lender_id", "business_application_id", "match_score", "status", "criteria_snapshot"],
   outreach_logs: ["campaign_id", "lead_id", "business_application_id", "channel", "status", "provider_message_id", "metadata"],
   crm_activities: ["application_id", "business_application_id", "activity_type", "subject", "body", "metadata"],
-  documents: ["business_application_id", "lead_id", "document_type", "status"],
+  documents: [
+    "business_application_id",
+    "lead_id",
+    "document_type",
+    "status",
+    "storage_bucket",
+    "storage_path",
+    "metadata",
+    "uploaded_by_role",
+    "processing_status",
+    "processing_requested_at"
+  ],
+  merchant_upload_sessions: ["business_application_id", "email", "token_hash", "expires_at", "last_used_at", "revoked_at", "metadata"],
   api_usage_logs: ["service", "operation", "lead_id", "business_application_id", "ai_task_id", "estimated_cost_usd", "success"],
   funding_pipeline: ["business_application_id", "stage", "status", "priority", "metadata"],
   email_logs: ["outreach_log_id", "provider", "provider_message_id", "to_email", "status", "metadata"]
@@ -149,7 +162,8 @@ const requiredEnumValues = {
     "reporting",
     "customer_support",
     "crm_activity",
-    "executive_summary"
+    "executive_summary",
+    "document_processing"
   ],
   lead_status: [
     "raw",
@@ -188,7 +202,11 @@ const requiredIndexes = [
   "idx_api_usage_logs_service_created",
   "idx_crm_activities_business_application_id",
   "idx_funding_pipeline_app_stage_status",
-  "idx_email_logs_outreach_status"
+  "idx_email_logs_outreach_status",
+  "idx_documents_storage_bucket_path",
+  "idx_documents_processing_status",
+  "idx_merchant_upload_sessions_application",
+  "idx_merchant_upload_sessions_token_hash"
 ];
 
 const requiredFunctions = [
@@ -208,8 +226,11 @@ const requiredPolicies = [
   ["ai_task_logs", "internal_read_ai_task_logs"],
   ["api_usage_logs", "internal_read_api_usage_logs"],
   ["funding_pipeline", "internal_manage_funding_pipeline"],
-  ["email_logs", "internal_read_email_logs"]
+  ["email_logs", "internal_read_email_logs"],
+  ["merchant_upload_sessions", "internal_read_merchant_upload_sessions"]
 ];
+
+const requiredStorageBuckets = ["merchant-documents", "underwriting-documents"];
 
 async function main() {
   const connectionString = getDatabaseUrl();
@@ -228,7 +249,8 @@ async function main() {
     enums: await inspectEnums(client),
     indexes: await inspectIndexes(client),
     functions: await inspectFunctions(client),
-    policies: await inspectPolicies(client)
+    policies: await inspectPolicies(client),
+    storageBuckets: await inspectStorageBuckets(client)
   };
 
   await client.end();
@@ -335,6 +357,15 @@ async function inspectPolicies(client) {
   return requiredPolicies.map(([table, policy]) => ({ table, policy, exists: existing.has(`${table}:${policy}`) }));
 }
 
+async function inspectStorageBuckets(client) {
+  const existing = await querySet(
+    client,
+    `select id from storage.buckets`,
+    "id"
+  );
+  return requiredStorageBuckets.map((bucket) => ({ bucket, exists: existing.has(bucket) }));
+}
+
 async function querySet(client, sql, key, params = []) {
   const result = await client.query(sql, params);
   return new Set(result.rows.map((row) => row[key]));
@@ -357,6 +388,7 @@ function countFailures(report) {
   count += report.indexes.filter((item) => !item.exists).length;
   count += report.functions.filter((item) => !item.exists).length;
   count += report.policies.filter((item) => !item.exists).length;
+  count += report.storageBuckets.filter((item) => !item.exists).length;
   return count;
 }
 

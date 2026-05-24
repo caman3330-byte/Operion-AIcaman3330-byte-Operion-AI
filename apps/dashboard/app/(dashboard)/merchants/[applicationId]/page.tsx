@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LifecycleControls } from "@/components/merchants/lifecycle-controls";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDocumentTypeLabel } from "@/lib/documents/processing";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { getMerchantProfileData } from "@/lib/data/merchant-profile";
 
@@ -287,12 +289,23 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
                 {documents.map((document) => (
                   <div key={document.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium text-white">{document.document_type}</p>
+                      <p className="font-medium text-white">{getDocumentTypeLabel(document.document_type)}</p>
                       <Badge variant={document.status === "verified" ? "success" : document.status === "uploaded" ? "warning" : "secondary"}>
                         {document.status}
                       </Badge>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">{document.file_name ?? "No file recorded"}</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      <span>Bucket: {document.storage_bucket ?? "merchant-documents"}</span>
+                      <span>Processing: {document.processing_status ?? "pending"}</span>
+                    </div>
+                    {document.storage_path ? (
+                      <Button asChild variant="outline" size="sm" className="mt-4">
+                        <Link href={`/api/documents/${document.id}/signed-url`} target="_blank" rel="noreferrer">
+                          View secure file
+                        </Link>
+                      </Button>
+                    ) : null}
                   </div>
                 ))}
               </div>

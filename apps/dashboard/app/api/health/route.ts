@@ -16,7 +16,8 @@ const MIGRATION_FILE_BY_SCHEMA: Record<string, string> = {
   operationalCrmSchema: "packages/database/migrations/0011_phase3_operational_crm.sql",
   internalRolesSchema: "packages/database/migrations/0012_internal_roles_app_role.sql",
   operationalTablesSchema: "packages/database/migrations/0013_operational_tables.sql",
-  crmBusinessApplicationLinkSchema: "packages/database/migrations/0014_crm_business_application_link.sql"
+  crmBusinessApplicationLinkSchema: "packages/database/migrations/0014_crm_business_application_link.sql",
+  documentPortalSchema: "packages/database/migrations/0015_secure_document_upload_portal.sql"
 };
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,7 @@ export async function GET() {
             internalRolesSchema: "not_configured",
             operationalTablesSchema: "not_configured",
             crmBusinessApplicationLinkSchema: "not_configured",
+            documentPortalSchema: "not_configured",
             auth: "not_configured",
             anthropic: configuration.anthropic ? "configured" : "not_configured",
             openai: configuration.openai ? "configured" : "not_configured",
@@ -78,6 +80,7 @@ export async function GET() {
     let internalRolesSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
     let operationalTablesSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
     let crmBusinessApplicationLinkSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
+    let documentPortalSchema: "ok" | "not_configured" | "missing" | "error" = "ok";
 
     if (configuration.supabase) {
       const supabase = getSupabaseAdmin();
@@ -168,6 +171,23 @@ export async function GET() {
       if (crmBusinessApplicationLinkSchemaError) {
         crmBusinessApplicationLinkSchema = isMissingColumnError(crmBusinessApplicationLinkSchemaError) ? "missing" : "error";
       }
+
+      const { error: documentPortalColumnError } = await getSupabaseAdmin()
+        .from("documents")
+        .select("storage_bucket,metadata,processing_status")
+        .limit(1);
+      const { error: documentPortalSessionError } = await rawSupabase.from("merchant_upload_sessions").select("id").limit(1);
+      const { error: merchantBucketError } = await getSupabaseAdmin().storage.getBucket("merchant-documents");
+      const { error: underwritingBucketError } = await getSupabaseAdmin().storage.getBucket("underwriting-documents");
+      if (documentPortalColumnError || documentPortalSessionError || merchantBucketError || underwritingBucketError) {
+        documentPortalSchema =
+          isMissingColumnError(documentPortalColumnError ?? {}) ||
+          isMissingTableError(documentPortalSessionError ?? {}, "merchant_upload_sessions") ||
+          merchantBucketError ||
+          underwritingBucketError
+            ? "missing"
+            : "error";
+      }
     }
 
     const schemaStates = [
@@ -184,7 +204,8 @@ export async function GET() {
       operationalCrmSchema,
       internalRolesSchema,
       operationalTablesSchema,
-      crmBusinessApplicationLinkSchema
+      crmBusinessApplicationLinkSchema,
+      documentPortalSchema
     ];
 
     const requiredMigrations = buildRequiredMigrationHints({
@@ -200,7 +221,8 @@ export async function GET() {
       operationalCrmSchema,
       internalRolesSchema,
       operationalTablesSchema,
-      crmBusinessApplicationLinkSchema
+      crmBusinessApplicationLinkSchema,
+      documentPortalSchema
     });
 
     return NextResponse.json({
@@ -221,6 +243,7 @@ export async function GET() {
         internalRolesSchema,
         operationalTablesSchema,
         crmBusinessApplicationLinkSchema,
+        documentPortalSchema,
         auth: configuration.auth ? "configured" : "not_configured",
         anthropic: configuration.anthropic ? "configured" : "not_configured",
         openai: configuration.openai ? "configured" : "not_configured",
@@ -233,7 +256,7 @@ export async function GET() {
         n8n: configuration.n8n ? "configured" : "not_configured"
       },
       diagnostics: {
-        latestMigration: "0014_crm_business_application_link.sql",
+        latestMigration: "0015_secure_document_upload_portal.sql",
         expectedMigrations: Object.values(MIGRATION_FILE_BY_SCHEMA),
         requiredMigrations
       }

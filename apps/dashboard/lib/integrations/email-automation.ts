@@ -1,4 +1,5 @@
 import { renderParagraphEmail } from "@/lib/email/templates";
+import type { OperionEmailPurpose } from "@/lib/email/senders";
 import { sendOutreachEmail } from "@/lib/sendgrid";
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
 import { isIntegrationEnabled } from "@/lib/runtime/integration-guards";
@@ -9,6 +10,7 @@ export interface FundingEmailInput {
   text: string;
   lead_id?: string | null;
   email_number?: 1 | 2 | 3;
+  purpose?: OperionEmailPurpose;
 }
 
 export async function enqueueFundingEmail(input: FundingEmailInput) {
@@ -25,7 +27,7 @@ export async function enqueueFundingEmail(input: FundingEmailInput) {
     preheader: "Operion Capital business funding message.",
     title: input.subject,
     text: input.text,
-    brand: "capital"
+    brand: input.purpose === "internal_ai_alert" || input.purpose === "operational_summary" ? "internal" : "capital"
   });
   const emailNumber = input.email_number ?? 1;
 
@@ -59,7 +61,8 @@ export async function enqueueFundingEmail(input: FundingEmailInput) {
     to: input.to,
     subject: rendered.subject,
     html: rendered.html,
-    emailNumber
+    emailNumber,
+    purpose: input.purpose ?? "merchant_outreach"
   });
 
   if (!result) {

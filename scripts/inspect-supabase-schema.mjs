@@ -72,7 +72,8 @@ const expectedTables = [
   'risk_flags',
   'funding_pipeline',
   'automation_logs',
-  'email_logs'
+  'email_logs',
+  'merchant_upload_sessions'
 ];
 
 async function checkTableExists(table) {

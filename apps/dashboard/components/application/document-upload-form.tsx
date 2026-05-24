@@ -1,36 +1,38 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileText, UploadCloud } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { AlertTriangle, CheckCircle2, FileText, ShieldCheck, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { DOCUMENT_TYPE_OPTIONS } from "@/lib/documents/processing";
+import { cn } from "@/lib/utils";
 import type { DocumentRecord } from "@operion/shared";
 
-const requestedDocumentTypes = [
-  { value: "bank_statements", label: "Bank statements" },
-  { value: "business_bank_account", label: "Business bank account" },
-  { value: "government_id", label: "Government ID" }
-];
+const primaryDocumentTypes = DOCUMENT_TYPE_OPTIONS.filter((option) =>
+  ["bank_statements", "voided_checks", "driver_license", "processing_statements"].includes(option.value)
+);
 
 interface DocumentUploadFormProps {
   applicationId: string;
   documents: DocumentRecord[];
+  merchantToken?: string;
+  variant?: "customer" | "portal";
 }
 
-export function DocumentUploadForm({ applicationId, documents }: DocumentUploadFormProps) {
-  const [selectedDocumentType, setSelectedDocumentType] = useState<string>(requestedDocumentTypes[0]?.value ?? "bank_statements");
+export function DocumentUploadForm({ applicationId, documents, merchantToken, variant = "customer" }: DocumentUploadFormProps) {
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string>(primaryDocumentTypes[0]?.value ?? "bank_statements");
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [uploadedDocument, setUploadedDocument] = useState<DocumentRecord | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const effectiveDocuments = useMemo(() => {
-    if (!uploadedDocument) {
-      return documents;
-    }
-
+    if (!uploadedDocument) return documents;
     return [
       ...documents.filter((document) => document.document_type !== uploadedDocument.document_type),
       uploadedDocument
@@ -39,7 +41,7 @@ export function DocumentUploadForm({ applicationId, documents }: DocumentUploadF
 
   const documentsByType = useMemo(
     () =>
-      requestedDocumentTypes.map((requested) => ({
+      primaryDocumentTypes.map((requested) => ({
         ...requested,
         record: effectiveDocuments.find((document) => document.document_type === requested.value) ?? null
       })),
@@ -48,8 +50,15 @@ export function DocumentUploadForm({ applicationId, documents }: DocumentUploadF
 
   const activeDocument = documentsByType.find((item) => item.value === selectedDocumentType);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function handleFile(nextFile: File | null) {
+    setFile(nextFile);
+    setStatus("idle");
+    setMessage(null);
+    setProgress(0);
+  }
+
+  async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     setStatus("idle");
     setMessage(null);
 
@@ -63,24 +72,20 @@ export function DocumentUploadForm({ applicationId, documents }: DocumentUploadF
     formData.append("file", file);
     formData.append("document_type", selectedDocumentType);
     formData.append("business_application_id", applicationId);
+    if (merchantToken) {
+      formData.append("merchant_token", merchantToken);
+    }
 
     setStatus("uploading");
+    setProgress(1);
 
     try {
-      const response = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error?.message ?? "Upload failed");
-      }
-
+      const result = await uploadWithProgress(formData, setProgress);
       setUploadedDocument(result.data.document);
       setStatus("success");
       setMessage("Upload complete. Your document is now available for review.");
       setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Upload failed.");
@@ -91,61 +96,108 @@ export function DocumentUploadForm({ applicationId, documents }: DocumentUploadF
     <div className="rounded-lg border border-white/10 bg-card/80 p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-white">Upload documents</p>
+          <p className="text-sm font-semibold text-white">{variant === "portal" ? "Secure upload" : "Upload documents"}</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Submit bank statements and supporting files through the secure merchant onboarding portal.
+            Submit bank statements, voided checks, driver license, and processing statements through 256-bit encrypted uploads and
+            secure signed-access document handling.
           </p>
         </div>
-        <UploadCloud className="h-5 w-5 text-primary" />
+        <ShieldCheck className="h-5 w-5 text-primary" />
       </div>
 
-      <div className="mt-5 grid gap-3">
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
         {documentsByType.map((item) => (
-          <div key={item.value} className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.025] px-3 py-2">
-            <div>
-              <p className="text-sm font-semibold text-white">{item.label}</p>
-              <p className="text-xs text-muted-foreground">{item.record ? item.record.status : "Requested"}</p>
+          <div key={item.value} className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.025] px-3 py-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{item.label}</p>
+              <p className="text-xs text-muted-foreground">{item.record?.file_name ?? "Awaiting upload"}</p>
             </div>
-            <div className="rounded-full bg-white/5 px-2 py-1 text-xs text-muted-foreground">{item.record ? item.record.status : "pending"}</div>
+            <div className="shrink-0 rounded-full bg-white/5 px-2 py-1 text-xs text-muted-foreground">{item.record ? item.record.status : "pending"}</div>
           </div>
         ))}
       </div>
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="document_type">Document type</Label>
-            <Select
-              id="document_type"
-              value={selectedDocumentType}
-              onChange={(event) => setSelectedDocumentType(event.target.value)}
-            >
-              {documentsByType.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="document_file">File</Label>
-            <Input
-              id="document_file"
-              type="file"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              accept="application/pdf,image/png,image/jpeg"
-            />
-          </div>
+        <div className="max-w-md space-y-2">
+          <Label htmlFor="document_type">Document type</Label>
+          <Select id="document_type" value={selectedDocumentType} onChange={(event) => setSelectedDocumentType(event.target.value)}>
+            {documentsByType.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
         </div>
+
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            setIsDragging(false);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setIsDragging(false);
+            handleFile(event.dataTransfer.files?.[0] ?? null);
+          }}
+          className={cn(
+            "flex min-h-44 w-full flex-col items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/[0.025] px-6 py-8 text-center transition",
+            isDragging ? "border-primary/70 bg-primary/10" : "hover:border-primary/40 hover:bg-white/[0.045]"
+          )}
+        >
+          <UploadCloud className="h-8 w-8 text-primary" />
+          <span className="mt-4 text-sm font-semibold text-white">{file ? file.name : "Drop a file here or choose from your device"}</span>
+          <span className="mt-2 text-xs text-muted-foreground">PDF, PNG, JPG, XLS, or XLSX up to 50MB / private operational review</span>
+        </button>
+
+        <input
+          ref={fileInputRef}
+          id="document_file"
+          type="file"
+          className="hidden"
+          onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
+          accept="application/pdf,image/png,image/jpeg,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        />
+
+        {file ? (
+          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.035] p-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <FileText className="h-4 w-4 shrink-0 text-primary" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-white">{file.name}</p>
+                <p className="text-xs text-muted-foreground">{Math.max(1, Math.round(file.size / 1024))} KB</p>
+              </div>
+            </div>
+            <Button type="button" variant="ghost" size="icon" onClick={() => handleFile(null)} aria-label="Remove file">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : null}
+
+        {status === "uploading" ? (
+          <div className="space-y-2">
+            <div className="h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+            </div>
+            <p className="text-xs text-muted-foreground">Uploading securely... {progress}%</p>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={status === "uploading"}>
-            {status === "uploading" ? "Uploading…" : "Upload document"}
+            {status === "uploading" ? "Uploading..." : "Upload document"}
           </Button>
           {activeDocument?.record?.file_name ? (
-            <div className="self-center text-sm text-muted-foreground">
-              Latest: {activeDocument.record.file_name}
-            </div>
+            <div className="self-center text-sm text-muted-foreground">Latest: {activeDocument.record.file_name}</div>
           ) : null}
         </div>
 
@@ -173,4 +225,30 @@ export function DocumentUploadForm({ applicationId, documents }: DocumentUploadF
       </form>
     </div>
   );
+}
+
+function uploadWithProgress(formData: FormData, onProgress: (value: number) => void) {
+  return new Promise<{ data: { document: DocumentRecord } }>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/documents/upload");
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      onProgress(Math.max(1, Math.min(99, Math.round((event.loaded / event.total) * 100))));
+    };
+    xhr.onload = () => {
+      try {
+        const parsed = JSON.parse(xhr.responseText);
+        if (xhr.status < 200 || xhr.status >= 300) {
+          reject(new Error(parsed.error?.message ?? "Upload failed"));
+          return;
+        }
+        onProgress(100);
+        resolve(parsed);
+      } catch {
+        reject(new Error("Upload failed"));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Upload failed"));
+    xhr.send(formData);
+  });
 }

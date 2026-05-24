@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from '../supabase/server';
 import { logger } from '../logger';
 
-const DOCUMENT_BUCKET = 'merchant_documents';
+const DOCUMENT_BUCKET = 'merchant-documents';
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
   'image/jpeg',

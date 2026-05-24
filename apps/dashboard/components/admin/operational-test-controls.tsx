@@ -18,6 +18,7 @@ export function OperationalTestControls() {
   const [includeAi, setIncludeAi] = useState(false);
   const [executeWrites, setExecuteWrites] = useState(false);
   const [emailTo, setEmailTo] = useState("");
+  const [emailPurpose, setEmailPurpose] = useState("internal_ai_alert");
   const [message, setMessage] = useState<ResultState>({ status: "idle", title: "Ready", detail: "Choose an operational check to run." });
   const [isPending, startTransition] = useTransition();
 
@@ -108,7 +109,7 @@ export function OperationalTestControls() {
         </label>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+      <div className="grid gap-3 md:grid-cols-[1fr_260px_auto]">
         <div className="space-y-1">
           <Label htmlFor="email-to">Test Email Recipient</Label>
           <Input
@@ -118,6 +119,18 @@ export function OperationalTestControls() {
             onChange={(event) => setEmailTo(event.target.value)}
             placeholder="founder@operion.ai"
           />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="email-purpose">Sender Purpose</Label>
+          <Select id="email-purpose" value={emailPurpose} onChange={(event) => setEmailPurpose(event.target.value)}>
+            <option value="merchant_outreach">Merchant outreach / funding@</option>
+            <option value="document_upload_request">Document request / funding@</option>
+            <option value="merchant_support">Merchant support / support@</option>
+            <option value="lender_outreach">Lender outreach / lenders@</option>
+            <option value="lender_submission_package">Lender submission / submissions@</option>
+            <option value="internal_ai_alert">Internal alert / alerts@</option>
+            <option value="operational_summary">Ops summary / system@</option>
+          </Select>
         </div>
         <div className="flex items-end">
           <Button
@@ -131,7 +144,8 @@ export function OperationalTestControls() {
                   body: JSON.stringify({
                     to: emailTo,
                     subject: "Operion Capital operational email test",
-                    text: "This confirms the Operion Capital branded SendGrid template and delivery path are wired for operational testing."
+                    text: "This confirms the Operion Capital branded SendGrid template, sender routing, and delivery path are wired for operational testing.",
+                    purpose: emailPurpose
                   })
                 })
               )

@@ -18,7 +18,15 @@ Use `.env.example` as the source of truth. For local development, place values i
 ## Outreach
 
 - `SENDGRID_API_KEY`: SendGrid API key for outreach queue delivery and founder notification emails.
-- `SENDGRID_FROM_EMAIL`: Verified sender used for outreach and ops reports.
+- `SENDGRID_FROM_EMAIL`: Fallback verified sender used when a role mailbox override is not configured.
+- `OPERION_EMAIL_DOMAIN`: Role mailbox domain. Defaults to `operioncapital.com`.
+- `OPERION_EMAIL_FUNDING`: Merchant outreach, document requests, and application updates. Defaults to `funding@operioncapital.com`.
+- `OPERION_EMAIL_SUPPORT`: Merchant support mailbox. Defaults to `support@operioncapital.com`.
+- `OPERION_EMAIL_LENDERS`: Lender relations mailbox. Defaults to `lenders@operioncapital.com`.
+- `OPERION_EMAIL_PARTNERS`: Lender onboarding and partner workflow mailbox. Defaults to `partners@operioncapital.com`.
+- `OPERION_EMAIL_SUBMISSIONS`: Lender submission package mailbox. Defaults to `submissions@operioncapital.com`.
+- `OPERION_EMAIL_ALERTS`: Internal AI alert mailbox. Defaults to `alerts@operioncapital.com`.
+- `OPERION_EMAIL_SYSTEM`: Operational summary mailbox. Defaults to `system@operioncapital.com`.
 - `CRM_WEBHOOK_URL`: Optional CRM sync webhook for application and lead lifecycle events.
 
 ## Lead Data

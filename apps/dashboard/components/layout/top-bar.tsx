@@ -1,6 +1,7 @@
 import { Bell, LockKeyhole, Search } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { getAlertsData } from "@/lib/data/live-data";
+import { OperionLogo } from "@/components/brand/operion-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -19,7 +20,7 @@ export async function TopBar() {
           </div>
         </div>
         <div className="flex flex-1 items-center justify-between md:hidden">
-          <span className="text-sm font-semibold text-primary">Operion AI</span>
+          <OperionLogo brand="internal" showTagline={false} />
           <span className="text-xs text-muted-foreground">Operator</span>
         </div>
         <Button variant="outline" size="sm" className="relative">

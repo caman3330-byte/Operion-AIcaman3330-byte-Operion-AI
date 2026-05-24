@@ -21,7 +21,8 @@ const dispatchSchema = z.object({
         "reporting",
         "customer_support",
         "crm_activity",
-        "executive_summary"
+        "executive_summary",
+        "document_processing"
       ])
     )
     .optional()

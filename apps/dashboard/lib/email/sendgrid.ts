@@ -1,5 +1,6 @@
 import { recordApiUsage } from "@/lib/api-usage";
 import { readServerEnv } from "@/lib/env";
+import { inferEmailPurposeFromOperation, resolveOperionSender, type OperionEmailPurpose } from "@/lib/email/senders";
 import { renderOperionEmail, renderParagraphEmail } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { withRetry } from "@/lib/retry";
@@ -18,12 +19,14 @@ interface SendEmailInput {
   leadId?: string;
   emailNumber?: 1 | 2 | 3;
   operation: string;
+  purpose?: OperionEmailPurpose;
   customArgs?: Record<string, string | undefined>;
 }
 
 async function sendSendGridEmail(input: SendEmailInput): Promise<SendGridResult> {
   const env = readServerEnv();
   const startedAt = Date.now();
+  const sender = resolveOperionSender(input.purpose ?? inferEmailPurposeFromOperation(input.operation), env.SENDGRID_FROM_EMAIL);
 
   const result = await safeIntegrationCall<SendGridResult>(
     "sendgrid",
@@ -47,7 +50,8 @@ async function sendSendGridEmail(input: SendEmailInput): Promise<SendGridResult>
                   }
                 }
               ],
-              from: { email: env.SENDGRID_FROM_EMAIL },
+              from: { email: sender.email, name: sender.name },
+              reply_to: sender.replyTo ? { email: sender.replyTo } : undefined,
               subject: input.subject,
               content: [
                 { type: "text/plain", value: input.text },
@@ -112,6 +116,7 @@ export async function sendOutreachEmail(input: {
   subject: string;
   html: string;
   emailNumber: 1 | 2 | 3;
+  purpose?: OperionEmailPurpose;
 }) {
   return sendSendGridEmail({
     to: input.to,
@@ -121,19 +126,21 @@ export async function sendOutreachEmail(input: {
     leadId: input.leadId,
     emailNumber: input.emailNumber,
     operation: "outreach_email",
+    purpose: input.purpose ?? "merchant_outreach",
     customArgs: {
       email_number: String(input.emailNumber)
     }
   });
 }
 
-export async function sendTestEmail(input: { to: string; subject: string; text: string }) {
+export async function sendTestEmail(input: { to: string; subject: string; text: string; purpose?: OperionEmailPurpose }) {
+  const purpose = input.purpose ?? "internal_ai_alert";
   const email = renderParagraphEmail({
     subject: input.subject,
     preheader: "Operion internal email delivery verification.",
     title: "Email delivery test",
     text: input.text,
-    brand: "internal"
+    brand: purpose === "internal_ai_alert" || purpose === "operational_summary" ? "internal" : "capital"
   });
 
   return sendSendGridEmail({
@@ -142,6 +149,7 @@ export async function sendTestEmail(input: { to: string; subject: string; text: 
     html: email.html,
     text: email.text,
     operation: "test_email",
+    purpose,
     customArgs: {
       email_type: "test"
     }
@@ -165,7 +173,7 @@ export async function sendMerchantConfirmationEmail(input: {
     intro: [
       `Hi ${input.ownerName ? input.ownerName : "there"},`,
       `Thanks for submitting your funding application for ${input.businessName}. Our team will begin underwriting review and lender matching right away.`,
-      "Next step: upload bank statements, government ID, and business bank account verification documents as soon as they are available. This helps keep your application moving."
+      "Next step: upload bank statements, voided checks, driver license, and processing statements through the secure signed-access document portal. This helps keep your application moving."
     ],
     sections: [
       { label: "Business", value: input.businessName },
@@ -183,6 +191,7 @@ export async function sendMerchantConfirmationEmail(input: {
     text: email.text,
     leadId: input.leadId,
     operation: "merchant_confirmation_email",
+    purpose: "application_received",
     customArgs: {
       email_type: "merchant_confirmation"
     }
@@ -229,6 +238,7 @@ export async function sendLenderPackageNotificationEmail(input: {
     text: email.text,
     leadId: input.leadId,
     operation: "lender_package_notification_email",
+    purpose: "lender_submission_package",
     customArgs: {
       email_type: "lender_package"
     }

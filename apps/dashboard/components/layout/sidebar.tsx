@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { OperionLogo } from "@/components/brand/operion-logo";
 import { cn } from "@/lib/utils";
 import { navItems } from "./nav-items";
 
@@ -12,8 +13,7 @@ export function Sidebar() {
     <>
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-white/10 bg-card/80 backdrop-blur-xl md:flex md:flex-col">
         <div className="border-b border-white/10 px-5 py-5">
-          <p className="text-sm font-semibold text-primary">Operion AI</p>
-          <p className="mt-1 text-xs text-muted-foreground">Internal operator platform</p>
+          <OperionLogo brand="internal" />
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {navItems.map((item) => {

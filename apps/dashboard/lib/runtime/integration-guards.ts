@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 export function isIntegrationEnabled(name: string) {
   switch (name) {
     case "sendgrid":
-      return Boolean(process.env.SENDGRID_API_KEY) && Boolean(process.env.SENDGRID_FROM_EMAIL);
+      return Boolean(process.env.SENDGRID_API_KEY) && Boolean(process.env.SENDGRID_FROM_EMAIL || process.env.OPERION_EMAIL_DOMAIN || process.env.OPERION_EMAIL_FUNDING);
     case "stripe":
       return Boolean(process.env.STRIPE_SECRET_KEY);
     case "apollo":

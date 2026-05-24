@@ -5,6 +5,7 @@ import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { Bell, CreditCard, FileText, LayoutDashboard, Settings, UploadCloud } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { OperionLogo } from "@/components/brand/operion-logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -22,13 +23,7 @@ export function CustomerShell({ children }: { children: React.ReactNode }) {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-white/10 bg-card/75 backdrop-blur-xl lg:flex lg:flex-col">
         <div className="border-b border-white/10 px-5 py-5">
           <Link href="/" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-black text-primary-foreground">
-              OC
-            </span>
-            <span>
-              <span className="block text-sm font-semibold text-white">Operion Capital</span>
-              <span className="text-xs text-muted-foreground">Customer workspace</span>
-            </span>
+            <OperionLogo />
           </Link>
         </div>
         <nav className="flex-1 space-y-1 p-3">
@@ -68,10 +63,7 @@ export function CustomerShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 border-b border-white/10 bg-background/80 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <Link href="/" className="flex items-center gap-2 lg:hidden">
-              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-sm font-black text-primary-foreground">
-                OC
-              </span>
-              <span className="text-sm font-semibold text-white">Operion Capital</span>
+              <OperionLogo showTagline={false} />
             </Link>
             <nav className="hidden items-center gap-2 lg:flex">
               <span className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-muted-foreground">

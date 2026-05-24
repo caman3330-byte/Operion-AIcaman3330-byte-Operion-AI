@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     });
 
     await Promise.all(
-      ["bank_statements", "business_bank_account", "government_id"].map((documentType) =>
+      ["bank_statements", "voided_checks", "driver_license", "processing_statements"].map((documentType) =>
         productionRepository.createDocument({
           user_id: actor?.id ?? null,
           business_application_id: application.id,

@@ -139,6 +139,7 @@ export type AiTaskType =
   | "customer_support"
   | "crm_activity"
   | "executive_summary"
+  | "document_processing"
   | "sales_review"
   | "communication_review"
   | "routing_review"
@@ -1039,6 +1040,7 @@ export type DocumentRecord = {
   lead_id: string | null;
   document_type: string;
   file_name: string | null;
+  storage_bucket?: string | null;
   storage_path: string | null;
   mime_type: string | null;
   file_size: number | null;
@@ -1046,6 +1048,10 @@ export type DocumentRecord = {
   uploaded_at: string | null;
   verified_at: string | null;
   notes: string | null;
+  metadata?: Json;
+  uploaded_by_role?: string | null;
+  processing_status?: string | null;
+  processing_requested_at?: string | null;
   created_at: string;
   updated_at: string;
 };
