@@ -173,6 +173,39 @@ export default async function SupervisorPage() {
         </CardContent>
       </Card>
 
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title="Leads Today" value={String(production.operationalMetrics.leadsGeneratedToday)} detail="Generated or ingested today" icon={Activity} />
+        <MetricCard title="Outreach Today" value={String(production.operationalMetrics.outreachSentToday)} detail="Sent merchant or lender messages" icon={Mail} />
+        <MetricCard title="Uploads Pending" value={String(production.operationalMetrics.uploadsPending)} detail={`${production.operationalMetrics.uploadCompletionRate}% upload completion`} icon={FileText} tone={production.operationalMetrics.uploadsPending > 0 ? "warning" : "success"} />
+        <MetricCard title="Lead Conversion" value={`${production.operationalMetrics.leadConversionRate}%`} detail={`${production.operationalMetrics.applicationsReceivedToday} application(s) today`} icon={CheckCircle2} />
+        <MetricCard title="Lenders Contacted" value={String(production.operationalMetrics.lendersContacted)} detail={`${production.operationalMetrics.lenderResponseRate}% response signal`} icon={Route} />
+        <MetricCard title="Funding Review Queue" value={String(production.underwritingQueue)} detail="Applications in review states" icon={Clock3} />
+        <MetricCard title="Email Queue Health" value={production.emailOperations.failed > 0 ? "Watch" : "Ready"} detail={`${production.emailOperations.failed} failed / ${production.emailOperations.sent} sent`} icon={Mail} tone={production.emailOperations.failed > 0 ? "warning" : "success"} />
+        <MetricCard title="AI Queue Health" value={production.aiFailed > 0 ? "Watch" : "Ready"} detail={`${production.aiQueued + production.aiRunning} active / ${production.aiFailed} blocked`} icon={Bot} tone={production.aiFailed > 0 ? "warning" : "success"} />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Live Workflow Status</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
+          {[
+            ["Scraping", production.operationalMetrics.leadsGeneratedToday > 0 ? "active" : "standby"],
+            ["Enrichment", production.aiQueued + production.aiRunning > 0 ? "queued" : "standby"],
+            ["Outreach", production.operationalMetrics.outreachSentToday > 0 ? "active" : "ready"],
+            ["CRM", production.applications > 0 ? "tracking" : "ready"],
+            ["Lender routing", production.lenderMatches > 0 ? "matching" : "ready"],
+            ["Upload review", production.operationalMetrics.uploadsPending > 0 ? "pending" : "clear"],
+            ["Email queue", production.emailOperations.failed > 0 ? "watch" : "ready"]
+          ].map(([label, state]) => (
+            <div key={label} className="rounded-md border bg-white/[0.025] p-3">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+              <p className="mt-2 text-sm font-semibold capitalize text-white">{state}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
           <CardHeader>

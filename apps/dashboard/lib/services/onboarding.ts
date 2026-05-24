@@ -10,6 +10,7 @@ export async function recordMerchantOnboarding(input: {
   contactEmail?: string | null;
   requestedAmount: number;
   fundingPurpose?: string | null;
+  sendDocumentReminder?: boolean;
 }) {
   await productionRepository.createCrmActivity({
     application_id: null,
@@ -26,8 +27,8 @@ export async function recordMerchantOnboarding(input: {
     } as Json
   });
 
-  if (input.contactEmail) {
-    const reminderText = `Thank you for submitting your funding application. We requested your bank statements, voided check, driver license, and processing statements to complete underwriting. Please upload the documents as soon as possible to accelerate funding and lender matching.`;
+  if (input.contactEmail && input.sendDocumentReminder !== false) {
+    const reminderText = `Thank you for submitting your funding application. We requested your bank statements, voided check, driver license, and processing statements to continue funding analysis and lender matching. Please upload the documents as soon as possible to keep your request moving.`;
 
     try {
       await enqueueFundingEmail({

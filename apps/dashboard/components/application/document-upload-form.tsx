@@ -23,21 +23,18 @@ interface DocumentUploadFormProps {
 
 export function DocumentUploadForm({ applicationId, documents, merchantToken, variant = "customer" }: DocumentUploadFormProps) {
   const [selectedDocumentType, setSelectedDocumentType] = useState<string>(primaryDocumentTypes[0]?.value ?? "bank_statements");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [uploadedDocument, setUploadedDocument] = useState<DocumentRecord | null>(null);
+  const [uploadedDocuments, setUploadedDocuments] = useState<DocumentRecord[]>([]);
   const [progress, setProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const effectiveDocuments = useMemo(() => {
-    if (!uploadedDocument) return documents;
-    return [
-      ...documents.filter((document) => document.document_type !== uploadedDocument.document_type),
-      uploadedDocument
-    ];
-  }, [documents, uploadedDocument]);
+    if (uploadedDocuments.length === 0) return documents;
+    return [...documents, ...uploadedDocuments];
+  }, [documents, uploadedDocuments]);
 
   const documentsByType = useMemo(
     () =>
@@ -50,8 +47,8 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
 
   const activeDocument = documentsByType.find((item) => item.value === selectedDocumentType);
 
-  function handleFile(nextFile: File | null) {
-    setFile(nextFile);
+  function handleFiles(nextFiles: File[]) {
+    setFiles(nextFiles);
     setStatus("idle");
     setMessage(null);
     setProgress(0);
@@ -62,29 +59,41 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
     setStatus("idle");
     setMessage(null);
 
-    if (!file) {
+    if (files.length === 0) {
       setStatus("error");
-      setMessage("Please choose a file before uploading.");
+      setMessage("Please choose at least one file before uploading.");
       return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("document_type", selectedDocumentType);
-    formData.append("business_application_id", applicationId);
-    if (merchantToken) {
-      formData.append("merchant_token", merchantToken);
     }
 
     setStatus("uploading");
     setProgress(1);
 
     try {
-      const result = await uploadWithProgress(formData, setProgress);
-      setUploadedDocument(result.data.document);
+      const completed: DocumentRecord[] = [];
+      for (let index = 0; index < files.length; index += 1) {
+        const currentFile = files[index]!;
+        const formData = new FormData();
+        formData.append("file", currentFile);
+        formData.append("document_type", selectedDocumentType);
+        formData.append("business_application_id", applicationId);
+        if (merchantToken) {
+          formData.append("merchant_token", merchantToken);
+        }
+        const result = await uploadWithProgress(formData, (value) => {
+          const base = (index / files.length) * 100;
+          const current = value / files.length;
+          setProgress(Math.max(1, Math.min(100, Math.round(base + current))));
+        });
+        completed.push(result.data.document);
+      }
+      setUploadedDocuments((current) => [...current, ...completed]);
       setStatus("success");
-      setMessage("Upload complete. Your document is now available for review.");
-      setFile(null);
+      setMessage(
+        completed.length === 1
+          ? "Upload complete. Your document is now available for private funding review."
+          : `${completed.length} uploads complete. Your documents are now available for private funding review.`
+      );
+      setFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       setStatus("error");
@@ -147,7 +156,7 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
           onDrop={(event) => {
             event.preventDefault();
             setIsDragging(false);
-            handleFile(event.dataTransfer.files?.[0] ?? null);
+            handleFiles(Array.from(event.dataTransfer.files ?? []));
           }}
           className={cn(
             "flex min-h-44 w-full flex-col items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/[0.025] px-6 py-8 text-center transition",
@@ -155,31 +164,57 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
           )}
         >
           <UploadCloud className="h-8 w-8 text-primary" />
-          <span className="mt-4 text-sm font-semibold text-white">{file ? file.name : "Drop a file here or choose from your device"}</span>
-          <span className="mt-2 text-xs text-muted-foreground">PDF, PNG, JPG, XLS, or XLSX up to 50MB / private operational review</span>
+          <span className="mt-4 text-sm font-semibold text-white">
+            {files.length > 0 ? `${files.length} file${files.length === 1 ? "" : "s"} selected` : "Drop files here or choose from your device"}
+          </span>
+          <span className="mt-2 text-xs text-muted-foreground">PDF, PNG, JPG, XLS, or XLSX up to 50MB each / private lender review</span>
         </button>
 
         <input
           ref={fileInputRef}
           id="document_file"
           type="file"
+          multiple
           className="hidden"
-          onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
+          onChange={(event) => handleFiles(Array.from(event.target.files ?? []))}
           accept="application/pdf,image/png,image/jpeg,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         />
 
-        {file ? (
-          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.035] p-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <FileText className="h-4 w-4 shrink-0 text-primary" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-white">{file.name}</p>
-                <p className="text-xs text-muted-foreground">{Math.max(1, Math.round(file.size / 1024))} KB</p>
+        {files.length > 0 ? (
+          <div className="space-y-2">
+            {files.map((selectedFile) => (
+              <div key={`${selectedFile.name}-${selectedFile.size}`} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.035] p-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <FileText className="h-4 w-4 shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-white">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{Math.max(1, Math.round(selectedFile.size / 1024))} KB</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="flex justify-end">
+              <Button type="button" variant="ghost" size="sm" onClick={() => handleFiles([])}>
+                <X className="h-4 w-4" />
+                Clear files
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {status === "success" ? (
+          <div className="rounded-lg border border-primary/25 bg-primary/10 p-4">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm font-semibold text-white">Documents received</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Operion Capital will continue funding analysis, prepare your file for private lender review, and contact you if
+                  anything else is needed. Most document reviews begin within one business day.
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">Support: support@operioncapital.com</p>
               </div>
             </div>
-            <Button type="button" variant="ghost" size="icon" onClick={() => handleFile(null)} aria-label="Remove file">
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         ) : null}
 
@@ -194,7 +229,7 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
 
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={status === "uploading"}>
-            {status === "uploading" ? "Uploading..." : "Upload document"}
+            {status === "uploading" ? "Uploading..." : files.length > 1 ? "Upload documents" : "Upload document"}
           </Button>
           {activeDocument?.record?.file_name ? (
             <div className="self-center text-sm text-muted-foreground">Latest: {activeDocument.record.file_name}</div>
@@ -214,11 +249,13 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
           </div>
         ) : null}
 
-        {uploadedDocument ? (
+        {uploadedDocuments.length > 0 ? (
           <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" />
-              <p>Document uploaded for {uploadedDocument.document_type.replaceAll("_", " ")}.</p>
+              <p>
+                {uploadedDocuments.length} document{uploadedDocuments.length === 1 ? "" : "s"} uploaded for private funding review.
+              </p>
             </div>
           </div>
         ) : null}

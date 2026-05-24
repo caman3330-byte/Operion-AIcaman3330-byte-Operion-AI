@@ -20,6 +20,7 @@ export function ApplicationForm() {
   const [step, setStep] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [secureUploadUrl, setSecureUploadUrl] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const progress = useMemo(() => Math.round(((step + 1) / steps.length) * 100), [step]);
   const currentStep = steps[step] ?? steps[0]!;
@@ -68,6 +69,7 @@ export function ApplicationForm() {
           setMessage(result.error?.message ?? "Unable to submit application.");
           return;
         }
+        setSecureUploadUrl(typeof result.data?.secure_upload_url === "string" ? result.data.secure_upload_url : null);
         setSubmitted(true);
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Unable to submit application.");
@@ -81,8 +83,17 @@ export function ApplicationForm() {
         <CheckCircle2 className="mx-auto h-10 w-10 text-primary" />
         <h2 className="mt-4 text-2xl font-semibold tracking-normal text-white">Application received</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          Operion Capital has your funding request. We will review the profile and prepare it for lender matching.
+          Operion Capital has your funding request. We sent a secure upload link to your email so you can continue document
+          submission without creating a portal password.
         </p>
+        {secureUploadUrl ? (
+          <Button asChild className="mt-5">
+            <a href={secureUploadUrl}>
+              Upload secure documents
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </Button>
+        ) : null}
       </div>
     );
   }

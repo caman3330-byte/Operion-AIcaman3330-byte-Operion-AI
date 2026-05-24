@@ -165,22 +165,24 @@ export async function sendMerchantConfirmationEmail(input: {
   fundingPurpose?: string | null;
   portalUrl?: string | null;
 }) {
-  const subject = `Your Operion funding application is received for ${input.businessName}`;
+  const subject = `Operion Capital received your funding request for ${input.businessName}`;
   const email = renderOperionEmail({
     subject,
     preheader: `We received the funding application for ${input.businessName}.`,
-    title: "Application received",
+    title: "Funding request received",
     intro: [
       `Hi ${input.ownerName ? input.ownerName : "there"},`,
-      `Thanks for submitting your funding application for ${input.businessName}. Our team will begin underwriting review and lender matching right away.`,
-      "Next step: upload bank statements, voided checks, driver license, and processing statements through the secure signed-access document portal. This helps keep your application moving."
+      `Thank you for submitting your business funding request for ${input.businessName}. Operion Capital is preparing your profile for funding analysis and lender matching.`,
+      "The fastest next step is to upload the requested documents through your encrypted upload link. Your link is private, signed, and does not require a portal password."
     ],
     sections: [
       { label: "Business", value: input.businessName },
       ...(input.requestedAmount ? [{ label: "Requested amount", value: formatCurrency(input.requestedAmount) }] : []),
       ...(input.fundingPurpose ? [{ label: "Funding purpose", value: input.fundingPurpose }] : [])
     ],
-    ...(input.portalUrl ? { cta: { label: "Track application", url: input.portalUrl } } : {}),
+    ...(input.portalUrl ? { cta: { label: "Upload Secure Documents", url: input.portalUrl } } : {}),
+    footerNote:
+      "Secure uploads are handled through signed access links and private operational review. Operion Capital prepares lender-ready funding profiles and coordinates matching with suitable funding partners.",
     brand: "capital"
   });
 

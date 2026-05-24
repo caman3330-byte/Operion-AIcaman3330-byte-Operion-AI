@@ -33,7 +33,7 @@ export default async function MerchantUploadPortalPage({ searchParams }: { searc
               {[
                 ["256-bit encrypted uploads", "private storage path"],
                 ["Signed access only", "short-lived URLs"],
-                ["AI-assisted review", "underwriting hooks"]
+                ["Private lender review", "secure document handling"]
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
                   <p className="text-xs text-muted-foreground">{label}</p>
@@ -80,6 +80,24 @@ export default async function MerchantUploadPortalPage({ searchParams }: { searc
 
         <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr]">
           <section className="space-y-4">
+            <div className="rounded-lg border border-primary/20 bg-primary/10 p-5">
+              <h2 className="font-semibold text-white">Upload progress</h2>
+              <div className="mt-5 space-y-3">
+                {[
+                  ["1", "Secure link verified", true],
+                  ["2", "Upload requested documents", false],
+                  ["3", "Funding review begins", false],
+                  ["4", "Lender matching updates", false]
+                ].map(([step, label, complete]) => (
+                  <div key={String(label)} className="flex items-center gap-3">
+                    <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${complete ? "bg-primary text-primary-foreground" : "bg-white/10 text-muted-foreground"}`}>
+                      {step}
+                    </span>
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="rounded-lg border border-white/10 bg-card/80 p-5">
               <div className="flex items-center gap-3">
                 <FileCheck2 className="h-5 w-5 text-primary" />

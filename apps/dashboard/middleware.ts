@@ -23,6 +23,11 @@ const internalProtectedPrefixes = [
   "/ai-prompts"
 ];
 
+const adminProtectedPrefixes = [
+  "/admin",
+  "/api/admin"
+];
+
 const publicApiPrefixes = [
   "/api/health",
   "/api/applications",
@@ -46,6 +51,8 @@ const internalRoles = new Set([
   "analyst"
 ]);
 
+const adminRoles = new Set(["founder", "super_admin", "admin"]);
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const internalApiKey = process.env.OPERION_INTERNAL_API_KEY;
@@ -61,13 +68,13 @@ export async function middleware(request: NextRequest) {
   // Page bypass is kept for local automated testing only.
   if (internalApiKey && request.headers.get("x-operion-internal-key") === internalApiKey) {
     if (isApiRoute || process.env.NODE_ENV !== "production") {
-      return NextResponse.next();
+      return withSecurityHeaders(NextResponse.next());
     }
   }
 
   if (pathname.startsWith("/api")) {
     if (isPublicApiRoute(pathname) || isCustomerApiRoute(pathname)) {
-      return NextResponse.next();
+      return withSecurityHeaders(NextResponse.next());
     }
 
     // Lazily import Supabase server client only for protected API routes.
@@ -132,8 +139,14 @@ export async function middleware(request: NextRequest) {
         headers: { "content-type": "application/json" }
       });
     }
+    if (isAdminProtectedRoute(pathname) && !adminRoles.has(role)) {
+      return new NextResponse(JSON.stringify({ error: "admin_role_required" }), {
+        status: 403,
+        headers: { "content-type": "application/json" }
+      });
+    }
 
-    return response;
+    return withSecurityHeaders(response);
   }
 
   let response = NextResponse.next();
@@ -213,9 +226,15 @@ export async function middleware(request: NextRequest) {
       url.searchParams.set("auth", "insufficient_role");
       return NextResponse.redirect(url);
     }
+    if (isAdminProtectedRoute(pathname) && !adminRoles.has(role)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/supervisor";
+      url.searchParams.set("auth", "admin_role_required");
+      return NextResponse.redirect(url);
+    }
   }
 
-  return response;
+  return withSecurityHeaders(response);
 }
 
 function isCustomerProtectedRoute(pathname: string) {
@@ -228,6 +247,10 @@ function isInternalProtectedRoute(pathname: string) {
   }
 
   return internalProtectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isAdminProtectedRoute(pathname: string) {
+  return adminProtectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 function isProtectedRoute(pathname: string) {
@@ -258,6 +281,14 @@ async function resolveRole(
   } catch {
     return "customer";
   }
+}
+
+function withSecurityHeaders(response: NextResponse) {
+  response.headers.set("x-frame-options", "DENY");
+  response.headers.set("x-content-type-options", "nosniff");
+  response.headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  response.headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  return response;
 }
 
 export const config = {

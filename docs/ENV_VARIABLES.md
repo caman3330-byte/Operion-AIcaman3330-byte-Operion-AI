@@ -22,6 +22,7 @@ Use `.env.example` as the source of truth. For local development, place values i
 - `OPERION_EMAIL_DOMAIN`: Role mailbox domain. Defaults to `operioncapital.com`.
 - `OPERION_EMAIL_FUNDING`: Merchant outreach, document requests, and application updates. Defaults to `funding@operioncapital.com`.
 - `OPERION_EMAIL_SUPPORT`: Merchant support mailbox. Defaults to `support@operioncapital.com`.
+- `OPERION_EMAIL_CONTACT`: General merchant contact mailbox. Defaults to `contact@operioncapital.com`.
 - `OPERION_EMAIL_LENDERS`: Lender relations mailbox. Defaults to `lenders@operioncapital.com`.
 - `OPERION_EMAIL_PARTNERS`: Lender onboarding and partner workflow mailbox. Defaults to `partners@operioncapital.com`.
 - `OPERION_EMAIL_SUBMISSIONS`: Lender submission package mailbox. Defaults to `submissions@operioncapital.com`.

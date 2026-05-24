@@ -15,6 +15,7 @@ const emailQueueSchema = z.object({
     .enum([
       "merchant_outreach",
       "merchant_support",
+      "merchant_contact",
       "document_upload_request",
       "application_received",
       "application_status_update",

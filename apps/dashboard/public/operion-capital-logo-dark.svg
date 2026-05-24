@@ -1,0 +1,20 @@
+<svg width="900" height="260" viewBox="0 0 900 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="260" rx="18" fill="#050505"/>
+  <g transform="translate(384 35)">
+    <circle cx="52" cy="52" r="37" stroke="url(#gold)" stroke-width="8"/>
+    <path d="M68 20c19 0 34 14 38 32M106 52c-4 18-19 32-38 32" stroke="url(#gold)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M61 17v72" stroke="#F6E6B8" stroke-width="2" stroke-linecap="round" opacity=".72"/>
+  </g>
+  <text x="450" y="162" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="54" letter-spacing="18" fill="#F7F2EA">OPERION</text>
+  <line x1="314" y1="199" x2="382" y2="199" stroke="#D7B76A" stroke-width="2"/>
+  <text x="450" y="207" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" letter-spacing="13" fill="#D7B76A">CAPITAL</text>
+  <line x1="518" y1="199" x2="586" y2="199" stroke="#D7B76A" stroke-width="2"/>
+  <defs>
+    <linearGradient id="gold" x1="15" y1="14" x2="106" y2="90" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0B8"/>
+      <stop offset=".35" stop-color="#D7B76A"/>
+      <stop offset=".72" stop-color="#A78335"/>
+      <stop offset="1" stop-color="#F7E6B3"/>
+    </linearGradient>
+  </defs>
+</svg>

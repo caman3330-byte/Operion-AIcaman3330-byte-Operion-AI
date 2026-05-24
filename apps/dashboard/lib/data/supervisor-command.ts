@@ -43,6 +43,17 @@ export interface ProductionSupervisorSummary {
     failed: number;
     replies: number;
   };
+  operationalMetrics: {
+    leadsGeneratedToday: number;
+    outreachSentToday: number;
+    lendersContacted: number;
+    applicationsReceivedToday: number;
+    uploadsPending: number;
+    documentsUploaded: number;
+    uploadCompletionRate: number;
+    leadConversionRate: number;
+    lenderResponseRate: number;
+  };
 }
 
 export async function getProductionSupervisorSummary(): Promise<ProductionSupervisorSummary> {
@@ -55,7 +66,7 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
 
   try {
     await productionRepository.ensureProductionSchema();
-    const [leads, applications, aiTasks, approvals, reviews, matches, outreachLogs, usage] = await Promise.all([
+    const [leads, applications, aiTasks, approvals, reviews, matches, outreachLogs, usage, documents] = await Promise.all([
       leadsRepository.list({ pageSize: 100 }),
       productionRepository.listBusinessApplications(500),
       productionRepository.listAiTasks(500),
@@ -63,11 +74,13 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
       productionRepository.listUnderwritingReviews(500),
       productionRepository.listLenderMatches(500),
       productionRepository.listOutreachLogs(500),
-      productionRepository.listApiUsage(500)
+      productionRepository.listApiUsage(500),
+      productionRepository.listDocuments(1000)
     ]);
 
     const lifecycle = summarizeLifecycle(applications);
     const emailOperations = summarizeEmailOperations(outreachLogs, configurationStatus.sendgrid);
+    const operationalMetrics = summarizeOperationalMetrics({ leads: leads.data, applications, outreachLogs, matches, documents });
 
     return {
       source: "supabase",
@@ -87,7 +100,8 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
       outreachLogs: outreachLogs.length,
       estimatedAiCostUsd: usage.reduce((total, item) => total + Number(item.estimated_cost_usd ?? 0), 0),
       lifecycle,
-      emailOperations
+      emailOperations,
+      operationalMetrics
     };
   } catch (error) {
     logger.warn("production_supervisor_summary_unavailable", { error });
@@ -114,9 +128,51 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
         sent: 0,
         failed: 0,
         replies: 0
+      },
+      operationalMetrics: {
+        leadsGeneratedToday: 0,
+        outreachSentToday: 0,
+        lendersContacted: 0,
+        applicationsReceivedToday: 0,
+        uploadsPending: 0,
+        documentsUploaded: 0,
+        uploadCompletionRate: 0,
+        leadConversionRate: 0,
+        lenderResponseRate: 0
       }
     };
   }
+}
+
+function summarizeOperationalMetrics(input: {
+  leads: Array<{ created_at?: string | null }>;
+  applications: Array<{ created_at?: string | null; submitted_at?: string | null; status: string }>;
+  outreachLogs: Array<{ status: string | null; sent_at?: string | null; replied_at?: string | null; lender_id?: string | null }>;
+  matches: Array<{ lender_id: string | null; status: string }>;
+  documents: Array<{ status: string; uploaded_at?: string | null }>;
+}) {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const todayMs = startOfDay.getTime();
+  const isToday = (value?: string | null) => Boolean(value && Date.parse(value) >= todayMs);
+  const sentLogs = input.outreachLogs.filter((log) => ["sent", "delivered"].some((status) => (log.status ?? "").toLowerCase().includes(status)));
+  const uploadedDocuments = input.documents.filter((document) => document.status === "uploaded" || Boolean(document.uploaded_at));
+  const requestedDocuments = input.documents.filter((document) => document.status === "requested");
+  const uniqueLenders = new Set(input.matches.map((match) => match.lender_id).filter(Boolean));
+  const conversionBase = input.leads.length === 0 ? 0 : input.applications.length / input.leads.length;
+  const lenderResponseBase = input.matches.length === 0 ? 0 : input.matches.filter((match) => ["approved", "submitted", "accepted", "funded", "rejected"].includes(match.status)).length / input.matches.length;
+
+  return {
+    leadsGeneratedToday: input.leads.filter((lead) => isToday(lead.created_at)).length,
+    outreachSentToday: sentLogs.filter((log) => isToday(log.sent_at)).length,
+    lendersContacted: uniqueLenders.size,
+    applicationsReceivedToday: input.applications.filter((application) => isToday(application.submitted_at ?? application.created_at)).length,
+    uploadsPending: requestedDocuments.length,
+    documentsUploaded: uploadedDocuments.length,
+    uploadCompletionRate: input.documents.length === 0 ? 0 : Number(((uploadedDocuments.length / input.documents.length) * 100).toFixed(1)),
+    leadConversionRate: Number((conversionBase * 100).toFixed(1)),
+    lenderResponseRate: Number((lenderResponseBase * 100).toFixed(1))
+  };
 }
 
 function summarizeLifecycle(applications: Array<{ status: string }>) {

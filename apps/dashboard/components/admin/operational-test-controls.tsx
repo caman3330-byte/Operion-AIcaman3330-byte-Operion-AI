@@ -126,6 +126,7 @@ export function OperationalTestControls() {
             <option value="merchant_outreach">Merchant outreach / funding@</option>
             <option value="document_upload_request">Document request / funding@</option>
             <option value="merchant_support">Merchant support / support@</option>
+            <option value="merchant_contact">General contact / contact@</option>
             <option value="lender_outreach">Lender outreach / lenders@</option>
             <option value="lender_submission_package">Lender submission / submissions@</option>
             <option value="internal_ai_alert">Internal alert / alerts@</option>

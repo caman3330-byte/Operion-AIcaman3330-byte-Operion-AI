@@ -9,6 +9,7 @@ import { productionRepository } from "@/lib/repositories/production";
 import { fundingApplicationSchema } from "@/lib/validation";
 import { recordMerchantOnboarding } from "@/lib/services/onboarding";
 import { sendMerchantConfirmationEmail } from "@/lib/email/sendgrid";
+import { createMerchantUploadMagicLink } from "@/lib/portal/merchant-upload-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,52 @@ export async function POST(request: NextRequest) {
       )
     );
 
+    const secureUploadLink = payload.contact_email
+      ? await createMerchantUploadMagicLink({
+          businessApplicationId: application.id,
+          email: payload.contact_email,
+          origin: request.nextUrl.origin,
+          requestedBy: "application_submission"
+        })
+      : null;
+
+    if (secureUploadLink?.created) {
+      const currentMetadata = typeof application.metadata === "object" && application.metadata ? application.metadata : {};
+      await productionRepository.updateBusinessApplication(application.id, {
+        metadata: {
+          ...currentMetadata,
+          secure_upload_link_created_at: new Date().toISOString(),
+          secure_upload_link_expires_at: secureUploadLink.expiresAt,
+          secure_upload_link_source: "application_confirmation_email"
+        } as Json
+      });
+      await productionRepository.createCrmActivity({
+        application_id: null,
+        business_application_id: application.id,
+        lead_id: lead.id,
+        actor_type: "system",
+        activity_type: "document_request",
+        subject: "Secure upload link generated",
+        body: "A signed document upload link was generated for the merchant confirmation email.",
+        metadata: {
+          expires_at: secureUploadLink.expiresAt,
+          delivery: "application_confirmation_email"
+        } as Json
+      });
+      await productionRepository.createAuditLog({
+        event_type: "merchant_upload_magic_link_created",
+        actor_id: "application_submission",
+        actor_role: "system",
+        entity_type: "business_application",
+        entity_id: application.id,
+        metadata: {
+          lead_id: lead.id,
+          expires_at: secureUploadLink.expiresAt,
+          delivery: "application_confirmation_email"
+        } as Json
+      });
+    }
+
     await recordMerchantOnboarding({
       applicationId: application.id,
       leadId: lead.id,
@@ -102,18 +149,19 @@ export async function POST(request: NextRequest) {
       ownerName: payload.owner_name ?? null,
       contactEmail: payload.contact_email ?? null,
       requestedAmount: payload.requested_amount,
-      fundingPurpose: payload.funding_purpose ?? null
+      fundingPurpose: payload.funding_purpose ?? null,
+      sendDocumentReminder: false
     });
 
     if (payload.contact_email) {
-      void sendMerchantConfirmationEmail({
+      await sendMerchantConfirmationEmail({
         leadId: lead.id,
         to: payload.contact_email,
         businessName: payload.business_name,
         ownerName: payload.owner_name ?? null,
         requestedAmount: payload.requested_amount ?? null,
         fundingPurpose: payload.funding_purpose ?? null,
-        portalUrl: null
+        portalUrl: secureUploadLink?.created ? secureUploadLink.url : null
       });
     }
 
@@ -174,7 +222,17 @@ export async function POST(request: NextRequest) {
       } as Json
     });
 
-    return NextResponse.json({ data: { application, lead: linkedLead, ai_task: aiTask } }, { status: 201 });
+    return NextResponse.json(
+      {
+        data: {
+          application,
+          lead: linkedLead,
+          ai_task: aiTask,
+          secure_upload_url: secureUploadLink?.created ? secureUploadLink.url : null
+        }
+      },
+      { status: 201 }
+    );
   } catch (error) {
     return handleRouteError(error);
   }

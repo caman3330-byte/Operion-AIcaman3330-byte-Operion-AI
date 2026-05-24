@@ -434,6 +434,16 @@ export const productionRepository = {
     return data ?? [];
   },
 
+  async listDocuments(limit = 500) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("documents")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throwProductionSchemaError(error);
+    return data ?? [];
+  },
+
   async listCustomerDocuments(userId: string) {
     const { data, error } = await getSupabaseAdmin()
       .from("documents")

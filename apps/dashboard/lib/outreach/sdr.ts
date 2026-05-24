@@ -2,6 +2,7 @@ import type { BusinessContact, Lead, OutreachCampaign, OutreachSequence } from "
 import { estimateAnthropicCost, recordApiUsage } from "@/lib/api-usage";
 import { readServerEnv } from "@/lib/env";
 import { ConfigurationError, ValidationError } from "@/lib/errors";
+import { renderMerchantOutreachEmail } from "@/lib/email/outreach-templates";
 import { logger } from "@/lib/logger";
 import { withRetry } from "@/lib/retry";
 
@@ -103,7 +104,7 @@ export async function generateOutreachEmail(input: GenerateOutreachEmailInput): 
       latencyMs: Date.now() - startedAt
     });
 
-    return normalizeGeneratedEmail(parseJsonBlock(text));
+    return normalizeGeneratedEmail(parseJsonBlock(text), input);
   } catch (error) {
     logger.error("anthropic_outreach_generation_failed", { leadId: input.lead.id, error });
     await recordApiUsage({
@@ -124,7 +125,7 @@ function parseJsonBlock(text: string) {
   return JSON.parse(jsonText) as Record<string, unknown>;
 }
 
-function normalizeGeneratedEmail(payload: Record<string, unknown>): GeneratedOutreachEmail {
+function normalizeGeneratedEmail(payload: Record<string, unknown>, input: GenerateOutreachEmailInput): GeneratedOutreachEmail {
   const subject = typeof payload.subject === "string" ? payload.subject.trim() : "";
   const htmlBody = typeof payload.html_body === "string" ? payload.html_body.trim() : "";
   const textBody = typeof payload.text_body === "string" ? payload.text_body.trim() : "";
@@ -136,10 +137,17 @@ function normalizeGeneratedEmail(payload: Record<string, unknown>): GeneratedOut
     throw new ValidationError("Generated outreach email must include subject, html_body, and text_body");
   }
 
+  const branded = renderMerchantOutreachEmail({
+    businessName: input.lead.business_name,
+    contactName: input.contact?.full_name ?? input.lead.contact_name,
+    industry: input.lead.industry,
+    bodyHtml: ensureHtml(htmlBody)
+  });
+
   return {
     subject: subject.slice(0, 160),
-    html_body: ensureHtml(htmlBody),
-    text_body: textBody,
+    html_body: branded.html,
+    text_body: `${textBody}\n\nReview funding options: https://operioncapital.com/apply`,
     compliance_notes: complianceNotes
   };
 }

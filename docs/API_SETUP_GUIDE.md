@@ -55,6 +55,7 @@ SENDGRID_FROM_EMAIL=
 OPERION_EMAIL_DOMAIN=operioncapital.com
 OPERION_EMAIL_FUNDING=funding@operioncapital.com
 OPERION_EMAIL_SUPPORT=support@operioncapital.com
+OPERION_EMAIL_CONTACT=contact@operioncapital.com
 OPERION_EMAIL_LENDERS=lenders@operioncapital.com
 OPERION_EMAIL_PARTNERS=partners@operioncapital.com
 OPERION_EMAIL_SUBMISSIONS=submissions@operioncapital.com

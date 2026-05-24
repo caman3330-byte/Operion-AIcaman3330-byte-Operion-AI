@@ -76,7 +76,9 @@ export async function POST(request: Request) {
       } as Json
     } as const;
 
-    const document = existingDocument
+    const shouldUpdateRequestedPlaceholder =
+      existingDocument && (existingDocument.status === "requested" || !existingDocument.storage_path);
+    const document = shouldUpdateRequestedPlaceholder
       ? await productionRepository.updateDocument(existingDocument.id, documentPayload)
       : await productionRepository.createDocument(documentPayload);
 

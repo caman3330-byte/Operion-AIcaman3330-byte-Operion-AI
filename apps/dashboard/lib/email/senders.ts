@@ -1,6 +1,7 @@
 export type OperionEmailPurpose =
   | "merchant_outreach"
   | "merchant_support"
+  | "merchant_contact"
   | "document_upload_request"
   | "application_received"
   | "application_status_update"
@@ -36,6 +37,12 @@ const senderCatalog: Record<
     localPart: "support",
     name: "Operion Capital Support",
     replyToLocalPart: "support"
+  },
+  merchant_contact: {
+    envKey: "CONTACT",
+    localPart: "contact",
+    name: "Operion Capital",
+    replyToLocalPart: "contact"
   },
   document_upload_request: {
     envKey: "FUNDING",
