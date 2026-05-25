@@ -9,7 +9,8 @@ export type OperionEmailPurpose =
   | "lender_onboarding"
   | "lender_submission_package"
   | "internal_ai_alert"
-  | "operational_summary";
+  | "operational_summary"
+  | "internal_operations";
 
 export interface OperionEmailSender {
   email: string;
@@ -91,6 +92,12 @@ const senderCatalog: Record<
     localPart: "system",
     name: "Operion Capital System",
     replyToLocalPart: "admin"
+  },
+  internal_operations: {
+    envKey: "OPERATIONS",
+    localPart: "operations",
+    name: "Operion Capital Operations",
+    replyToLocalPart: "admin"
   }
 };
 
@@ -118,6 +125,7 @@ export function inferEmailPurposeFromOperation(operation: string): OperionEmailP
   if (operation.includes("lender")) return "lender_outreach";
   if (operation.includes("merchant_confirmation")) return "application_received";
   if (operation.includes("document")) return "document_upload_request";
+  if (operation.includes("operations")) return "internal_operations";
   if (operation.includes("test") || operation.includes("alert")) return "internal_ai_alert";
   if (operation.includes("summary") || operation.includes("report")) return "operational_summary";
   return "merchant_outreach";

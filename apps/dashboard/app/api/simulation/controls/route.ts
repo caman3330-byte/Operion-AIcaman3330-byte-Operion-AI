@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireFounder } from "@/lib/auth";
+import { requireInternalUser } from "@/lib/auth";
 import { handleRouteError } from "@/lib/errors";
 import { simulationRepository } from "@/lib/repositories/simulation";
 import { updateWorkerControl } from "@/lib/testing/controls";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    await requireFounder(request);
+    await requireInternalUser(request);
     const controls = await simulationRepository.getWorkerControls();
     return NextResponse.json({ data: controls });
   } catch (error) {
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const actor = await requireFounder(request);
+    const actor = await requireInternalUser(request);
     const payload = workerControlSchema.parse(await request.json());
     const input: Parameters<typeof updateWorkerControl>[0] = {
       action: payload.action,

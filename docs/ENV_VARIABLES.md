@@ -28,6 +28,7 @@ Use `.env.example` as the source of truth. For local development, place values i
 - `OPERION_EMAIL_SUBMISSIONS`: Lender submission package mailbox. Defaults to `submissions@operioncapital.com`.
 - `OPERION_EMAIL_ALERTS`: Internal AI alert mailbox. Defaults to `alerts@operioncapital.com`.
 - `OPERION_EMAIL_SYSTEM`: Operational summary mailbox. Defaults to `system@operioncapital.com`.
+- `OPERION_EMAIL_OPERATIONS`: Internal operations notification mailbox. Defaults to `operations@operioncapital.com`.
 - `CRM_WEBHOOK_URL`: Optional CRM sync webhook for application and lead lifecycle events.
 
 ## Lead Data

@@ -1,15 +1,16 @@
 import type { Lender } from "@operion/shared";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EditLenderModal } from "@/components/lenders/edit-lender-modal";
 
 interface LendersTableProps {
   lenders: Lender[];
+  onUpdate: (id: string, lender: Omit<Lender, "id" | "created_at">) => Promise<void>;
 }
 
-export function LendersTable({ lenders }: LendersTableProps) {
+export function LendersTable({ lenders, onUpdate }: LendersTableProps) {
   if (lenders.length === 0) {
     return <EmptyState title="No lenders configured" description="Add lender criteria and webhook URLs before distribution goes live." />;
   }
@@ -49,9 +50,7 @@ export function LendersTable({ lenders }: LendersTableProps) {
               </TableCell>
               <TableCell>{formatDateTime(lender.created_at)}</TableCell>
               <TableCell className="text-right">
-                <Button variant="outline" size="sm">
-                  Edit
-                </Button>
+                <EditLenderModal lender={lender} onUpdate={onUpdate} />
               </TableCell>
             </TableRow>
           ))}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireFounder } from "@/lib/auth";
+import { requireInternalUser } from "@/lib/auth";
 import { handleRouteError } from "@/lib/errors";
 import { generateSimulationLeadPreview } from "@/lib/testing/simulation-runner";
 import { simulationLeadGenerateSchema } from "@/lib/validation";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    await requireFounder(request);
+    await requireInternalUser(request);
     const payload = simulationLeadGenerateSchema.parse(await request.json());
     const input: Parameters<typeof generateSimulationLeadPreview>[0] = {
       batchSize: payload.batch_size,

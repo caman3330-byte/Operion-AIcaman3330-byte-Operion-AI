@@ -30,6 +30,7 @@ const adminProtectedPrefixes = [
 
 const operationalTestingPrefixes = [
   "/admin/testing",
+  "/supervisor/testing",
   "/testing"
 ];
 
@@ -57,6 +58,7 @@ const internalRoles = new Set([
 ]);
 
 const adminRoles = new Set(["founder", "super_admin", "admin"]);
+const builtInFounderEmails = ["founder@operion.ai", "founder@operioncapital.com", "admin@operion.ai"];
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -129,7 +131,8 @@ export async function middleware(request: NextRequest) {
       }
     );
 
-    const { data } = await supabase.auth.getUser();
+    const bearerToken = extractBearerToken(request);
+    const { data } = bearerToken ? await supabase.auth.getUser(bearerToken) : await supabase.auth.getUser();
     if (!data.user) {
       return new NextResponse(JSON.stringify({ error: "unauthenticated" }), {
         status: 401,
@@ -283,8 +286,7 @@ async function resolveRole(
     user_metadata?: Record<string, unknown> | null;
   }
 ) {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (adminEmail && email.toLowerCase() === adminEmail.toLowerCase()) {
+  if (isFounderEmail(email)) {
     return "founder";
   }
 
@@ -299,11 +301,29 @@ async function resolveRole(
   }
 
   try {
-    const { data } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
+    const { data } = await supabase
+      .from("profiles")
+      .select("role")
+      .or(`id.eq.${userId},email.eq.${email.toLowerCase()}`)
+      .maybeSingle();
     return typeof data?.role === "string" ? data.role : "customer";
   } catch {
     return "customer";
   }
+}
+
+function isFounderEmail(email: string) {
+  const configuredFounderEmails = [
+    process.env.ADMIN_EMAIL,
+    process.env.FOUNDER_EMAIL,
+    process.env.OPERION_FOUNDER_EMAILS
+  ]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(","))
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  return new Set([...builtInFounderEmails, ...configuredFounderEmails]).has(email.trim().toLowerCase());
 }
 
 function normalizeRoleClaim(value: unknown) {
@@ -326,6 +346,15 @@ function normalizeRoleClaim(value: unknown) {
   }
 
   return null;
+}
+
+function extractBearerToken(request: NextRequest) {
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  return authorization.slice("Bearer ".length);
 }
 
 function withSecurityHeaders(response: NextResponse) {

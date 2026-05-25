@@ -189,6 +189,8 @@ export async function sendTestEmail(input: {
   text: string;
   purpose?: OperionEmailPurpose;
   templateKind?: OperionEmailTemplateKind;
+  operation?: string;
+  customArgs?: Record<string, string | undefined>;
 }) {
   const purpose = input.purpose ?? "internal_ai_alert";
   const email = input.templateKind
@@ -206,11 +208,12 @@ export async function sendTestEmail(input: {
     subject: input.templateKind ? email.subject : input.subject,
     html: email.html,
     text: email.text,
-    operation: "test_email",
+    operation: input.operation ?? "test_email",
     purpose,
     customArgs: {
       email_type: "test",
-      template_kind: input.templateKind
+      template_kind: input.templateKind,
+      ...input.customArgs
     }
   });
 }

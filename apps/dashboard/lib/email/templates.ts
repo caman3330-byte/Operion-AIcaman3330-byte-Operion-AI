@@ -26,51 +26,64 @@ export interface RenderedEmail {
   text: string;
 }
 
-export type OperionEmailTemplateKind =
-  | "merchant_outreach"
-  | "merchant_support"
-  | "merchant_contact"
-  | "document_upload_request"
-  | "application_received"
-  | "underwriting_review"
-  | "additional_document_request"
-  | "approval_notification"
-  | "decline_notification"
-  | "application_status_update"
-  | "lender_outreach"
-  | "lender_onboarding"
-  | "lender_submission_package"
-  | "lender_package_summary"
-  | "deal_routing_notification"
-  | "funding_request_package"
-  | "internal_ai_alert"
-  | "operational_summary"
-  | "internal_support"
-  | "internal_system"
-  | "internal_submissions";
+export const operionEmailTemplateKinds = [
+  "merchant_outreach",
+  "merchant_follow_up_reminder",
+  "merchant_outreach_sequence",
+  "merchant_support",
+  "merchant_contact",
+  "document_upload_request",
+  "application_received",
+  "underwriting_review",
+  "additional_document_request",
+  "approval_notification",
+  "decline_notification",
+  "application_status_update",
+  "lender_outreach",
+  "lender_partnership_outreach",
+  "lender_onboarding",
+  "lender_submission_package",
+  "lender_package_summary",
+  "deal_routing_notification",
+  "funding_request_package",
+  "iso_partnership_communication",
+  "internal_ai_alert",
+  "operational_summary",
+  "internal_support",
+  "internal_system",
+  "internal_submissions",
+  "internal_operations_notification"
+] as const;
+
+export type OperionEmailTemplateKind = (typeof operionEmailTemplateKinds)[number];
 
 export const operionEmailTemplateCatalog: Record<OperionEmailTemplateKind, { label: string; brand: "capital" | "internal" }> = {
   merchant_outreach: { label: "Merchant outreach", brand: "capital" },
+  merchant_follow_up_reminder: { label: "Merchant follow-up reminder", brand: "capital" },
+  merchant_outreach_sequence: { label: "Merchant outreach sequence", brand: "capital" },
   merchant_support: { label: "Merchant support", brand: "capital" },
   merchant_contact: { label: "Merchant contact", brand: "capital" },
   document_upload_request: { label: "Document upload request", brand: "capital" },
   application_received: { label: "Application received", brand: "capital" },
-  underwriting_review: { label: "Underwriting review", brand: "capital" },
+  underwriting_review: { label: "Funding review update", brand: "capital" },
   additional_document_request: { label: "Additional document request", brand: "capital" },
   approval_notification: { label: "Approval notification", brand: "capital" },
   decline_notification: { label: "Decline notification", brand: "capital" },
   application_status_update: { label: "Application status update", brand: "capital" },
   lender_outreach: { label: "Lender outreach", brand: "capital" },
+  lender_partnership_outreach: { label: "Lender partnership outreach", brand: "capital" },
   lender_onboarding: { label: "Lender onboarding", brand: "capital" },
   lender_submission_package: { label: "Lender submission package", brand: "capital" },
   lender_package_summary: { label: "Lender package summary", brand: "capital" },
   deal_routing_notification: { label: "Deal routing notification", brand: "capital" },
   funding_request_package: { label: "Funding request package", brand: "capital" },
+  iso_partnership_communication: { label: "ISO partnership communication", brand: "capital" },
   internal_ai_alert: { label: "Internal AI alert", brand: "internal" },
   operational_summary: { label: "Operational summary", brand: "internal" },
   internal_support: { label: "Internal support notice", brand: "internal" },
   internal_system: { label: "Internal system notice", brand: "internal" },
-  internal_submissions: { label: "Internal submissions notice", brand: "internal" }
+  internal_submissions: { label: "Internal submissions notice", brand: "internal" },
+  internal_operations_notification: { label: "Internal operations notification", brand: "internal" }
 };
 
 export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): RenderedEmail {
@@ -102,6 +115,40 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
       cta: { label: "Start Funding Review", url: sample.applicationUrl },
       brand: "capital"
     },
+    merchant_follow_up_reminder: {
+      subject: `Next step for ${sample.businessName}`,
+      preheader: "Your secure funding review can continue with a short document upload.",
+      title: "A private review is ready to continue",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        `Operion Capital can continue the funding review for ${sample.businessName} once the requested files are uploaded through your private link.`,
+        "The upload takes only a few minutes and keeps your file ready for lender matching."
+      ],
+      sections: [
+        { label: "Requested amount", value: sample.amount },
+        { label: "Next action", value: "Secure document upload" },
+        { label: "Review type", value: "Private funding preparation" }
+      ],
+      cta: { label: "Upload Secure Documents", url: sample.uploadUrl },
+      brand: "capital"
+    },
+    merchant_outreach_sequence: {
+      subject: `${sample.businessName}: capital options without branch delays`,
+      preheader: "A concise working-capital review from Operion Capital.",
+      title: "Capital options for active businesses",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        "Operion Capital helps growth-focused businesses prepare lender-ready funding requests for working capital, equipment deposits, payroll gaps, and expansion needs.",
+        "If timing matters, our review process is designed to be concise, secure, and focused on practical funding fit."
+      ],
+      sections: [
+        { label: "Best fit", value: "MCA / working capital" },
+        { label: "Credit impact", value: "Initial review does not require a hard credit pull" },
+        { label: "Process", value: "Private review, document upload, lender matching" }
+      ],
+      cta: { label: "Start Private Review", url: sample.applicationUrl },
+      brand: "capital"
+    },
     merchant_support: {
       subject: "Operion Capital support follow-up",
       preheader: "A support update from Operion Capital.",
@@ -130,7 +177,7 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
       title: "Secure document upload requested",
       intro: [
         `Hi ${sample.ownerName},`,
-        `To continue underwriting review for ${sample.businessName}, please upload the requested documents through your private Operion Capital link.`,
+        `To continue the funding review for ${sample.businessName}, please upload the requested documents through your private Operion Capital link.`,
         "The link is signed, time-limited, and tied to your application record."
       ],
       sections: [
@@ -147,29 +194,29 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
       title: "Funding request received",
       intro: [
         `Hi ${sample.ownerName},`,
-        `Operion Capital received the funding request for ${sample.businessName}. Your file has moved into operational intake.`,
-        "The next review step checks business details, deposit activity, and lender fit."
+        `Operion Capital received the funding request for ${sample.businessName}. Your file is ready for private funding analysis and lender matching preparation.`,
+        "The fastest next step is to upload the requested files through your encrypted link."
       ],
       sections: [
         { label: "Requested amount", value: sample.amount },
         { label: "Current stage", value: "Intake received" },
-        { label: "Next step", value: "Document and underwriting review" }
+        { label: "Next step", value: "Secure document upload" }
       ],
-      cta: { label: "View Application", url: sample.applicationUrl },
+      cta: { label: "Upload Secure Documents", url: sample.uploadUrl },
       brand: "capital"
     },
     underwriting_review: {
-      subject: `${sample.businessName} is in underwriting review`,
-      preheader: "Your application has moved to underwriting analysis.",
-      title: "Underwriting review in progress",
+      subject: `${sample.businessName} funding review update`,
+      preheader: "Your application has moved into funding analysis.",
+      title: "Funding review in progress",
       intro: [
         `Hi ${sample.ownerName},`,
-        "Your application is now under review by Operion Capital operations. We are validating funding fit, repayment capacity, and lender routing options.",
+        "Your application is now under private review by Operion Capital operations. We are validating funding fit, deposit activity, and lender routing options.",
         "If additional documents are needed, you will receive a secure upload request."
       ],
       sections: [
-        { label: "Stage", value: "Underwriting review" },
-        { label: "Review scope", value: "Revenue, deposits, risk signals, lender criteria" }
+        { label: "Stage", value: "Funding analysis" },
+        { label: "Review scope", value: "Revenue, deposits, business profile, lender criteria" }
       ],
       brand: "capital"
     },
@@ -179,7 +226,7 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
       title: "Additional documents requested",
       intro: [
         `Hi ${sample.ownerName},`,
-        "The underwriting desk needs a few additional documents before lender routing can continue.",
+        "The review team needs a few additional documents before lender routing can continue.",
         "Please use the secure upload link so the documents attach directly to your application file."
       ],
       sections: [
@@ -246,6 +293,22 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
         { label: "Requested amount", value: sample.amount },
         { label: "Industry", value: "Logistics" },
         { label: "State", value: "NY" }
+      ],
+      brand: "capital"
+    },
+    lender_partnership_outreach: {
+      subject: "Operion Capital lender partnership introduction",
+      preheader: "A private-capital lead flow partnership conversation.",
+      title: "Lender partnership introduction",
+      intro: [
+        `Hello ${sample.lenderName},`,
+        "Operion Capital is building a disciplined funding submission network for high-intent MCA and working-capital files.",
+        "Our focus is clean intake, secure document handling, fast lender routing, and transparent relationship management across sectors like trucking, construction, restaurants, and healthcare."
+      ],
+      sections: [
+        { label: "Lead flow", value: "High-intent merchant applications" },
+        { label: "Submission style", value: "Structured packages with document status" },
+        { label: "Relationship", value: "Broker and lender desk coordination" }
       ],
       brand: "capital"
     },
@@ -322,6 +385,22 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
       ],
       brand: "capital"
     },
+    iso_partnership_communication: {
+      subject: "Operion Capital ISO partnership communication",
+      preheader: "A controlled ISO partnership workflow for funding submissions.",
+      title: "ISO partnership workflow",
+      intro: [
+        `Hello ${sample.lenderName},`,
+        "Operion Capital is validating ISO and lender communication workflows before controlled live operations begin.",
+        "The production workflow is designed around verified sender routing, document readiness, secure package handling, and clear response tracking."
+      ],
+      sections: [
+        { label: "Workflow", value: "Lead intake, review, lender routing, response tracking" },
+        { label: "Priority sectors", value: "Trucking, construction, restaurants, healthcare clinics" },
+        { label: "Operating mode", value: "Controlled launch readiness testing" }
+      ],
+      brand: "capital"
+    },
     internal_ai_alert: {
       subject: "AI execution alert: underwriting workflow",
       preheader: "An operational AI workflow requires review.",
@@ -381,6 +460,22 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
         "A lender submission package is ready for internal review before external delivery.",
         "Confirm package completeness, document status, routing rationale, and lender contact details."
       ],
+      brand: "internal"
+    },
+    internal_operations_notification: {
+      subject: "Operations notification: simulation cycle",
+      preheader: "A controlled operational simulation cycle completed.",
+      title: "Operations notification",
+      intro: [
+        "A controlled simulation cycle has completed for merchant, lender, internal email, workflow, and queue visibility checks.",
+        "Review delivery results, route protection, sender identity, and linked workflow traces before advancing to live outreach."
+      ],
+      sections: [
+        { label: "Mode", value: "Controlled simulation" },
+        { label: "Inbox", value: "atsgamers.99@gmail.com" },
+        { label: "Scope", value: "Email delivery, templates, routing, dashboard diagnostics" }
+      ],
+      cta: { label: "Open Testing Dashboard", url: sample.internalUrl },
       brand: "internal"
     }
   };

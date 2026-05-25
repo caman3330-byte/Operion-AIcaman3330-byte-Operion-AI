@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireFounder } from "@/lib/auth";
+import { requireInternalUser } from "@/lib/auth";
 import { handleRouteError } from "@/lib/errors";
 import { simulationRepository } from "@/lib/repositories/simulation";
 import { runSimulation } from "@/lib/testing/simulation-runner";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const actor = await requireFounder(request);
+    const actor = await requireInternalUser(request);
     const payload = replayWorkflowSchema.parse(await request.json());
     const run = await simulationRepository.getRun(payload.simulation_run_id);
     const input: Parameters<typeof runSimulation>[0] = {

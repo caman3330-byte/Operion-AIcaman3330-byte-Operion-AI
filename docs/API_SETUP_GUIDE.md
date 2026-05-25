@@ -61,6 +61,7 @@ OPERION_EMAIL_PARTNERS=partners@operioncapital.com
 OPERION_EMAIL_SUBMISSIONS=submissions@operioncapital.com
 OPERION_EMAIL_ALERTS=alerts@operioncapital.com
 OPERION_EMAIL_SYSTEM=system@operioncapital.com
+OPERION_EMAIL_OPERATIONS=operations@operioncapital.com
 ```
 
 The platform routes merchant outreach and document requests through `funding@`, support through `support@`, lender communications through `lenders@` or `submissions@`, and internal automation through `alerts@` or `system@`.

@@ -5,6 +5,7 @@ import { scoreLeadQuality } from "@/lib/acquisition/scoring";
 import { matchLenders } from "@/lib/distribution";
 import { writeAuditLog } from "@/lib/audit";
 import { ValidationError } from "@/lib/errors";
+import { renderOperionEmail } from "@/lib/email/templates";
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { orchestrationRepository } from "@/lib/repositories/orchestration";
@@ -350,6 +351,26 @@ async function routeApproval(simulationRunId: string, lead: Lead, generated: Gen
 async function prepareSimulatedOutreach(simulationRunId: string, lead: Lead, requestedBy: string) {
   const campaign = await ensureSimulationCampaign(requestedBy);
   const sequence = await ensureSimulationSequence(campaign.id);
+  const subject = `Private capital review for ${lead.business_name}`;
+  const outreachEmail = renderOperionEmail({
+    subject,
+    preheader: "A concise working-capital review from Operion Capital.",
+    title: "Private capital review available",
+    intro: [
+      `Hi ${lead.contact_name ?? "there"},`,
+      `${lead.business_name} appears to fit several business funding programs available through the Operion Capital network.`,
+      "Our process is designed for secure intake, concise funding analysis, and lender matching without unnecessary portal friction."
+    ],
+    sections: [
+      { label: "Business", value: lead.business_name },
+      { label: "Industry", value: lead.industry ?? "Not provided" },
+      { label: "Estimated annual revenue", value: formatCurrency(lead.annual_revenue_est ?? null) }
+    ],
+    cta: { label: "Start Private Review", url: "https://operioncapital.com/apply?source=simulation" },
+    footerNote:
+      "This message body is generated for controlled internal simulation only. Simulation records remain tagged as test data and require approval before any sender workflow can execute.",
+    brand: "capital"
+  });
   const approval = await orchestrationRepository.createApproval({
     approval_type: "simulation_outreach_email",
     requested_by_agent_key: "outreach_agent",
@@ -359,7 +380,7 @@ async function prepareSimulatedOutreach(simulationRunId: string, lead: Lead, req
       simulation_run_id: simulationRunId,
       lead_id: lead.id,
       to_email: lead.email,
-      subject: `Funding options for ${lead.business_name}`
+      subject
     } as Json
   });
 
@@ -377,13 +398,13 @@ async function prepareSimulatedOutreach(simulationRunId: string, lead: Lead, req
         sequence_id: sequence.id,
         lead_id: lead.id,
         to_email: lead.email ?? "",
-        subject: `Funding options for ${lead.business_name}`,
-        html_body: `<p>Hi ${lead.contact_name ?? "there"},</p><p>Operion AI is validating working-capital outreach for ${lead.business_name}. This is internal simulation traffic only.</p>`,
-        text_body: `Hi ${lead.contact_name ?? "there"}, Operion AI is validating working-capital outreach for ${lead.business_name}. This is internal simulation traffic only.`,
+        subject: outreachEmail.subject,
+        html_body: outreachEmail.html,
+        text_body: outreachEmail.text,
         status: "pending_approval",
         scheduled_at: new Date().toISOString(),
         approval_id: approval.id,
-        ai_generated: false,
+        ai_generated: true,
         created_by_agent_key: "simulation_agent",
         is_test_data: true
       }),
@@ -455,4 +476,13 @@ function chunks<T>(items: T[], size: number) {
     result.push(items.slice(index, index + size));
   }
   return result;
+}
+
+function formatCurrency(value: number | null | undefined) {
+  if (value === null || value === undefined) return "Not provided";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0
+  }).format(value);
 }

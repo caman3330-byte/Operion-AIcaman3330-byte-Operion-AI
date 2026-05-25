@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireFounder } from "@/lib/auth";
+import { requireInternalUser } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
 import { handleRouteError } from "@/lib/errors";
 import { lendersRepository } from "@/lib/repositories/lenders";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    await requireFounder(request);
+    await requireInternalUser(request);
     const activeOnly = request.nextUrl.searchParams.get("active") === "true";
     const data = await lendersRepository.list(activeOnly);
     return NextResponse.json({ data });
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const actor = await requireFounder(request);
+    const actor = await requireInternalUser(request);
     const payload = lenderCreateSchema.parse(await request.json());
 
     await writeAuditLog({

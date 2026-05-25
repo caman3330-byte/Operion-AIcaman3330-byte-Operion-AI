@@ -18,6 +18,7 @@ export interface FounderActor {
 }
 
 const founderEquivalentRoles: ExtendedAppRole[] = ["founder", "super_admin", "admin"];
+const builtInFounderEmails = ["founder@operion.ai", "founder@operioncapital.com", "admin@operion.ai"];
 
 export async function requireFounder(request: Request): Promise<FounderActor> {
   return requireRole(request, founderEquivalentRoles);
@@ -63,7 +64,7 @@ export async function requireRole(request: Request, allowedRoles: ExtendedAppRol
 
   const role = await resolveUserRole(user.id, user.email, user);
   if (!allowedRoles.includes(role)) {
-    throw new AuthorizationError();
+    throw new AuthorizationError(allowsInternalAccess(allowedRoles) ? "Internal operator access required" : "Founder access required");
   }
 
   return {
@@ -124,8 +125,7 @@ export async function getRequestUser(request: Request) {
 }
 
 export async function resolveUserRole(userId: string, email: string, claims?: RoleClaimSource): Promise<ExtendedAppRole> {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (adminEmail && email.toLowerCase() === adminEmail.toLowerCase()) {
+  if (isFounderEmail(email)) {
     return "founder";
   }
 
@@ -140,15 +140,37 @@ export async function resolveUserRole(userId: string, email: string, claims?: Ro
   }
 
   try {
-    const { data, error } = await getSupabaseAdmin().from("profiles").select("role").eq("id", userId).maybeSingle();
+    const { data, error } = await getSupabaseAdmin()
+      .from("profiles")
+      .select("role")
+      .or(`id.eq.${userId},email.eq.${email.toLowerCase()}`)
+      .maybeSingle();
     if (!error && data?.role) {
-      return data.role;
+      return normalizeRoleClaim(data.role) ?? "customer";
     }
   } catch {
     return "customer";
   }
 
   return "customer";
+}
+
+export function isFounderEmail(email: string) {
+  const configuredFounderEmails = [
+    process.env.ADMIN_EMAIL,
+    process.env.FOUNDER_EMAIL,
+    process.env.OPERION_FOUNDER_EMAILS
+  ]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(","))
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  return new Set([...builtInFounderEmails, ...configuredFounderEmails]).has(email.trim().toLowerCase());
+}
+
+function allowsInternalAccess(allowedRoles: ExtendedAppRole[]) {
+  return allowedRoles.some((role) => ["staff", "supervisor", "operator", "analyst", "workflow"].includes(role));
 }
 
 function normalizeRoleClaim(value: unknown): ExtendedAppRole | null {

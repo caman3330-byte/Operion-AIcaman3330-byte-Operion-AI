@@ -36,6 +36,23 @@ export function LendersManager({ initialLenders }: LendersManagerProps) {
     }
   }
 
+  async function handleUpdateLender(id: string, payload: LenderCreatePayload) {
+    const response = await fetch(`/api/lenders/${id}`, {
+      method: "PATCH",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || "Unable to update lender");
+    }
+
+    const result = await response.json();
+    setLenders((current) => current.map((lender) => (lender.id === id ? result.data : lender)));
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -47,7 +64,7 @@ export function LendersManager({ initialLenders }: LendersManagerProps) {
         </div>
         <AddLenderModal onCreate={handleCreateLender} isPending={isCreating} />
       </div>
-      <LendersTable lenders={lenders} />
+      <LendersTable lenders={lenders} onUpdate={handleUpdateLender} />
     </div>
   );
 }

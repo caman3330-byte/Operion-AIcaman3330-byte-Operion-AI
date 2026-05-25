@@ -62,6 +62,10 @@ export const lenderCreateSchema = z.object({
   whitelisted: z.boolean().optional()
 });
 
+export const lenderUpdateSchema = lenderCreateSchema.partial().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one lender field is required"
+});
+
 export const qualifySchema = z
   .object({
     lead_id: uuidSchema.optional(),

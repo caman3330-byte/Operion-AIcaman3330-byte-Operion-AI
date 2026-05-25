@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pause, Play, RotateCcw, Trash2, Download, FlaskConical } from "lucide-react";
+import { Pause, Play, RotateCcw, Trash2, Download, FlaskConical, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -169,6 +169,28 @@ export function SimulationControls() {
         >
           <RotateCcw className="h-4 w-4" />
           Generate Report
+        </Button>
+        <Button
+          variant="outline"
+          disabled={isPending}
+          onClick={() =>
+            runAction(
+              () =>
+                fetch("/api/simulation/outreach-preview", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({
+                    batch_size: Number(batchSize),
+                    industries: [industry],
+                    sample_size: Math.min(Number(pipelineLimit), 5)
+                  })
+                }),
+              "Outreach preview generated for synthetic merchants and lender-routing emails."
+            )
+          }
+        >
+          <Mail className="h-4 w-4" />
+          Outreach Preview
         </Button>
         <Button asChild variant="outline">
           <a href="/api/simulation/export-logs" target="_blank" rel="noreferrer">

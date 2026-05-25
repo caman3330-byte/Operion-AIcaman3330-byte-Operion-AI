@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { CheckCircle2, Eye, Mail, PlayCircle, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Eye, ListChecks, Mail, PlayCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,13 +21,17 @@ type ResultState = {
   renderDiagnostics?: Record<string, unknown> | null;
 };
 
+const CONTROLLED_TEST_INBOX = "atsgamers.99@gmail.com";
+
 export function OperationalTestControls() {
   const [provider, setProvider] = useState("both");
   const [includeAi, setIncludeAi] = useState(false);
   const [executeWrites, setExecuteWrites] = useState(false);
-  const [emailTo, setEmailTo] = useState("");
+  const [emailTo, setEmailTo] = useState(CONTROLLED_TEST_INBOX);
   const [emailPurpose, setEmailPurpose] = useState("internal_ai_alert");
   const [templateKind, setTemplateKind] = useState("application_received");
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [message, setMessage] = useState<ResultState>({ status: "idle", title: "Ready", detail: "Choose an operational check to run." });
   const [isPending, startTransition] = useTransition();
 
@@ -65,6 +69,12 @@ export function OperationalTestControls() {
         const response = await request();
         const payload = await response.json().catch(() => ({}));
         const data = payload?.data && typeof payload.data === "object" ? payload.data : null;
+        const html = readString(data, "html");
+        const subject = readString(data, "subject");
+        if (html) {
+          setPreviewHtml(html);
+          setPreviewSubject(subject);
+        }
         if (!response.ok) {
           setMessage({
             status: "error",
@@ -134,20 +144,33 @@ export function OperationalTestControls() {
         </label>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[1fr_260px_260px_auto_auto]">
-        <div className="space-y-1">
+      <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold tracking-normal">Controlled email simulation mode</p>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+              Full workflow delivery tests are forced to the approved inbox and tagged as simulation traffic. No live acquisition list is touched.
+            </p>
+          </div>
+          <Badge variant="success">Inbox: {CONTROLLED_TEST_INBOX}</Badge>
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(320px,1.2fr)_minmax(260px,0.9fr)_minmax(280px,1fr)]">
+        <div className="space-y-2">
           <Label htmlFor="email-to">Test Email Recipient</Label>
           <Input
             id="email-to"
             type="email"
             value={emailTo}
             onChange={(event) => setEmailTo(event.target.value)}
-            placeholder="founder@operion.ai"
+            placeholder={CONTROLLED_TEST_INBOX}
+            className="h-12 text-base"
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2">
           <Label htmlFor="email-purpose">Sender Purpose</Label>
-          <Select id="email-purpose" value={emailPurpose} onChange={(event) => setEmailPurpose(event.target.value)}>
+          <Select id="email-purpose" value={emailPurpose} onChange={(event) => setEmailPurpose(event.target.value)} className="h-12">
             <option value="merchant_outreach">Merchant outreach / funding@</option>
             <option value="document_upload_request">Document request / funding@</option>
             <option value="merchant_support">Merchant support / support@</option>
@@ -156,28 +179,38 @@ export function OperationalTestControls() {
             <option value="lender_submission_package">Lender submission / submissions@</option>
             <option value="internal_ai_alert">Internal alert / alerts@</option>
             <option value="operational_summary">Ops summary / system@</option>
+            <option value="internal_operations">Ops notification / operations@</option>
           </Select>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2">
           <Label htmlFor="email-template">Template</Label>
-          <Select id="email-template" value={templateKind} onChange={(event) => setTemplateKind(event.target.value)}>
+          <Select id="email-template" value={templateKind} onChange={(event) => setTemplateKind(event.target.value)} className="h-12">
             <option value="application_received">Merchant: application received</option>
             <option value="document_upload_request">Merchant: secure upload request</option>
-            <option value="underwriting_review">Merchant: underwriting review</option>
+            <option value="underwriting_review">Merchant: funding review update</option>
             <option value="additional_document_request">Merchant: additional documents</option>
             <option value="approval_notification">Merchant: approval</option>
             <option value="decline_notification">Merchant: decline</option>
+            <option value="merchant_follow_up_reminder">Merchant: follow-up reminder</option>
+            <option value="merchant_outreach">Merchant: cold outreach</option>
+            <option value="merchant_outreach_sequence">Merchant: outreach sequence</option>
+            <option value="lender_partnership_outreach">Lender: partnership outreach</option>
             <option value="lender_submission_package">Lender: submission package</option>
             <option value="lender_package_summary">Lender: package summary</option>
             <option value="deal_routing_notification">Lender: routing notification</option>
             <option value="funding_request_package">Lender: funding request</option>
+            <option value="iso_partnership_communication">Lender: ISO partnership</option>
             <option value="internal_ai_alert">Internal: alerts@</option>
             <option value="internal_support">Internal: support@</option>
             <option value="internal_system">Internal: system@</option>
             <option value="internal_submissions">Internal: submissions@</option>
+            <option value="internal_operations_notification">Internal: operations@</option>
+            <option value="operational_summary">Internal: operational summary</option>
           </Select>
         </div>
-        <div className="flex items-end">
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="outline"
             disabled={isPending}
@@ -201,8 +234,6 @@ export function OperationalTestControls() {
             <Eye className="h-4 w-4" />
             Preview
           </Button>
-        </div>
-        <div className="flex items-end">
           <Button
             variant="outline"
             disabled={isPending || !emailTo}
@@ -226,10 +257,89 @@ export function OperationalTestControls() {
             <Mail className="h-4 w-4" />
             Test Email
           </Button>
-        </div>
+          {previewHtml ? (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isPending}
+              onClick={() => navigator.clipboard.writeText(previewHtml).catch(() => undefined)}
+            >
+              Copy HTML
+            </Button>
+          ) : null}
       </div>
 
+      {previewHtml ? (
+        <div className="space-y-3 rounded-md border border-white/[0.12] bg-black/20 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold tracking-normal">Email Preview Center</p>
+              <p className="mt-1 text-xs text-muted-foreground">{previewSubject ?? "Rendered Operion Capital email template"}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary">Desktop</Badge>
+              <Badge variant="secondary">Mobile</Badge>
+              <Badge variant="secondary">Raw HTML</Badge>
+            </div>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <div className="overflow-hidden rounded-md border bg-[#f5f1e8]">
+              <iframe title="Desktop email preview" srcDoc={previewHtml} className="h-[680px] w-full bg-[#f5f1e8]" />
+            </div>
+            <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-md border bg-[#f5f1e8]">
+              <iframe title="Mobile email preview" srcDoc={previewHtml} className="h-[680px] w-full bg-[#f5f1e8]" />
+            </div>
+          </div>
+          <details className="rounded-md border bg-black/20 p-3">
+            <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Raw rendered HTML</summary>
+            <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">{previewHtml}</pre>
+          </details>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          disabled={isPending}
+          onClick={() =>
+            runCheck("Full email simulation preview", () =>
+              fetch("/api/operations/email-simulation/run", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                  to: emailTo || CONTROLLED_TEST_INBOX,
+                  previewOnly: true,
+                  forceControlledInbox: true
+                })
+              })
+            )
+          }
+        >
+          <Eye className="h-4 w-4" />
+          Preview All Email Flows
+        </Button>
+        <Button
+          variant="outline"
+          disabled={isPending}
+          onClick={() =>
+            runCheck("Full controlled email simulation", () =>
+              fetch("/api/operations/email-simulation/run", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                  to: emailTo || CONTROLLED_TEST_INBOX,
+                  previewOnly: false,
+                  forceControlledInbox: true
+                })
+              })
+            )
+          }
+        >
+          <ListChecks className="h-4 w-4" />
+          Send All to Test Inbox
+        </Button>
         <Button
           disabled={isPending}
           onClick={() =>
@@ -345,6 +455,11 @@ function summarizePayload(payload: unknown) {
   const data = "data" in payload ? (payload as { data?: unknown }).data : payload;
   if (data && typeof data === "object" && "success" in data) {
     return `Completed with success=${String((data as { success?: unknown }).success)}.`;
+  }
+  if (data && typeof data === "object" && "ok" in data) {
+    const record = data as { ok?: unknown; total?: unknown; accepted?: unknown; failed?: unknown; simulation_mode?: unknown };
+    const totals = typeof record.total === "number" ? ` ${record.accepted ?? 0}/${record.total} accepted, ${record.failed ?? 0} failed.` : "";
+    return `Completed with ok=${String(record.ok)}${totals}${record.simulation_mode ? ` Mode: ${String(record.simulation_mode)}.` : ""}`;
   }
   if (data && typeof data === "object" && "status" in data) {
     return `Completed with status=${String((data as { status?: unknown }).status)}.`;
