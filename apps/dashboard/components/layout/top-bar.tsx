@@ -11,8 +11,8 @@ export async function TopBar() {
   const unresolvedAlerts = alerts.filter((alert) => !alert.resolved).length;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-primary/15 bg-black/45 backdrop-blur-2xl">
-      <div className="flex min-h-16 items-center gap-4 px-4 py-2 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 border-b border-primary/15 bg-black/65 backdrop-blur-2xl">
+      <div className="flex min-h-14 items-center gap-3 px-4 py-2 sm:px-6 lg:px-7">
         <div className="hidden min-w-0 flex-1 md:block">
           <div className="relative max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

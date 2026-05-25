@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { CheckCircle2, Mail, PlayCircle, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Eye, Mail, PlayCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,8 @@ type ResultState = {
   payload?: unknown;
   sender?: string | null;
   deliveryState?: string | null;
+  templateKind?: string | null;
+  renderDiagnostics?: Record<string, unknown> | null;
 };
 
 export function OperationalTestControls() {
@@ -25,6 +27,7 @@ export function OperationalTestControls() {
   const [executeWrites, setExecuteWrites] = useState(false);
   const [emailTo, setEmailTo] = useState("");
   const [emailPurpose, setEmailPurpose] = useState("internal_ai_alert");
+  const [templateKind, setTemplateKind] = useState("application_received");
   const [message, setMessage] = useState<ResultState>({ status: "idle", title: "Ready", detail: "Choose an operational check to run." });
   const [isPending, startTransition] = useTransition();
 
@@ -71,7 +74,9 @@ export function OperationalTestControls() {
             timestamp: new Date().toISOString(),
             payload,
             sender: readSender(data),
-            deliveryState: readString(data, "delivery_state")
+            deliveryState: readString(data, "delivery_state"),
+            templateKind: readString(data, "template_kind"),
+            renderDiagnostics: readRecord(data, "render_diagnostics")
           });
           return;
         }
@@ -83,7 +88,9 @@ export function OperationalTestControls() {
           timestamp: new Date().toISOString(),
           payload,
           sender: readSender(data),
-          deliveryState: readString(data, "delivery_state")
+          deliveryState: readString(data, "delivery_state"),
+          templateKind: readString(data, "template_kind"),
+          renderDiagnostics: readRecord(data, "render_diagnostics")
         });
       } catch (error) {
         setMessage({
@@ -127,7 +134,7 @@ export function OperationalTestControls() {
         </label>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[1fr_260px_auto]">
+      <div className="grid gap-3 md:grid-cols-[1fr_260px_260px_auto_auto]">
         <div className="space-y-1">
           <Label htmlFor="email-to">Test Email Recipient</Label>
           <Input
@@ -151,6 +158,50 @@ export function OperationalTestControls() {
             <option value="operational_summary">Ops summary / system@</option>
           </Select>
         </div>
+        <div className="space-y-1">
+          <Label htmlFor="email-template">Template</Label>
+          <Select id="email-template" value={templateKind} onChange={(event) => setTemplateKind(event.target.value)}>
+            <option value="application_received">Merchant: application received</option>
+            <option value="document_upload_request">Merchant: secure upload request</option>
+            <option value="underwriting_review">Merchant: underwriting review</option>
+            <option value="additional_document_request">Merchant: additional documents</option>
+            <option value="approval_notification">Merchant: approval</option>
+            <option value="decline_notification">Merchant: decline</option>
+            <option value="lender_submission_package">Lender: submission package</option>
+            <option value="lender_package_summary">Lender: package summary</option>
+            <option value="deal_routing_notification">Lender: routing notification</option>
+            <option value="funding_request_package">Lender: funding request</option>
+            <option value="internal_ai_alert">Internal: alerts@</option>
+            <option value="internal_support">Internal: support@</option>
+            <option value="internal_system">Internal: system@</option>
+            <option value="internal_submissions">Internal: submissions@</option>
+          </Select>
+        </div>
+        <div className="flex items-end">
+          <Button
+            variant="outline"
+            disabled={isPending}
+            onClick={() =>
+              runCheck("Email template preview", () =>
+                fetch("/api/test-email", {
+                  method: "POST",
+                  credentials: "same-origin",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({
+                    to: emailTo || "preview@operioncapital.com",
+                    text: "Preview only",
+                    purpose: emailPurpose,
+                    templateKind,
+                    previewOnly: true
+                  })
+                })
+              )
+            }
+          >
+            <Eye className="h-4 w-4" />
+            Preview
+          </Button>
+        </div>
         <div className="flex items-end">
           <Button
             variant="outline"
@@ -165,7 +216,8 @@ export function OperationalTestControls() {
                     to: emailTo,
                     subject: "Operion Capital operational email test",
                     text: "This confirms the Operion Capital branded SendGrid template, sender routing, and delivery path are wired for operational testing.",
-                    purpose: emailPurpose
+                    purpose: emailPurpose,
+                    templateKind
                   })
                 })
               )
@@ -237,9 +289,21 @@ export function OperationalTestControls() {
             <span className="font-medium text-foreground">Delivery:</span> {message.deliveryState ?? "n/a"}
           </div>
           <div>
+            <span className="font-medium text-foreground">Template:</span> {message.templateKind ?? "n/a"}
+          </div>
+          <div>
             <span className="font-medium text-foreground">Timestamp:</span> {message.timestamp ? new Date(message.timestamp).toLocaleString() : "n/a"}
           </div>
         </div>
+        {message.renderDiagnostics ? (
+          <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-4">
+            {Object.entries(message.renderDiagnostics).map(([key, value]) => (
+              <div key={key} className="rounded border bg-black/10 px-2 py-1">
+                <span className="font-medium text-foreground">{key.replaceAll("_", " ")}:</span> {String(value)}
+              </div>
+            ))}
+          </div>
+        ) : null}
         {message.payload ? (
           <details className="mt-3 rounded-md border bg-black/20 p-3">
             <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Response payload</summary>
@@ -266,6 +330,12 @@ function readString(data: unknown, key: string) {
   if (!data || typeof data !== "object" || !(key in data)) return null;
   const value = (data as Record<string, unknown>)[key];
   return typeof value === "string" ? value : null;
+}
+
+function readRecord(data: unknown, key: string) {
+  if (!data || typeof data !== "object" || !(key in data)) return null;
+  const value = (data as Record<string, unknown>)[key];
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
 function summarizePayload(payload: unknown) {

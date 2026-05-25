@@ -11,11 +11,11 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-80 border-r border-primary/15 bg-black/50 backdrop-blur-2xl md:flex md:flex-col">
-        <div className="border-b border-primary/15 px-6 py-7">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-primary/15 bg-black/65 backdrop-blur-2xl md:flex md:flex-col">
+        <div className="border-b border-primary/15 px-5 py-6">
           <OperionLogo size="md" />
         </div>
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 space-y-1 p-3">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -24,7 +24,7 @@ export function Sidebar() {
                 key={item.href}
                 href={{ pathname: item.href }}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3.5 py-3 text-sm font-medium text-muted-foreground transition hover:bg-primary/[0.08] hover:text-primary",
+                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-primary/[0.08] hover:text-primary",
                   active && "bg-primary/12 text-primary ring-1 ring-primary/25"
                 )}
               >
@@ -34,7 +34,7 @@ export function Sidebar() {
             );
           })}
         </nav>
-        <div className="border-t border-primary/15 p-5 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+        <div className="border-t border-primary/15 p-4 text-xs uppercase tracking-[0.14em] text-muted-foreground">
           Private Capital Access
           <span className="mt-2 block normal-case tracking-normal">Funding operations, routing, and review systems</span>
         </div>

@@ -1,7 +1,7 @@
 import { recordApiUsage } from "@/lib/api-usage";
 import { readServerEnv } from "@/lib/env";
 import { inferEmailPurposeFromOperation, resolveOperionSender, type OperionEmailPurpose } from "@/lib/email/senders";
-import { renderOperionEmail, renderParagraphEmail } from "@/lib/email/templates";
+import { renderOperionEmail, renderOperationalTestEmail, renderParagraphEmail, type OperionEmailTemplateKind } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { withRetry } from "@/lib/retry";
 import { safeIntegrationCall } from "@/lib/runtime/integration-guards";
@@ -183,25 +183,34 @@ export async function sendOutreachEmail(input: {
   });
 }
 
-export async function sendTestEmail(input: { to: string; subject: string; text: string; purpose?: OperionEmailPurpose }) {
+export async function sendTestEmail(input: {
+  to: string;
+  subject: string;
+  text: string;
+  purpose?: OperionEmailPurpose;
+  templateKind?: OperionEmailTemplateKind;
+}) {
   const purpose = input.purpose ?? "internal_ai_alert";
-  const email = renderParagraphEmail({
-    subject: input.subject,
-    preheader: "Operion internal email delivery verification.",
-    title: "Email delivery test",
-    text: input.text,
-    brand: purpose === "internal_ai_alert" || purpose === "operational_summary" ? "internal" : "capital"
-  });
+  const email = input.templateKind
+    ? renderOperationalTestEmail(input.templateKind)
+    : renderParagraphEmail({
+        subject: input.subject,
+        preheader: "Operion internal email delivery verification.",
+        title: "Email delivery test",
+        text: input.text,
+        brand: purpose === "internal_ai_alert" || purpose === "operational_summary" ? "internal" : "capital"
+      });
 
   return sendSendGridEmail({
     to: input.to,
-    subject: email.subject,
+    subject: input.templateKind ? email.subject : input.subject,
     html: email.html,
     text: email.text,
     operation: "test_email",
     purpose,
     customArgs: {
-      email_type: "test"
+      email_type: "test",
+      template_kind: input.templateKind
     }
   });
 }

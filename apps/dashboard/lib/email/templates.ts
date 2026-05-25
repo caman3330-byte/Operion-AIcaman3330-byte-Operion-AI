@@ -32,12 +32,22 @@ export type OperionEmailTemplateKind =
   | "merchant_contact"
   | "document_upload_request"
   | "application_received"
+  | "underwriting_review"
+  | "additional_document_request"
+  | "approval_notification"
+  | "decline_notification"
   | "application_status_update"
   | "lender_outreach"
   | "lender_onboarding"
   | "lender_submission_package"
+  | "lender_package_summary"
+  | "deal_routing_notification"
+  | "funding_request_package"
   | "internal_ai_alert"
-  | "operational_summary";
+  | "operational_summary"
+  | "internal_support"
+  | "internal_system"
+  | "internal_submissions";
 
 export const operionEmailTemplateCatalog: Record<OperionEmailTemplateKind, { label: string; brand: "capital" | "internal" }> = {
   merchant_outreach: { label: "Merchant outreach", brand: "capital" },
@@ -45,13 +55,338 @@ export const operionEmailTemplateCatalog: Record<OperionEmailTemplateKind, { lab
   merchant_contact: { label: "Merchant contact", brand: "capital" },
   document_upload_request: { label: "Document upload request", brand: "capital" },
   application_received: { label: "Application received", brand: "capital" },
+  underwriting_review: { label: "Underwriting review", brand: "capital" },
+  additional_document_request: { label: "Additional document request", brand: "capital" },
+  approval_notification: { label: "Approval notification", brand: "capital" },
+  decline_notification: { label: "Decline notification", brand: "capital" },
   application_status_update: { label: "Application status update", brand: "capital" },
   lender_outreach: { label: "Lender outreach", brand: "capital" },
   lender_onboarding: { label: "Lender onboarding", brand: "capital" },
   lender_submission_package: { label: "Lender submission package", brand: "capital" },
+  lender_package_summary: { label: "Lender package summary", brand: "capital" },
+  deal_routing_notification: { label: "Deal routing notification", brand: "capital" },
+  funding_request_package: { label: "Funding request package", brand: "capital" },
   internal_ai_alert: { label: "Internal AI alert", brand: "internal" },
-  operational_summary: { label: "Operational summary", brand: "internal" }
+  operational_summary: { label: "Operational summary", brand: "internal" },
+  internal_support: { label: "Internal support notice", brand: "internal" },
+  internal_system: { label: "Internal system notice", brand: "internal" },
+  internal_submissions: { label: "Internal submissions notice", brand: "internal" }
 };
+
+export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): RenderedEmail {
+  const sample = {
+    businessName: "Atlas Harbor Logistics LLC",
+    ownerName: "Jordan Rivera",
+    lenderName: "NorthBridge Funding Desk",
+    amount: "$185,000",
+    uploadUrl: "https://operioncapital.com/portal/upload?token=preview",
+    applicationUrl: "https://operioncapital.com/application-status",
+    internalUrl: "https://operioncapital.com/supervisor/testing"
+  };
+
+  const templates: Record<OperionEmailTemplateKind, OperionEmailInput> = {
+    merchant_outreach: {
+      subject: `Funding options for ${sample.businessName}`,
+      preheader: "A private capital review is available for your business.",
+      title: "Private capital review available",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        `${sample.businessName} appears to fit several working-capital programs in the Operion Capital network. Our team can prepare a private lender-ready profile without affecting your credit.`,
+        "The review focuses on revenue consistency, requested use of funds, deposit activity, and speed-to-funding requirements."
+      ],
+      sections: [
+        { label: "Estimated request", value: sample.amount },
+        { label: "Primary product", value: "MCA / working capital" },
+        { label: "Review status", value: "Available for intake" }
+      ],
+      cta: { label: "Start Funding Review", url: sample.applicationUrl },
+      brand: "capital"
+    },
+    merchant_support: {
+      subject: "Operion Capital support follow-up",
+      preheader: "A support update from Operion Capital.",
+      title: "Support request update",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        "Our support desk reviewed your request and updated the internal application notes. No duplicate submission is required.",
+        "Reply to this email with any corrected business details and our team will attach them to your active file."
+      ],
+      brand: "capital"
+    },
+    merchant_contact: {
+      subject: "Operion Capital inquiry received",
+      preheader: "We received your message.",
+      title: "Your inquiry has been received",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        "Thank you for contacting Operion Capital. Your message has been routed to the appropriate operations desk for review.",
+        "A team member will respond with the next step once your request is matched to the correct workflow."
+      ],
+      brand: "capital"
+    },
+    document_upload_request: {
+      subject: `Secure document request for ${sample.businessName}`,
+      preheader: "Upload bank statements and identity documents through a secure link.",
+      title: "Secure document upload requested",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        `To continue underwriting review for ${sample.businessName}, please upload the requested documents through your private Operion Capital link.`,
+        "The link is signed, time-limited, and tied to your application record."
+      ],
+      sections: [
+        { label: "Requested", value: "3 months bank statements, owner ID, voided check" },
+        { label: "Security", value: "Encrypted upload portal" },
+        { label: "Application", value: sample.businessName }
+      ],
+      cta: { label: "Upload Documents", url: sample.uploadUrl },
+      brand: "capital"
+    },
+    application_received: {
+      subject: `Application received for ${sample.businessName}`,
+      preheader: "Your funding request is now in the Operion Capital workflow.",
+      title: "Funding request received",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        `Operion Capital received the funding request for ${sample.businessName}. Your file has moved into operational intake.`,
+        "The next review step checks business details, deposit activity, and lender fit."
+      ],
+      sections: [
+        { label: "Requested amount", value: sample.amount },
+        { label: "Current stage", value: "Intake received" },
+        { label: "Next step", value: "Document and underwriting review" }
+      ],
+      cta: { label: "View Application", url: sample.applicationUrl },
+      brand: "capital"
+    },
+    underwriting_review: {
+      subject: `${sample.businessName} is in underwriting review`,
+      preheader: "Your application has moved to underwriting analysis.",
+      title: "Underwriting review in progress",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        "Your application is now under review by Operion Capital operations. We are validating funding fit, repayment capacity, and lender routing options.",
+        "If additional documents are needed, you will receive a secure upload request."
+      ],
+      sections: [
+        { label: "Stage", value: "Underwriting review" },
+        { label: "Review scope", value: "Revenue, deposits, risk signals, lender criteria" }
+      ],
+      brand: "capital"
+    },
+    additional_document_request: {
+      subject: `Additional documents needed for ${sample.businessName}`,
+      preheader: "A few more documents are needed to continue review.",
+      title: "Additional documents requested",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        "The underwriting desk needs a few additional documents before lender routing can continue.",
+        "Please use the secure upload link so the documents attach directly to your application file."
+      ],
+      sections: [
+        { label: "Needed", value: "Most recent bank statement and proof of ownership" },
+        { label: "Priority", value: "Required before routing" }
+      ],
+      cta: { label: "Upload Requested Files", url: sample.uploadUrl },
+      brand: "capital"
+    },
+    approval_notification: {
+      subject: `Funding options approved for ${sample.businessName}`,
+      preheader: "Your file has qualified for lender options.",
+      title: "Funding options approved",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        `${sample.businessName} has qualified for available funding options based on the current review package.`,
+        "An Operion Capital representative will confirm terms, documentation, and funding timing before submission."
+      ],
+      sections: [
+        { label: "Qualified amount", value: sample.amount },
+        { label: "Status", value: "Approved for offer review" }
+      ],
+      cta: { label: "Review Next Step", url: sample.applicationUrl },
+      brand: "capital"
+    },
+    decline_notification: {
+      subject: `Funding review update for ${sample.businessName}`,
+      preheader: "Your current application does not meet available lender criteria.",
+      title: "Funding review decision",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        "After review, the current file does not meet available lender criteria for the requested funding structure.",
+        "This decision is based on the present documentation and lender requirements. You may contact support if business conditions change."
+      ],
+      sections: [
+        { label: "Status", value: "Declined for current request" },
+        { label: "Support", value: "support@operioncapital.com" }
+      ],
+      brand: "capital"
+    },
+    application_status_update: {
+      subject: `Application status update: ${sample.businessName}`,
+      preheader: "Your Operion Capital application has a new status.",
+      title: "Application status updated",
+      intro: [
+        `Hi ${sample.ownerName},`,
+        "Your application status has changed. The operations team has recorded the latest review milestone in your file.",
+        "You can view the current status and any outstanding requests through your dashboard."
+      ],
+      sections: [{ label: "Current stage", value: "Lender routing" }],
+      cta: { label: "View Status", url: sample.applicationUrl },
+      brand: "capital"
+    },
+    lender_outreach: {
+      subject: `New funding opportunity: ${sample.businessName}`,
+      preheader: "A matched business funding opportunity is available for review.",
+      title: "Matched funding opportunity",
+      intro: [
+        `Hello ${sample.lenderName},`,
+        `${sample.businessName} has been matched against your active funding criteria for review.`,
+        "Please review the summary and advise whether your desk would like the full submission package."
+      ],
+      sections: [
+        { label: "Requested amount", value: sample.amount },
+        { label: "Industry", value: "Logistics" },
+        { label: "State", value: "NY" }
+      ],
+      brand: "capital"
+    },
+    lender_onboarding: {
+      subject: "Operion Capital lender onboarding",
+      preheader: "Your lender profile is ready for operational setup.",
+      title: "Lender onboarding next step",
+      intro: [
+        `Hello ${sample.lenderName},`,
+        "Operion Capital is preparing your lender profile for matched business funding submissions.",
+        "Please confirm criteria, submission preferences, and operational contacts for routing."
+      ],
+      brand: "capital"
+    },
+    lender_submission_package: {
+      subject: `Submission package: ${sample.businessName}`,
+      preheader: "A lender-ready package has been routed for review.",
+      title: "Lender submission package",
+      intro: [
+        `Hello ${sample.lenderName},`,
+        "Operion Capital has routed a lender-ready package for review. The package includes the intake summary, requested amount, funding purpose, and document status.",
+        "Please respond with approval, counteroffer, or decline instructions."
+      ],
+      sections: [
+        { label: "Business", value: sample.businessName },
+        { label: "Requested amount", value: sample.amount },
+        { label: "Package status", value: "Ready for lender review" }
+      ],
+      brand: "capital"
+    },
+    lender_package_summary: {
+      subject: `Package summary: ${sample.businessName}`,
+      preheader: "Summary metrics for lender review.",
+      title: "Funding package summary",
+      intro: [
+        `Hello ${sample.lenderName},`,
+        "Below is the concise funding package summary for your underwriting desk.",
+        "The full document package remains available through approved internal submission channels."
+      ],
+      sections: [
+        { label: "Monthly deposits", value: "$92,000" },
+        { label: "Average balance", value: "$24,000" },
+        { label: "Use of funds", value: "Equipment deposits and working capital" }
+      ],
+      brand: "capital"
+    },
+    deal_routing_notification: {
+      subject: `Deal routed: ${sample.businessName}`,
+      preheader: "A matched deal has been routed to your queue.",
+      title: "Deal routing notification",
+      intro: [
+        `Hello ${sample.lenderName},`,
+        `${sample.businessName} has been routed to your funding desk based on active criteria alignment.`,
+        "Please confirm acceptance window and any additional documentation requirements."
+      ],
+      sections: [
+        { label: "Routing reason", value: "Revenue band, state, industry, product fit" },
+        { label: "Routing status", value: "Submitted for desk review" }
+      ],
+      brand: "capital"
+    },
+    funding_request_package: {
+      subject: `Funding request package: ${sample.businessName}`,
+      preheader: "Funding request package ready for lender action.",
+      title: "Funding request package",
+      intro: [
+        `Hello ${sample.lenderName},`,
+        "Operion Capital is sending a structured funding request package for lender action.",
+        "Please return decision, requested stipulations, and any offer terms through the approved submission channel."
+      ],
+      sections: [
+        { label: "Requested amount", value: sample.amount },
+        { label: "Decision needed", value: "Approval, stipulations, counteroffer, or decline" }
+      ],
+      brand: "capital"
+    },
+    internal_ai_alert: {
+      subject: "AI execution alert: underwriting workflow",
+      preheader: "An operational AI workflow requires review.",
+      title: "AI workflow alert",
+      intro: [
+        "An underwriting workflow completed with a review flag that requires an authorized operator decision.",
+        "Inspect the execution payload, retry state, and linked application before taking action."
+      ],
+      sections: [
+        { label: "Queue", value: "Underwriting AI" },
+        { label: "Status", value: "Needs operator review" }
+      ],
+      cta: { label: "Open Supervisor Console", url: sample.internalUrl },
+      brand: "internal"
+    },
+    operational_summary: {
+      subject: "Operion Capital operational summary",
+      preheader: "Queue, delivery, upload, and AI execution summary.",
+      title: "Operational summary",
+      intro: [
+        "The production operations dashboard has generated a current readiness summary.",
+        "Review queue health, lender routing, upload lifecycle, email delivery, and AI execution state before the next simulation cycle."
+      ],
+      sections: [
+        { label: "Queue health", value: "Nominal" },
+        { label: "Email delivery", value: "Accepted by provider" },
+        { label: "Upload lifecycle", value: "Signed links active" }
+      ],
+      cta: { label: "Open Testing Dashboard", url: sample.internalUrl },
+      brand: "internal"
+    },
+    internal_support: {
+      subject: "Support queue alert",
+      preheader: "A merchant support case needs internal attention.",
+      title: "Support queue alert",
+      intro: [
+        "A merchant support case has been tagged for operational review.",
+        "Check application context, latest email thread, and document status before responding."
+      ],
+      brand: "internal"
+    },
+    internal_system: {
+      subject: "System operations notice",
+      preheader: "A system-level operational event was recorded.",
+      title: "System operations notice",
+      intro: [
+        "A monitored production subsystem recorded an operational event.",
+        "Review diagnostics, retry visibility, and response payloads before closing the event."
+      ],
+      brand: "internal"
+    },
+    internal_submissions: {
+      subject: "Submissions desk alert",
+      preheader: "A lender submission package needs review.",
+      title: "Submissions desk alert",
+      intro: [
+        "A lender submission package is ready for internal review before external delivery.",
+        "Confirm package completeness, document status, routing rationale, and lender contact details."
+      ],
+      brand: "internal"
+    }
+  };
+
+  return renderOperionEmail(templates[kind]);
+}
 
 export function renderOperionEmail(input: OperionEmailInput): RenderedEmail {
   const brandName = "Operion Capital";

@@ -6,6 +6,10 @@ import type { AppRole } from "@operion/shared";
 import type { Database } from "@/lib/supabase/types";
 
 export type ExtendedAppRole = AppRole | "admin" | "operator" | "analyst" | "super_admin" | "workflow";
+type RoleClaimSource = {
+  app_metadata?: Record<string, unknown> | null;
+  user_metadata?: Record<string, unknown> | null;
+};
 
 export interface FounderActor {
   id: string;
@@ -13,8 +17,10 @@ export interface FounderActor {
   role: ExtendedAppRole;
 }
 
+const founderEquivalentRoles: ExtendedAppRole[] = ["founder", "super_admin", "admin"];
+
 export async function requireFounder(request: Request): Promise<FounderActor> {
-  return requireRole(request, ["founder"]);
+  return requireRole(request, founderEquivalentRoles);
 }
 
 export async function requireInternalUser(request: Request): Promise<FounderActor> {
@@ -55,7 +61,7 @@ export async function requireRole(request: Request, allowedRoles: ExtendedAppRol
     throw new AuthenticationError();
   }
 
-  const role = await resolveUserRole(user.id, user.email);
+  const role = await resolveUserRole(user.id, user.email, user);
   if (!allowedRoles.includes(role)) {
     throw new AuthorizationError();
   }
@@ -88,7 +94,9 @@ export async function getRequestUser(request: Request) {
 
     return {
       id: data.user.id,
-      email: data.user.email
+      email: data.user.email,
+      app_metadata: data.user.app_metadata,
+      user_metadata: data.user.user_metadata
     };
   }
 
@@ -109,14 +117,26 @@ export async function getRequestUser(request: Request) {
 
   return {
     id: data.user.id,
-    email: data.user.email
+    email: data.user.email,
+    app_metadata: data.user.app_metadata,
+    user_metadata: data.user.user_metadata
   };
 }
 
-export async function resolveUserRole(userId: string, email: string): Promise<ExtendedAppRole> {
+export async function resolveUserRole(userId: string, email: string, claims?: RoleClaimSource): Promise<ExtendedAppRole> {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail && email.toLowerCase() === adminEmail.toLowerCase()) {
     return "founder";
+  }
+
+  const metadataRole = normalizeRoleClaim(
+    claims?.app_metadata?.app_role ??
+      claims?.app_metadata?.role ??
+      claims?.user_metadata?.app_role ??
+      claims?.user_metadata?.role
+  );
+  if (metadataRole) {
+    return metadataRole;
   }
 
   try {
@@ -129,6 +149,28 @@ export async function resolveUserRole(userId: string, email: string): Promise<Ex
   }
 
   return "customer";
+}
+
+function normalizeRoleClaim(value: unknown): ExtendedAppRole | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === "customer" ||
+    normalized === "staff" ||
+    normalized === "supervisor" ||
+    normalized === "founder" ||
+    normalized === "admin" ||
+    normalized === "operator" ||
+    normalized === "analyst" ||
+    normalized === "super_admin"
+  ) {
+    return normalized;
+  }
+
+  return null;
 }
 
 function extractBearerToken(request: Request) {

@@ -137,7 +137,7 @@ export async function middleware(request: NextRequest) {
       });
     }
 
-    const role = await resolveRole(supabase, data.user.id, data.user.email ?? "");
+    const role = await resolveRole(supabase, data.user.id, data.user.email ?? "", data.user);
     if (!internalRoles.has(role)) {
       return new NextResponse(JSON.stringify({ error: "forbidden" }), {
         status: 403,
@@ -224,7 +224,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (data.user && isInternalProtectedRoute(pathname)) {
-    const role = await resolveRole(supabase, data.user.id, data.user.email ?? "");
+    const role = await resolveRole(supabase, data.user.id, data.user.email ?? "", data.user);
     if (!internalRoles.has(role)) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
@@ -277,11 +277,25 @@ function isCustomerApiRoute(pathname: string) {
 async function resolveRole(
   supabase: any,
   userId: string,
-  email: string
+  email: string,
+  user?: {
+    app_metadata?: Record<string, unknown> | null;
+    user_metadata?: Record<string, unknown> | null;
+  }
 ) {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (adminEmail && email.toLowerCase() === adminEmail.toLowerCase()) {
     return "founder";
+  }
+
+  const metadataRole = normalizeRoleClaim(
+    user?.app_metadata?.app_role ??
+      user?.app_metadata?.role ??
+      user?.user_metadata?.app_role ??
+      user?.user_metadata?.role
+  );
+  if (metadataRole) {
+    return metadataRole;
   }
 
   try {
@@ -290,6 +304,28 @@ async function resolveRole(
   } catch {
     return "customer";
   }
+}
+
+function normalizeRoleClaim(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === "customer" ||
+    normalized === "staff" ||
+    normalized === "supervisor" ||
+    normalized === "founder" ||
+    normalized === "admin" ||
+    normalized === "operator" ||
+    normalized === "analyst" ||
+    normalized === "super_admin"
+  ) {
+    return normalized;
+  }
+
+  return null;
 }
 
 function withSecurityHeaders(response: NextResponse) {
