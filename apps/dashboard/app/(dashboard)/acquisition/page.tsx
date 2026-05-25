@@ -1,5 +1,6 @@
 import { AlertTriangle, BriefcaseBusiness, CheckCircle2, Contact, Database, Search, Star } from "lucide-react";
 import { MetricCard } from "@/components/metrics/metric-card";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,6 +10,9 @@ import { formatDateTime } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function AcquisitionPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   try {
     const [summary, sources, jobs, enrichment, contacts] = await Promise.all([
       acquisitionRepository.summary(),

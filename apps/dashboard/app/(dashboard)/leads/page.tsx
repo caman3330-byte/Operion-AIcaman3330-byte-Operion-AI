@@ -1,9 +1,13 @@
 import { LeadsTable } from "@/components/leads/leads-table";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { getLeadsData } from "@/lib/data/live-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function LeadsPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   const { data: leads } = await getLeadsData();
 
   return (

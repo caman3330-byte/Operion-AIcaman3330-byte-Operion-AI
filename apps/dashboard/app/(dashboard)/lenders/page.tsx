@@ -1,9 +1,13 @@
 import { LendersManager } from "@/components/lenders/lenders-manager";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { getLendersData } from "@/lib/data/live-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function LendersPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   const { data: lenders } = await getLendersData();
 
   return (

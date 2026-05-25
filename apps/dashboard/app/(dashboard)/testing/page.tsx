@@ -1,5 +1,6 @@
 import { AlertTriangle, DatabaseZap, ListChecks, Mail, ShieldCheck } from "lucide-react";
 import { OperationalTestControls } from "@/components/admin/operational-test-controls";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,9 @@ import { isSimulationMigrationMissing } from "@/lib/repositories/simulation";
 export const dynamic = "force-dynamic";
 
 export default async function TestingPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   try {
     const diagnostics = await collectDiagnosticsSnapshot();
 

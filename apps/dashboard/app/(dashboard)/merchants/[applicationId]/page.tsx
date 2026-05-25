@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { LifecycleControls } from "@/components/merchants/lifecycle-controls";
 import { OperatorNotesForm, type OperatorNotesValue } from "@/components/merchants/operator-notes-form";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +56,9 @@ function readNote(value: unknown) {
 }
 
 export default async function MerchantDetailsPage({ params }: { params: Promise<{ applicationId: string }> }) {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   let data;
   const resolvedParams = await params;
 

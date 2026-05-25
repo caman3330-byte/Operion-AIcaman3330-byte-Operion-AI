@@ -1,4 +1,5 @@
 import { BrainCircuit } from "lucide-react";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { ManagerAgentForm } from "@/components/manager-agent/manager-agent-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,9 @@ import { managerAgentRepository } from "@/lib/repositories/manager-agent";
 export const dynamic = "force-dynamic";
 
 export default async function ManagerAgentPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   const runs = await managerAgentRepository.listRuns(10).catch(() => []);
 
   return (

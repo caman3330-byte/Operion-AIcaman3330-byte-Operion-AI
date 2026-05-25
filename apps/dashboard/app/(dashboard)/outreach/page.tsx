@@ -1,4 +1,5 @@
 import { Mail, MessageSquareReply, MousePointerClick, ShieldCheck } from "lucide-react";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,9 @@ import { formatDateTime } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function OutreachPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   try {
     const [summary, campaigns, queue, replies] = await Promise.all([
       acquisitionRepository.summary(),

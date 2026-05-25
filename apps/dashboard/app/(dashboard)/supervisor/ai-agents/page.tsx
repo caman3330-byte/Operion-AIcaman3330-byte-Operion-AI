@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   Workflow
 } from "lucide-react";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,9 @@ const workflowPath = [
 ];
 
 export default async function SupervisorAiAgentsPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   const [operator, production, timelines] = await Promise.all([
     getOperatorDashboardSummary({ limit: 90 }),
     getProductionSupervisorSummary(),

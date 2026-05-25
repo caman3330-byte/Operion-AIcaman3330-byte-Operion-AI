@@ -1,11 +1,15 @@
 import { PromptEditor } from "@/components/prompts/prompt-editor";
 import { PromptTestResults } from "@/components/prompts/prompt-test-results";
 import { PromptVersionList } from "@/components/prompts/prompt-version-list";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { getPromptData } from "@/lib/data/live-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function PromptsPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   const { versions, results } = await getPromptData();
 
   return (

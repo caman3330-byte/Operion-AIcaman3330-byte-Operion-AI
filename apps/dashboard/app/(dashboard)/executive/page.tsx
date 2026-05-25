@@ -2,6 +2,7 @@ import { Activity, AlertTriangle, BellRing, Bot, CheckCircle2, ClipboardList, Ne
 import { getSupervisorSummary } from "@/lib/agent-orchestration/orchestrator";
 import { auditLogRepository } from "@/lib/repositories/audit-log";
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export const dynamic = "force-dynamic";
 
 export default async function ExecutiveDashboardPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   const [summary, auditEntries, acquisition] = await Promise.all([
     getSupervisorSummary(),
     auditLogRepository.list({ entityType: "manager_agent", limit: 12 }).catch(() => []),

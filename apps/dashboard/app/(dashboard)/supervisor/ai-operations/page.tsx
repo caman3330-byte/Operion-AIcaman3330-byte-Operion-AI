@@ -1,4 +1,5 @@
 import { Activity, AlertTriangle, Bot, Braces, Clock3, Cpu, DatabaseZap, Gauge, Mail, Route, ShieldCheck, TimerReset } from "lucide-react";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,9 @@ const agents = [
 const workflowStages = ["Lead", "Qualification", "Underwriting", "Risk", "Lender Match", "Outreach", "Approval", "Funding"];
 
 export default async function AiOperationsPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   const summary = await getOperatorDashboardSummary({ limit: 80 });
   const executions = summary.ai.executions.items;
   const traces = summary.workflows.traces.items;

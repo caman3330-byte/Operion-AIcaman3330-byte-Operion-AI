@@ -16,6 +16,7 @@ import { getProductionSupervisorSummary } from "@/lib/data/supervisor-command";
 import { getOperatorDashboardSummary } from "@/lib/operator-dashboard/service";
 import { getApplicationWorkflowTimelines } from "@/lib/operator-dashboard/workflow-timeline";
 import { getLaunchMonitoringSnapshot } from "@/lib/operations/monitoring";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,9 @@ import { formatDateTime } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function SupervisorPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   const [summary, production, operator, monitoring, timelines] = await Promise.all([
     getSupervisorSummary(),
     getProductionSupervisorSummary(),

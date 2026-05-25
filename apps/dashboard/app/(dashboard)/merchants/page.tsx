@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { getMerchantPipelineData } from "@/lib/data/merchant-profile";
@@ -13,6 +14,9 @@ function statusVariant(status: string) {
 }
 
 export default async function MerchantsPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   const { applications, counts } = await getMerchantPipelineData();
 
   return (

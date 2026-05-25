@@ -1,4 +1,5 @@
 import { DollarSign, FileText, Landmark } from "lucide-react";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,6 +8,9 @@ import { getProductionSupervisorSummary } from "@/lib/data/supervisor-command";
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+
   const summary = await getProductionSupervisorSummary();
   const reports = [
     {
