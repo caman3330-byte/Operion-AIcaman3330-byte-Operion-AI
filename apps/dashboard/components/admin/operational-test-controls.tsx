@@ -171,43 +171,44 @@ export function OperationalTestControls() {
         <div className="space-y-2">
           <Label htmlFor="email-purpose">Sender Purpose</Label>
           <Select id="email-purpose" value={emailPurpose} onChange={(event) => setEmailPurpose(event.target.value)} className="h-12">
-            <option value="merchant_outreach">Merchant outreach / funding@</option>
             <option value="document_upload_request">Document request / funding@</option>
-            <option value="merchant_support">Merchant support / support@</option>
-            <option value="merchant_contact">General contact / contact@</option>
+            <option value="application_received">Application received / funding@</option>
+            <option value="application_status_update">Merchant status / funding@</option>
             <option value="lender_outreach">Lender outreach / lenders@</option>
             <option value="lender_submission_package">Lender submission / submissions@</option>
             <option value="internal_ai_alert">Internal alert / alerts@</option>
+            <option value="internal_support">Support alert / support@</option>
             <option value="operational_summary">Ops summary / system@</option>
-            <option value="internal_operations">Ops notification / operations@</option>
           </Select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="email-template">Template</Label>
           <Select id="email-template" value={templateKind} onChange={(event) => setTemplateKind(event.target.value)} className="h-12">
-            <option value="application_received">Merchant: application received</option>
-            <option value="document_upload_request">Merchant: secure upload request</option>
-            <option value="underwriting_review">Merchant: funding review update</option>
-            <option value="additional_document_request">Merchant: additional documents</option>
-            <option value="approval_notification">Merchant: approval</option>
-            <option value="decline_notification">Merchant: decline</option>
-            <option value="merchant_follow_up_reminder">Merchant: follow-up reminder</option>
-            <option value="merchant_outreach">Merchant: cold outreach</option>
-            <option value="merchant_outreach_sequence">Merchant: outreach sequence</option>
-            <option value="lender_partnership_outreach">Lender: partnership outreach</option>
-            <option value="lender_submission_package">Lender: submission package</option>
-            <option value="lender_package_summary">Lender: package summary</option>
-            <option value="deal_routing_notification">Lender: routing notification</option>
-            <option value="funding_request_package">Lender: funding request</option>
-            <option value="iso_partnership_communication">Lender: ISO partnership</option>
-            <option value="internal_ai_alert">Internal: alerts@</option>
-            <option value="internal_support">Internal: support@</option>
-            <option value="internal_system">Internal: system@</option>
-            <option value="internal_submissions">Internal: submissions@</option>
-            <option value="internal_operations_notification">Internal: operations@</option>
-            <option value="operational_summary">Internal: operational summary</option>
+            <optgroup label="Merchant">
+              <option value="application_received">Application received</option>
+              <option value="document_upload_request">Secure upload request</option>
+              <option value="additional_document_request">Additional documents</option>
+              <option value="underwriting_review">Review in progress</option>
+              <option value="approval_notification">Approved / lender review</option>
+              <option value="decline_notification">Declined</option>
+            </optgroup>
+            <optgroup label="Lender">
+              <option value="lender_partnership_outreach">Partnership intro</option>
+              <option value="lender_outreach">Matched opportunity</option>
+              <option value="lender_submission_package">Submission package</option>
+              <option value="funding_request_package">Funding request package</option>
+            </optgroup>
+            <optgroup label="Internal">
+              <option value="internal_ai_alert">AI alert</option>
+              <option value="internal_support">Support alert</option>
+              <option value="operational_summary">Operations summary</option>
+            </optgroup>
           </Select>
         </div>
+      </div>
+
+      <div className="rounded-md border border-white/[0.10] bg-black/20 p-3 text-xs leading-5 text-muted-foreground">
+        Active simulation is intentionally lean: 6 merchant lifecycle emails, 4 lender workflow emails, and 3 internal alerts. ISO and broad campaign templates remain available in code for future manual campaigns, but are excluded from automated Send All.
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -317,7 +318,7 @@ export function OperationalTestControls() {
           }
         >
           <Eye className="h-4 w-4" />
-          Preview All Email Flows
+          Preview Active Email Flows
         </Button>
         <Button
           variant="outline"
@@ -338,7 +339,7 @@ export function OperationalTestControls() {
           }
         >
           <ListChecks className="h-4 w-4" />
-          Send All to Test Inbox
+          Send Active Flows to Test Inbox
         </Button>
         <Button
           disabled={isPending}

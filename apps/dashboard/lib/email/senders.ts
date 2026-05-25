@@ -9,6 +9,7 @@ export type OperionEmailPurpose =
   | "lender_onboarding"
   | "lender_submission_package"
   | "internal_ai_alert"
+  | "internal_support"
   | "operational_summary"
   | "internal_operations";
 
@@ -86,6 +87,12 @@ const senderCatalog: Record<
     localPart: "alerts",
     name: "Operion Capital Alerts",
     replyToLocalPart: "admin"
+  },
+  internal_support: {
+    envKey: "SUPPORT",
+    localPart: "support",
+    name: "Operion Capital Support Desk",
+    replyToLocalPart: "support"
   },
   operational_summary: {
     envKey: "SYSTEM",

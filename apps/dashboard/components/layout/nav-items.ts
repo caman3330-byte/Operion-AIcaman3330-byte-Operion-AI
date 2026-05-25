@@ -18,6 +18,7 @@ export const navItems = [
   { href: "/admin/testing", label: "Testing", icon: TimerReset },
   { href: "/supervisor", label: "Supervisor", icon: Gauge },
   { href: "/supervisor/ai-operations", label: "AI Operations", icon: Bot },
+  { href: "/supervisor/ai-agents", label: "AI Agents", icon: Activity },
   { href: "/acquisition", label: "Lead Sources", icon: Search },
   { href: "/leads", label: "Leads", icon: ClipboardList },
   { href: "/merchants", label: "Merchants", icon: BadgeDollarSign },

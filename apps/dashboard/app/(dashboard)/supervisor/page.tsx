@@ -8,26 +8,35 @@ import {
   FileText,
   Mail,
   Route,
+  Workflow,
   XCircle
 } from "lucide-react";
 import { getSupervisorSummary } from "@/lib/agent-orchestration/orchestrator";
 import { getProductionSupervisorSummary } from "@/lib/data/supervisor-command";
 import { getOperatorDashboardSummary } from "@/lib/operator-dashboard/service";
+import { getApplicationWorkflowTimelines } from "@/lib/operator-dashboard/workflow-timeline";
 import { getLaunchMonitoringSnapshot } from "@/lib/operations/monitoring";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function SupervisorPage() {
-  const [summary, production, operator, monitoring] = await Promise.all([
+  const [summary, production, operator, monitoring, timelines] = await Promise.all([
     getSupervisorSummary(),
     getProductionSupervisorSummary(),
     getOperatorDashboardSummary({ limit: 10 }),
-    getLaunchMonitoringSnapshot({ limit: 100 })
+    getLaunchMonitoringSnapshot({ limit: 100 }),
+    getApplicationWorkflowTimelines(6)
   ]);
+  const emailTotal = production.emailOperations.sent + production.emailOperations.failed;
+  const emailSuccessRate = emailTotal === 0 ? 100 : Math.round((production.emailOperations.sent / emailTotal) * 100);
+  const pendingLenderResponses = timelines.filter((timeline) =>
+    timeline.steps.some((step) => step.key === "waiting_lender_response" && step.state === "active")
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -182,6 +191,8 @@ export default async function SupervisorPage() {
         <MetricCard title="Funding Review Queue" value={String(production.underwritingQueue)} detail="Applications in review states" icon={Clock3} />
         <MetricCard title="Email Queue Health" value={production.emailOperations.failed > 0 ? "Watch" : "Ready"} detail={`${production.emailOperations.failed} failed / ${production.emailOperations.sent} sent`} icon={Mail} tone={production.emailOperations.failed > 0 ? "warning" : "success"} />
         <MetricCard title="AI Queue Health" value={production.aiFailed > 0 ? "Watch" : "Ready"} detail={`${production.aiQueued + production.aiRunning} active / ${production.aiFailed} blocked`} icon={Bot} tone={production.aiFailed > 0 ? "warning" : "success"} />
+        <MetricCard title="Email Success" value={`${emailSuccessRate}%`} detail="Tracked SendGrid/outreach log success" icon={Mail} tone={production.emailOperations.failed > 0 ? "warning" : "success"} />
+        <MetricCard title="Lender Responses Pending" value={String(pendingLenderResponses)} detail="Submitted packages awaiting desk response" icon={Workflow} tone={pendingLenderResponses > 0 ? "warning" : "success"} />
       </div>
 
       <Card>
@@ -203,6 +214,47 @@ export default async function SupervisorPage() {
               <p className="mt-2 text-sm font-semibold capitalize text-white">{state}</p>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <Workflow className="h-4 w-4 text-primary" />
+              Merchant Workflow Timeline
+            </CardTitle>
+            <Badge variant="outline">Supervisor only</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {timelines.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No application lifecycle records available in the current window.</p>
+          ) : (
+            timelines.map((timeline) => (
+              <div key={timeline.applicationId} className="rounded-md border border-white/[0.10] bg-white/[0.025] p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{timeline.businessName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {timeline.currentStage} / {timeline.completionRate}% complete / last activity {formatDateTime(timeline.lastActivityAt)}
+                    </p>
+                  </div>
+                  <Badge variant={timeline.status === "funded" ? "success" : timeline.status === "rejected" ? "destructive" : "secondary"}>
+                    {timeline.status.replaceAll("_", " ")}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-3 xl:grid-cols-9">
+                  {timeline.steps.map((step) => (
+                    <div key={step.key} className="rounded-md border border-white/[0.08] bg-black/20 p-2">
+                      <p className="min-h-8 text-[11px] font-medium leading-4 text-white">{step.label}</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{step.state}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
 

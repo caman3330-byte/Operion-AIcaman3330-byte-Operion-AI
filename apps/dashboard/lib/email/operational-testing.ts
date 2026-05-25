@@ -7,29 +7,48 @@ import {
 
 export const CONTROLLED_EMAIL_SIMULATION_INBOX = "atsgamers.99@gmail.com";
 
-export const fullEmailSimulationTemplateKinds = [
+export const merchantEmailSimulationTemplateKinds = [
   "application_received",
   "document_upload_request",
   "additional_document_request",
   "underwriting_review",
   "approval_notification",
-  "decline_notification",
-  "merchant_follow_up_reminder",
-  "merchant_outreach",
-  "merchant_outreach_sequence",
+  "decline_notification"
+] as const satisfies readonly OperionEmailTemplateKind[];
+
+export const lenderEmailSimulationTemplateKinds = [
   "lender_partnership_outreach",
   "lender_outreach",
   "lender_submission_package",
-  "lender_package_summary",
-  "deal_routing_notification",
-  "funding_request_package",
-  "iso_partnership_communication",
+  "funding_request_package"
+] as const satisfies readonly OperionEmailTemplateKind[];
+
+export const internalEmailSimulationTemplateKinds = [
   "internal_ai_alert",
   "internal_support",
+  "operational_summary"
+] as const satisfies readonly OperionEmailTemplateKind[];
+
+export const manualOnlyEmailTemplateKinds = [
+  "merchant_outreach",
+  "merchant_follow_up_reminder",
+  "merchant_outreach_sequence",
+  "merchant_support",
+  "merchant_contact",
+  "lender_onboarding",
+  "lender_package_summary",
+  "deal_routing_notification",
+  "iso_partnership_communication",
   "internal_system",
   "internal_submissions",
   "internal_operations_notification",
-  "operational_summary"
+  "application_status_update"
+] as const satisfies readonly OperionEmailTemplateKind[];
+
+export const fullEmailSimulationTemplateKinds = [
+  ...merchantEmailSimulationTemplateKinds,
+  ...lenderEmailSimulationTemplateKinds,
+  ...internalEmailSimulationTemplateKinds
 ] as const satisfies readonly OperionEmailTemplateKind[];
 
 export interface OperationalEmailPreview {
@@ -70,6 +89,7 @@ export function inferPurposeFromTemplate(templateKind: OperionEmailTemplateKind)
   if (templateKind.startsWith("internal_")) {
     if (templateKind === "internal_system") return "operational_summary";
     if (templateKind === "internal_operations_notification") return "internal_operations";
+    if (templateKind === "internal_support") return "internal_support";
     return "internal_ai_alert";
   }
   if (templateKind === "operational_summary") return "operational_summary";

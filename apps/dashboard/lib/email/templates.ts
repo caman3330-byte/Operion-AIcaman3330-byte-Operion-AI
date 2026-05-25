@@ -239,17 +239,17 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
       brand: "capital"
     },
     approval_notification: {
-      subject: `Lender review update for ${sample.businessName}`,
-      preheader: "Your file is moving into lender review.",
-      title: "Lender review stage",
+      subject: `Approved for lender review: ${sample.businessName}`,
+      preheader: "Your file has been approved for lender routing review.",
+      title: "Approved for lender review",
       intro: [
         `Hi ${sample.ownerName},`,
-        `${sample.businessName} has been prepared for lender review based on the current funding package.`,
-        "A funding specialist or lender partner may contact you directly to discuss next steps, documentation, and timing."
+        `${sample.businessName} has been approved for lender routing based on the current funding package.`,
+        "This is not a guarantee of funding. A funding specialist or lender partner may contact you directly to discuss next steps, documentation, timing, and available options."
       ],
       sections: [
         { label: "Requested amount", value: sample.amount },
-        { label: "Status", value: "Routed for lender review" }
+        { label: "Status", value: "Approved for lender review" }
       ],
       brand: "capital"
     },

@@ -29,6 +29,7 @@ const testEmailSchema = z.object({
       "lender_onboarding",
       "lender_submission_package",
       "internal_ai_alert",
+      "internal_support",
       "operational_summary",
       "internal_operations"
     ])

@@ -200,7 +200,7 @@ export async function sendTestEmail(input: {
         preheader: "Operion internal email delivery verification.",
         title: "Email delivery test",
         text: input.text,
-        brand: purpose === "internal_ai_alert" || purpose === "operational_summary" ? "internal" : "capital"
+        brand: purpose === "internal_ai_alert" || purpose === "internal_support" || purpose === "internal_operations" || purpose === "operational_summary" ? "internal" : "capital"
       });
 
   return sendSendGridEmail({
