@@ -69,7 +69,7 @@ const adminRoles = new Set(["founder", "super_admin", "admin"]);
 const builtInFounderEmails = ["founder@operion.ai", "founder@operioncapital.com", "admin@operion.ai"];
 
 export async function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
+  const pathname = normalizeDashboardPath(request.nextUrl.pathname);
   const internalApiKey = process.env.OPERION_INTERNAL_API_KEY;
 
   if (isDeprecatedMerchantRoute(pathname)) {
@@ -264,6 +264,10 @@ function isDeprecatedMerchantRoute(pathname: string) {
   return deprecatedMerchantPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
+function normalizeDashboardPath(pathname: string) {
+  return pathname.startsWith("/apps/dashboard/") ? pathname.slice("/apps/dashboard".length) : pathname;
+}
+
 function isDeprecatedMerchantAuthRoute(pathname: string) {
   return deprecatedMerchantAuthPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
@@ -408,6 +412,7 @@ export const config = {
     "/ai-prompts/:path*",
     "/admin/:path*",
     "/operations/:path*",
+    "/apps/dashboard/:path*",
     "/api/:path*",
     "/signin",
     "/apply",
