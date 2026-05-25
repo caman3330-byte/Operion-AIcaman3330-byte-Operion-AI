@@ -34,6 +34,18 @@ export default async function SupervisorPage() {
   ]);
   const emailTotal = production.emailOperations.sent + production.emailOperations.failed;
   const emailSuccessRate = emailTotal === 0 ? 100 : Math.round((production.emailOperations.sent / emailTotal) * 100);
+  const activeApplications =
+    production.lifecycle.raw + production.lifecycle.qualified + production.lifecycle.reviewed + production.lifecycle.routed;
+  const founderMetrics = [
+    ["Active applications", String(activeApplications), "Open merchant files"],
+    ["Pending reviews", String(production.pendingApprovals + production.underwritingQueue), "Approvals + funding review"],
+    ["AI workflows running", String(production.aiQueued + production.aiRunning), `${production.aiFailed} failed or blocked`],
+    ["Lender routes today", String(production.lenderMatches), "Routing records monitored"],
+    ["Failed workflows", String(operator.workflows.metrics.failureCount), `${operator.workflows.metrics.retryCount} retry event(s)`],
+    ["Upload activity", `${production.operationalMetrics.uploadCompletionRate}%`, `${production.operationalMetrics.uploadsPending} pending`],
+    ["Email delivery health", `${emailSuccessRate}%`, `${production.emailOperations.failed} failed`],
+    ["Underwriting queue", String(production.underwritingQueue), "Queued or escalated"]
+  ];
   const pendingLenderResponses = timelines.filter((timeline) =>
     timeline.steps.some((step) => step.key === "waiting_lender_response" && step.state === "active")
   ).length;
@@ -98,6 +110,26 @@ export default async function SupervisorPage() {
           </CardContent>
         </Card>
       ) : null}
+
+      <Card className="overflow-hidden border-primary/20 bg-[radial-gradient(circle_at_top_left,rgba(215,183,106,0.10),transparent_38%),rgba(255,255,255,0.025)]">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-base">Founder Operations Header</CardTitle>
+            <Badge variant={operator.health === "healthy" ? "success" : operator.health === "critical" ? "destructive" : "warning"}>
+              {operator.health}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+          {founderMetrics.map(([label, value, detail]) => (
+            <div key={label} className="rounded-md border border-white/[0.10] bg-black/20 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+              <p className="mt-2 text-xl font-semibold text-white">{value}</p>
+              <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{detail}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Applications" value={String(production.applications)} detail="Business funding requests" icon={FileText} />

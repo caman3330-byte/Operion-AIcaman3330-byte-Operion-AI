@@ -303,27 +303,6 @@ export function OperationalTestControls() {
           variant="outline"
           disabled={isPending}
           onClick={() =>
-            runCheck("Full email simulation preview", () =>
-              fetch("/api/operations/email-simulation/run", {
-                method: "POST",
-                credentials: "same-origin",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({
-                  to: emailTo || CONTROLLED_TEST_INBOX,
-                  previewOnly: true,
-                  forceControlledInbox: true
-                })
-              })
-            )
-          }
-        >
-          <Eye className="h-4 w-4" />
-          Preview Active Email Flows
-        </Button>
-        <Button
-          variant="outline"
-          disabled={isPending}
-          onClick={() =>
             runCheck("Full controlled email simulation", () =>
               fetch("/api/operations/email-simulation/run", {
                 method: "POST",

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LifecycleControls } from "@/components/merchants/lifecycle-controls";
+import { OperatorNotesForm, type OperatorNotesValue } from "@/components/merchants/operator-notes-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +37,23 @@ function getFundingProbability(application: any) {
   return 29;
 }
 
+function getOperatorNotes(metadata: Record<string, unknown>): OperatorNotesValue {
+  const operatorNotes = typeof metadata.operator_notes === "object" && metadata.operator_notes && !Array.isArray(metadata.operator_notes)
+    ? metadata.operator_notes as Record<string, unknown>
+    : {};
+
+  return {
+    internal: readNote(operatorNotes.internal) || readNote(metadata.internal_notes),
+    underwriting: readNote(operatorNotes.underwriting),
+    lender: readNote(operatorNotes.lender),
+    funding: readNote(operatorNotes.funding)
+  };
+}
+
+function readNote(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
 export default async function MerchantDetailsPage({ params }: { params: Promise<{ applicationId: string }> }) {
   let data;
   const resolvedParams = await params;
@@ -50,7 +68,7 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
   const missingDocuments = documents.filter((document) => document.status !== "verified").length;
   const fundingProbability = getFundingProbability(application);
   const metadata = typeof application.metadata === "object" && application.metadata ? (application.metadata as Record<string, unknown>) : {};
-  const internalNotes = typeof metadata.internal_notes === "string" ? metadata.internal_notes : "No internal notes yet.";
+  const operatorNotes = getOperatorNotes(metadata);
   const insights = typeof metadata.ai_summary === "string" ? metadata.ai_summary : typeof metadata.insights === "string" ? metadata.insights : null;
 
   return (
@@ -141,11 +159,13 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
 
           <Card>
             <CardHeader>
-              <CardTitle>Internal notes</CardTitle>
+              <CardTitle>Operator notes</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm leading-6 text-muted-foreground">Notes are captured by internal operations and AI workflow evaluations.</p>
-              <p className="mt-4 text-sm leading-6 text-white">{internalNotes}</p>
+              <p className="mb-4 text-sm leading-6 text-muted-foreground">
+                Internal, underwriting, lender, and funding notes for the operations desk. These are never shown to merchants.
+              </p>
+              <OperatorNotesForm applicationId={application.id} initialNotes={operatorNotes} />
             </CardContent>
           </Card>
         </section>

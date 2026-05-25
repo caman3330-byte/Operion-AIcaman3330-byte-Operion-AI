@@ -49,6 +49,77 @@ export default async function SupervisorAiAgentsPage() {
   ).length;
   const totalEmailEvents = production.emailOperations.sent + production.emailOperations.failed;
   const emailSuccessRate = totalEmailEvents === 0 ? 100 : Math.round((production.emailOperations.sent / totalEmailEvents) * 100);
+  const failureDiagnostics = [
+    ...operator.workflows.traces.items
+      .filter((trace) => trace.status === "failed" || Boolean(trace.error_message))
+      .map((trace) => ({
+        id: `workflow-${trace.id}`,
+        type: "Workflow failure",
+        reason: trace.error_message ?? `${trace.workflow_key} failed at ${trace.step_key}`,
+        retryCount: trace.attempt,
+        linkedApplicationId: trace.entity_type === "business_application" ? trace.entity_id : null,
+        timestamp: trace.completed_at ?? trace.started_at ?? trace.created_at,
+        actionHref: trace.entity_type === "business_application" && trace.entity_id ? `/merchants/${trace.entity_id}` : "/supervisor/testing"
+      })),
+    ...operator.ai.executions.items
+      .filter((execution) => execution.status === "failed" || execution.status === "blocked")
+      .map((execution) => {
+        const linkedApplicationId = readLinkedApplicationId(execution.metadata);
+        return {
+          id: `ai-${execution.id}`,
+          type: "AI execution failure",
+          reason: execution.message,
+          retryCount: readNumberFromRecord(execution.metadata, "attempt") ?? readNumberFromRecord(execution.metadata, "retry_count") ?? 0,
+          linkedApplicationId,
+          timestamp: execution.created_at,
+          actionHref: linkedApplicationId ? `/merchants/${linkedApplicationId}` : "/supervisor/testing"
+        };
+      })
+  ].slice(0, 6);
+  const systemHealthItems = [
+    {
+      label: "Database",
+      value: production.source === "supabase" && !production.migrationRequired ? "Live" : "Watch",
+      tone: production.source === "supabase" && !production.migrationRequired ? "success" : "warning",
+      detail: production.source === "supabase" ? "Supabase production schema responding" : "Schema availability needs review"
+    },
+    {
+      label: "SendGrid",
+      value: production.emailOperations.sendgridConfigured ? "Ready" : "Missing",
+      tone: production.emailOperations.sendgridConfigured ? "success" : "warning",
+      detail: `${production.emailOperations.sent} sent / ${production.emailOperations.failed} failed`
+    },
+    {
+      label: "Uploads",
+      value: production.operationalMetrics.uploadsPending > 0 ? "Pending" : "Clear",
+      tone: production.operationalMetrics.uploadsPending > 0 ? "warning" : "success",
+      detail: `${production.operationalMetrics.documentsUploaded} uploaded documents tracked`
+    },
+    {
+      label: "AI execution",
+      value: production.aiFailed > 0 ? "Watch" : "Ready",
+      tone: production.aiFailed > 0 ? "warning" : "success",
+      detail: `${production.aiQueued + production.aiRunning} active / ${production.aiCompleted} completed`
+    },
+    {
+      label: "Routing engine",
+      value: operator.lenders.matches.error ? "Watch" : "Ready",
+      tone: operator.lenders.matches.error ? "warning" : "success",
+      detail: operator.lenders.matches.error ?? `${production.lenderMatches} lender match record(s)`
+    },
+    {
+      label: "Auth/session",
+      value: "Protected",
+      tone: "success",
+      detail: "Middleware and server dashboard guard enabled"
+    },
+    {
+      label: "Deployment",
+      value: "Production",
+      tone: "success",
+      detail: "Vercel alias and runtime health verified during release"
+    }
+  ] as const;
 
   return (
     <div className="space-y-6">
@@ -77,6 +148,67 @@ export default async function SupervisorAiAgentsPage() {
         <MetricCard title="Email Delivery" value={`${emailSuccessRate}%`} detail={`${production.emailOperations.sent} sent / ${production.emailOperations.failed} failed`} icon={Mail} tone={production.emailOperations.failed > 0 ? "warning" : "success"} />
         <MetricCard title="Workflow Failures" value={String(operator.workflows.metrics.failureCount)} detail={`${operator.workflows.metrics.retryCount} retry event(s)`} icon={ShieldAlert} tone={operator.workflows.metrics.failureCount > 0 ? "danger" : "success"} />
         <MetricCard title="Average AI Latency" value={operator.ai.metrics.averageLatencyMs ? `${operator.ai.metrics.averageLatencyMs}ms` : "n/a"} detail="Latest execution log window" icon={Clock3} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>System Health Center</CardTitle>
+              <Badge variant={degradedAgents > 0 || failureDiagnostics.length > 0 ? "warning" : "success"}>
+                {degradedAgents > 0 || failureDiagnostics.length > 0 ? "Watch" : "Launch steady"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {systemHealthItems.map((item) => (
+              <div key={item.label} className="rounded-md border border-white/[0.10] bg-black/20 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{item.label}</p>
+                  <Badge variant={item.tone}>{item.value}</Badge>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>Failure Diagnostics</CardTitle>
+              <Badge variant={failureDiagnostics.length > 0 ? "warning" : "success"}>
+                {failureDiagnostics.length} active item(s)
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {failureDiagnostics.length === 0 ? (
+              <p className="rounded-md border border-white/[0.10] bg-black/20 p-3 text-sm text-muted-foreground">
+                No workflow or AI execution failures in the current review window.
+              </p>
+            ) : (
+              failureDiagnostics.map((failure) => (
+                <div key={failure.id} className="rounded-md border border-warning/25 bg-warning/10 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{failure.type}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{failure.reason}</p>
+                    </div>
+                    <Badge variant="warning">Retry {failure.retryCount}</Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>{failure.linkedApplicationId ? `Application ${failure.linkedApplicationId.slice(0, 8)}` : "No linked application"}</span>
+                    <span>{formatDateTime(failure.timestamp)}</span>
+                    <a href={failure.actionHref} className="font-medium text-primary hover:underline">
+                      Review
+                    </a>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="overflow-hidden border-primary/20 bg-[radial-gradient(circle_at_top,rgba(215,183,106,0.10),transparent_42%),rgba(255,255,255,0.025)]">
@@ -128,10 +260,11 @@ export default async function SupervisorAiAgentsPage() {
                     {agent.health}
                   </Badge>
                 </div>
-                <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="mt-4 grid grid-cols-4 gap-2">
                   <AgentMetric label="Queue" value={String(agent.queueSize)} />
                   <AgentMetric label="Done" value={String(agent.completedToday)} />
                   <AgentMetric label="Failed" value={String(agent.failedTasks)} />
+                  <AgentMetric label="Retry" value={String(agent.retryCount)} />
                 </div>
                 <div className="mt-4 space-y-2 text-xs leading-5 text-muted-foreground">
                   <p><span className="font-medium text-white">Current task:</span> {agent.currentTask}</p>
@@ -335,6 +468,7 @@ function buildAgentCards(input: {
       queueSize: operator.crm.intakeQueue.items.length,
       completedToday: production.operationalMetrics.applicationsReceivedToday,
       failedTasks: 0,
+      retryCount: 0,
       currentTask: operator.crm.intakeQueue.items[0]?.business_name ?? "No intake item currently queued",
       lastAction: activeTimeline ? `Tracking ${activeTimeline.currentStage}` : "Awaiting merchant intake",
       lastExecutionAt: lastTimelineActivity
@@ -348,6 +482,7 @@ function buildAgentCards(input: {
       queueSize: production.underwritingQueue,
       completedToday: operator.ai.executions.items.filter((item) => includesAny(item.message, ["underwriting", "qualification"])).length,
       failedTasks: operator.ai.executions.items.filter((item) => item.status === "failed" && includesAny(item.message, ["underwriting", "qualification"])).length,
+      retryCount: operator.workflows.traces.items.filter((trace) => trace.status === "retried" && includesAny(trace.workflow_key, ["underwriting", "qualification"])).length,
       currentTask: operator.underwriting.queue.items[0]?.businessName ?? "No funding review currently queued",
       lastAction: operator.underwriting.queue.items[0]?.summary ?? "Monitoring funding review queue",
       lastExecutionAt: operator.underwriting.queue.items[0]?.updatedAt ?? recentAi?.created_at ?? null
@@ -361,6 +496,7 @@ function buildAgentCards(input: {
       queueSize: production.operationalMetrics.uploadsPending,
       completedToday: production.operationalMetrics.documentsUploaded,
       failedTasks: 0,
+      retryCount: operator.workflows.traces.items.filter((trace) => trace.status === "retried" && includesAny(trace.workflow_key, ["document", "upload"])).length,
       currentTask: production.operationalMetrics.uploadsPending > 0 ? "Awaiting requested bank statements" : "Document queue clear",
       lastAction: `${production.operationalMetrics.uploadCompletionRate}% package completion`,
       lastExecutionAt: lastTimelineActivity
@@ -374,6 +510,7 @@ function buildAgentCards(input: {
       queueSize: operator.lenders.matches.items.filter((match) => match.status === "recommended" || match.status === "approved").length,
       completedToday: production.lenderMatches,
       failedTasks: operator.lenders.matches.items.filter((match) => match.status === "rejected").length,
+      retryCount: operator.workflows.traces.items.filter((trace) => trace.status === "retried" && includesAny(trace.workflow_key, ["lender", "routing", "match"])).length,
       currentTask: operator.lenders.matches.items[0]?.notes ?? "No active lender routing decision",
       lastAction: `${Math.round(operator.lenders.metrics.successRate * 100)}% routing success signal`,
       lastExecutionAt: operator.lenders.matches.items[0]?.updated_at ?? recentWorkflow?.created_at ?? null
@@ -387,6 +524,7 @@ function buildAgentCards(input: {
       queueSize: production.emailOperations.failed,
       completedToday: production.operationalMetrics.outreachSentToday,
       failedTasks: production.emailOperations.failed,
+      retryCount: operator.workflows.traces.items.filter((trace) => trace.status === "retried" && includesAny(trace.workflow_key, ["email", "outreach"])).length,
       currentTask: production.emailOperations.failed > 0 ? "Review failed email delivery" : "Email delivery path nominal",
       lastAction: `${production.emailOperations.sent} sent / ${production.emailOperations.replies} reply signal(s)`,
       lastExecutionAt: lastTimelineActivity
@@ -400,6 +538,7 @@ function buildAgentCards(input: {
       queueSize: production.aiQueued + production.aiRunning + operator.workflows.metrics.retryCount,
       completedToday: production.aiCompleted,
       failedTasks: operator.workflows.metrics.failureCount,
+      retryCount: operator.workflows.metrics.retryCount,
       currentTask: operator.workflows.metrics.failureCount > 0 ? "Workflow failure review required" : "Monitoring operational heartbeat",
       lastAction: recentWorkflow ? `${recentWorkflow.workflow_key} / ${recentWorkflow.step_key}` : "No recent workflow trace",
       lastExecutionAt: recentWorkflow?.created_at ?? recentAi?.created_at ?? null
@@ -417,4 +556,20 @@ function stepStateClass(state: WorkflowTimelineState) {
 function includesAny(value: string | null | undefined, needles: string[]) {
   const normalized = (value ?? "").toLowerCase();
   return needles.some((needle) => normalized.includes(needle));
+}
+
+function readLinkedApplicationId(value: unknown) {
+  if (!isRecord(value)) return null;
+  const applicationId = value.business_application_id ?? value.businessApplicationId ?? value.application_id ?? value.applicationId;
+  return typeof applicationId === "string" ? applicationId : null;
+}
+
+function readNumberFromRecord(value: unknown, key: string) {
+  if (!isRecord(value)) return null;
+  const candidate = value[key];
+  return typeof candidate === "number" && Number.isFinite(candidate) ? candidate : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }

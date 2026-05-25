@@ -1,34 +1,25 @@
-import { Activity, AlertTriangle, DatabaseZap, Gauge, ListChecks, PauseCircle, Route, TimerReset } from "lucide-react";
+import { AlertTriangle, DatabaseZap, ListChecks, Mail, ShieldCheck } from "lucide-react";
 import { OperationalTestControls } from "@/components/admin/operational-test-controls";
-import { SimulationControls } from "@/components/testing/simulation-controls";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { collectDiagnosticsSnapshot } from "@/lib/diagnostics/summary";
-import { isSimulationMigrationMissing, simulationRepository } from "@/lib/repositories/simulation";
-import { formatDateTime } from "@/lib/utils";
+import { isSimulationMigrationMissing } from "@/lib/repositories/simulation";
 
 export const dynamic = "force-dynamic";
 
 export default async function TestingPage() {
   try {
-    const [diagnostics, runs, providers, traces, reports, controls] = await Promise.all([
-      collectDiagnosticsSnapshot(),
-      simulationRepository.listRuns(8),
-      simulationRepository.listProviders(),
-      simulationRepository.listTraces(12),
-      simulationRepository.listReadinessReports(3),
-      simulationRepository.getWorkerControls()
-    ]);
+    const diagnostics = await collectDiagnosticsSnapshot();
 
     return (
       <div className="space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-normal">Internal Testing & Simulation</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Founder Control</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-normal">Operational Testing Center</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Autonomous validation for acquisition, enrichment, qualification, approvals, lender matching, outreach, tracing, and readiness.
+              Lean prelaunch controls for email preview, controlled SendGrid delivery, Supabase smoke testing, and production validation.
             </p>
           </div>
           <Badge variant={diagnostics.health_status === "healthy" ? "success" : diagnostics.health_status === "critical" ? "destructive" : "warning"}>
@@ -36,16 +27,7 @@ export default async function TestingPage() {
           </Badge>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Test Controls</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SimulationControls />
-          </CardContent>
-        </Card>
-
-        <Card>
+        <Card className="border-primary/20 bg-[radial-gradient(circle_at_top_left,rgba(215,183,106,0.10),transparent_35%),rgba(255,255,255,0.025)]">
           <CardHeader>
             <CardTitle>Prelaunch Validation Controls</CardTitle>
           </CardHeader>
@@ -54,124 +36,48 @@ export default async function TestingPage() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Testing Scope</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            {["Preview email", "Send test email", "Send all to test inbox", "Smoke test", "Prelaunch validation"].map((item) => (
+              <div key={item} className="rounded-md border border-white/[0.10] bg-black/20 p-3">
+                <p className="text-sm font-medium text-white">{item}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">Admin-only controlled operation.</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard title="Worker State" value={controls?.workers_paused ? "Paused" : "Active"} detail={controls?.stress_mode_enabled ? "Stress mode enabled" : "Standard mode"} icon={PauseCircle} tone={controls?.workers_paused ? "warning" : "success"} />
           <MetricCard title="Supabase Latency" value={diagnostics.latency.supabase_ms === null ? "n/a" : `${diagnostics.latency.supabase_ms}ms`} detail="Latest diagnostic probe" icon={DatabaseZap} />
           <MetricCard title="Approvals Pending" value={String(diagnostics.queue_health.approvals_pending)} detail="Founder-gated workflows" icon={ListChecks} tone={diagnostics.queue_health.approvals_pending > 0 ? "warning" : "success"} />
+          <MetricCard title="Email Delivery Health" value={diagnostics.communication_health.failed > 0 ? "Watch" : "Ready"} detail={`${diagnostics.communication_health.sent} sent / ${diagnostics.communication_health.failed} failed`} icon={Mail} tone={diagnostics.communication_health.failed > 0 ? "warning" : "success"} />
           <MetricCard title="Failures" value={String(diagnostics.failures.api_failures + diagnostics.failures.workflow_failures)} detail="API + workflow failures" icon={AlertTriangle} tone={diagnostics.failures.workflow_failures > 0 ? "danger" : "default"} />
-          <MetricCard title="Acquisition Queue" value={String(diagnostics.queue_health.acquisition_queued)} detail="Queued acquisition jobs" icon={Gauge} />
-          <MetricCard title="Outreach Queue" value={String(diagnostics.queue_health.outreach_queued)} detail={`${diagnostics.queue_health.retries_pending} retry candidate(s)`} icon={Activity} />
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>Provider Registry</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {providers.map((provider) => (
-                <div key={provider.id} className="rounded-md border p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">{provider.display_name}</p>
-                    <Badge variant={provider.enabled ? "success" : "secondary"}>{provider.status}</Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{provider.capabilities.join(", ") || "No capabilities configured"}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Simulation Runs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Mode</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Batch</TableHead>
-                    <TableHead>Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {runs.map((run) => (
-                    <TableRow key={run.id}>
-                      <TableCell className="font-medium">{run.name}</TableCell>
-                      <TableCell>{run.mode}</TableCell>
-                      <TableCell>
-                        <Badge variant={run.status === "failed" ? "destructive" : run.status === "completed" ? "success" : "secondary"}>
-                          {run.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{run.batch_size.toLocaleString()}</TableCell>
-                      <TableCell>{formatDateTime(run.created_at)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Live Execution Traces</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {traces.map((trace) => (
-                <div key={trace.id} className="rounded-md border p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">
-                      {trace.workflow_key} / {trace.step_key}
-                    </p>
-                    <Badge variant={trace.status === "failed" ? "destructive" : trace.status === "completed" ? "success" : "secondary"}>
-                      {trace.status}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {trace.latency_ms ?? 0}ms · {formatDateTime(trace.created_at)}
-                  </p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Production Readiness Reports</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {reports.map((report) => (
-                <div key={report.id} className="rounded-md border p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">{report.status}</p>
-                    <Route className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <p className="mt-1 line-clamp-4 text-xs text-muted-foreground">{report.report_body}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>System Bottlenecks</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Prelaunch Notes</CardTitle>
+            <ShieldCheck className="h-4 w-4 text-primary" />
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            {diagnostics.bottlenecks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No bottlenecks detected in the latest snapshot.</p>
+          <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
+            <p>
+              This page is intentionally limited to founder/operator validation controls. Deep simulation controls remain in code for future
+              sandbox phases, but they are not exposed in the launch testing panel.
+            </p>
+            {diagnostics.bottlenecks.length > 0 ? (
+              <div className="rounded-md border border-warning/30 bg-warning/10 p-3">
+                <p className="font-medium text-foreground">Current diagnostic watch items</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {diagnostics.bottlenecks.slice(0, 4).map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
             ) : (
-              diagnostics.bottlenecks.map((item) => (
-                <div key={item} className="flex items-start gap-2 rounded-md border p-3">
-                  <TimerReset className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm">{item}</p>
-                </div>
-              ))
+              <p className="rounded-md border border-white/[0.10] bg-black/20 p-3">No bottlenecks detected in the latest snapshot.</p>
             )}
           </CardContent>
         </Card>
@@ -182,7 +88,7 @@ export default async function TestingPage() {
       return (
         <div className="space-y-6">
           <div>
-            <h1 className="text-2xl font-semibold tracking-normal">Internal Testing & Simulation</h1>
+            <h1 className="text-2xl font-semibold tracking-normal">Operational Testing Center</h1>
             <p className="mt-1 text-sm text-muted-foreground">Simulation infrastructure is coded and waiting for the database migration.</p>
           </div>
           <Card className="border-warning bg-warning/10">
@@ -191,8 +97,8 @@ export default async function TestingPage() {
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               Apply <span className="font-medium text-foreground">packages/database/migrations/0005_internal_testing_simulation.sql</span> after
-              migration <span className="font-medium text-foreground">0004_lead_acquisition_outreach.sql</span> to activate simulation runs,
-              provider registry, workflow traces, worker controls, diagnostics, and readiness reports.
+              migration <span className="font-medium text-foreground">0004_lead_acquisition_outreach.sql</span> to activate diagnostics and
+              readiness records.
             </CardContent>
           </Card>
         </div>
