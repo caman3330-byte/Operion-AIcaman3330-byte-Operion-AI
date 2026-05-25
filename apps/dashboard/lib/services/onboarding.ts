@@ -28,7 +28,7 @@ export async function recordMerchantOnboarding(input: {
   });
 
   if (input.contactEmail && input.sendDocumentReminder !== false) {
-    const reminderText = `Thank you for submitting your funding application. We requested your bank statements, voided check, driver license, and processing statements to continue funding analysis and lender matching. Please upload the documents as soon as possible to keep your request moving.`;
+    const reminderText = `Thank you for submitting your funding application. We requested your latest business bank statements, with processing statements optional when relevant, to continue funding analysis and lender matching. Please upload the documents through the secure signed link to keep your request moving.`;
 
     try {
       await enqueueFundingEmail({

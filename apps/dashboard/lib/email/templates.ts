@@ -67,7 +67,7 @@ export const operionEmailTemplateCatalog: Record<OperionEmailTemplateKind, { lab
   application_received: { label: "Application received", brand: "capital" },
   underwriting_review: { label: "Funding review update", brand: "capital" },
   additional_document_request: { label: "Additional document request", brand: "capital" },
-  approval_notification: { label: "Approval notification", brand: "capital" },
+  approval_notification: { label: "Lender review update", brand: "capital" },
   decline_notification: { label: "Decline notification", brand: "capital" },
   application_status_update: { label: "Application status update", brand: "capital" },
   lender_outreach: { label: "Lender outreach", brand: "capital" },
@@ -93,7 +93,7 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
     lenderName: "NorthBridge Funding Desk",
     amount: "$185,000",
     uploadUrl: "https://operioncapital.com/portal/upload?token=preview",
-    applicationUrl: "https://operioncapital.com/application-status",
+    applicationUrl: "https://operioncapital.com/apply",
     internalUrl: "https://operioncapital.com/supervisor/testing"
   };
 
@@ -173,19 +173,20 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
     },
     document_upload_request: {
       subject: `Secure document request for ${sample.businessName}`,
-      preheader: "Upload bank statements and identity documents through a secure link.",
-      title: "Secure document upload requested",
+      preheader: "Upload recent business statements through a secure link.",
+      title: "Secure statement upload requested",
       intro: [
         `Hi ${sample.ownerName},`,
-        `To continue the funding review for ${sample.businessName}, please upload the requested documents through your private Operion Capital link.`,
+        `To continue the funding review for ${sample.businessName}, please upload the requested statements through your private Operion Capital link.`,
         "The link is signed, time-limited, and tied to your application record."
       ],
       sections: [
-        { label: "Requested", value: "3 months bank statements, owner ID, voided check" },
-        { label: "Security", value: "Encrypted upload portal" },
+        { label: "Required", value: "Latest business bank statements" },
+        { label: "Optional", value: "Processing statements if processor volume applies" },
+        { label: "Security", value: "Encrypted signed upload" },
         { label: "Application", value: sample.businessName }
       ],
-      cta: { label: "Upload Documents", url: sample.uploadUrl },
+      cta: { label: "Upload Statements", url: sample.uploadUrl },
       brand: "capital"
     },
     application_received: {
@@ -230,26 +231,26 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
         "Please use the secure upload link so the documents attach directly to your application file."
       ],
       sections: [
-        { label: "Needed", value: "Most recent bank statement and proof of ownership" },
-        { label: "Priority", value: "Required before routing" }
+        { label: "Needed", value: "Most recent business bank statement" },
+        { label: "Optional", value: "Processing statement if available" },
+        { label: "Priority", value: "Required before lender routing" }
       ],
       cta: { label: "Upload Requested Files", url: sample.uploadUrl },
       brand: "capital"
     },
     approval_notification: {
-      subject: `Funding options approved for ${sample.businessName}`,
-      preheader: "Your file has qualified for lender options.",
-      title: "Funding options approved",
+      subject: `Lender review update for ${sample.businessName}`,
+      preheader: "Your file is moving into lender review.",
+      title: "Lender review stage",
       intro: [
         `Hi ${sample.ownerName},`,
-        `${sample.businessName} has qualified for available funding options based on the current review package.`,
-        "An Operion Capital representative will confirm terms, documentation, and funding timing before submission."
+        `${sample.businessName} has been prepared for lender review based on the current funding package.`,
+        "A funding specialist or lender partner may contact you directly to discuss next steps, documentation, and timing."
       ],
       sections: [
-        { label: "Qualified amount", value: sample.amount },
-        { label: "Status", value: "Approved for offer review" }
+        { label: "Requested amount", value: sample.amount },
+        { label: "Status", value: "Routed for lender review" }
       ],
-      cta: { label: "Review Next Step", url: sample.applicationUrl },
       brand: "capital"
     },
     decline_notification: {
@@ -274,10 +275,9 @@ export function renderOperationalTestEmail(kind: OperionEmailTemplateKind): Rend
       intro: [
         `Hi ${sample.ownerName},`,
         "Your application status has changed. The operations team has recorded the latest review milestone in your file.",
-        "You can view the current status and any outstanding requests through your dashboard."
+        "If additional information is needed, Operion Capital will send a secure upload link or a funding specialist will contact you directly."
       ],
       sections: [{ label: "Current stage", value: "Lender routing" }],
-      cta: { label: "View Status", url: sample.applicationUrl },
       brand: "capital"
     },
     lender_outreach: {

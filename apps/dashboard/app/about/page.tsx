@@ -60,12 +60,12 @@ export default function AboutPage() {
             <SectionHeading
               eyebrow="Platform approach"
               title="Institutional process without unnecessary complexity."
-              description="The Phase 1 foundation focuses on application quality, secure customer onboarding, funding status visibility, lender-readiness, and clean operational handoffs."
+              description="The launch foundation focuses on application quality, signed document upload, lender-readiness, email-driven merchant communication, and clean internal operational handoffs."
             />
             <div className="rounded-lg border border-primary/15 bg-black/30 p-6">
               <div className="grid gap-4 sm:grid-cols-3">
                 {[
-                  ["Secure", "Protected application and customer access"],
+                  ["Secure", "Protected application and signed document access"],
                   ["Structured", "Clean data model for funding review"],
                   ["Scalable", "Ready for lender routing and funding qualification"]
                 ].map(([title, text]) => (

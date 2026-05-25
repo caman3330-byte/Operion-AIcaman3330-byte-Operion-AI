@@ -10,14 +10,14 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 
 export function LoginForm({
-  defaultRedirect = "/dashboard",
-  createAccountHref = "/signup",
-  forgotPasswordHref = "/forgot-password",
+  defaultRedirect = "/supervisor",
+  createAccountHref = null,
+  forgotPasswordHref = null,
   emailPlaceholder = "owner@company.com"
 }: {
   defaultRedirect?: string;
   createAccountHref?: string | null;
-  forgotPasswordHref?: string;
+  forgotPasswordHref?: string | null;
   emailPlaceholder?: string;
 }) {
   const router = useRouter();
@@ -95,16 +95,22 @@ export function LoginForm({
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Signing in" : "Sign in"}
       </Button>
-      <div className="flex items-center justify-between text-sm">
+      {forgotPasswordHref || createAccountHref ? (
+        <div className="flex items-center justify-between text-sm">
+          {forgotPasswordHref ? (
           <Link href={forgotPasswordHref as Route} className="text-primary hover:underline">
-          Forgot password?
-        </Link>
-        {createAccountHref ? (
-          <Link href={createAccountHref as Route} className="text-muted-foreground hover:text-foreground">
-            Create account
+            Forgot password?
           </Link>
-        ) : null}
-      </div>
+          ) : (
+            <span />
+          )}
+          {createAccountHref ? (
+            <Link href={createAccountHref as Route} className="text-muted-foreground hover:text-foreground">
+              Create account
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
       {message ? <p className="text-sm text-destructive">{message}</p> : null}
     </form>
   );

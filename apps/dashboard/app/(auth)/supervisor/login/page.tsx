@@ -28,7 +28,7 @@ export default function SupervisorLoginPage() {
             <LoginForm
               defaultRedirect="/supervisor"
               createAccountHref={null}
-              forgotPasswordHref="/forgot-password"
+              forgotPasswordHref={null}
               emailPlaceholder="founder@operion.ai"
             />
           </div>

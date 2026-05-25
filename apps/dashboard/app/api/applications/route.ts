@@ -84,14 +84,17 @@ export async function POST(request: NextRequest) {
     });
 
     await Promise.all(
-      ["bank_statements", "voided_checks", "driver_license", "processing_statements"].map((documentType) =>
+      [
+        { documentType: "bank_statements", notes: "Required before lender submission." },
+        { documentType: "processing_statements", notes: "Optional if processor volume is part of the funding profile." }
+      ].map(({ documentType, notes }) =>
         productionRepository.createDocument({
           user_id: actor?.id ?? null,
           business_application_id: application.id,
           lead_id: lead.id,
           document_type: documentType,
           status: "requested",
-          notes: "Required before lender submission."
+          notes
         })
       )
     );

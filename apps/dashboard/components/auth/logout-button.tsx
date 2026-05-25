@@ -5,7 +5,7 @@ import { LogOut } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
-export function LogoutButton({ redirectTo = "/signin" }: { redirectTo?: string }) {
+export function LogoutButton({ redirectTo = "/supervisor/login" }: { redirectTo?: string }) {
   const [loading, setLoading] = useState(false);
 
   async function handleLogout() {

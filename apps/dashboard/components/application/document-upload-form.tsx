@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import type { DocumentRecord } from "@operion/shared";
 
 const primaryDocumentTypes = DOCUMENT_TYPE_OPTIONS.filter((option) =>
-  ["bank_statements", "voided_checks", "driver_license", "processing_statements"].includes(option.value)
+  ["bank_statements", "processing_statements"].includes(option.value)
 );
 
 interface DocumentUploadFormProps {
@@ -107,8 +107,8 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
         <div>
           <p className="font-serif text-lg font-medium text-white">{variant === "portal" ? "Secure upload" : "Upload documents"}</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Submit bank statements, voided checks, driver license, and processing statements through 256-bit encrypted uploads and
-            secure signed-access document handling.
+            Submit latest business bank statements, with processing statements optional, through encrypted uploads and secure
+            signed-access document handling.
           </p>
         </div>
         <ShieldCheck className="h-5 w-5 text-primary" />
@@ -167,7 +167,7 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
           <span className="mt-4 text-sm font-semibold text-white">
             {files.length > 0 ? `${files.length} file${files.length === 1 ? "" : "s"} selected` : "Drop files here or choose from your device"}
           </span>
-          <span className="mt-2 text-xs text-muted-foreground">PDF, PNG, JPG, XLS, or XLSX up to 50MB each / private lender review</span>
+          <span className="mt-2 text-xs text-muted-foreground">PDF, PNG, JPG, XLS, or XLSX up to 50MB each / private capital review</span>
         </button>
 
         <input

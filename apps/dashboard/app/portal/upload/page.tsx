@@ -20,20 +20,20 @@ export default async function MerchantUploadPortalPage({ searchParams }: { searc
           <section className="min-w-0">
             <OperionLogo size="lg" collapseWordmarkOnMobile />
             <div className="mt-10">
-              <Badge variant="outline">Secure merchant portal</Badge>
+              <Badge variant="outline">Secure upload link</Badge>
             </div>
             <h1 className="mt-6 max-w-full font-serif text-3xl font-medium leading-tight tracking-normal text-white sm:max-w-2xl sm:text-5xl">
-              Secure merchant document upload
+              Secure statement upload
             </h1>
             <p className="mt-6 max-w-xl text-base leading-8 text-muted-foreground">
-              Upload funding documents through encrypted, signed-access handling. Existing links expire automatically and every upload is
-              attached to your funding review audit trail.
+              Upload recent business bank statements through encrypted, signed-access handling. Existing links expire automatically and every
+              upload is attached to your private capital review file.
             </p>
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
               {[
                 ["256-bit encrypted uploads", "private storage path"],
                 ["Signed access only", "short-lived URLs"],
-                ["Private lender review", "secure document handling"]
+              ["Private capital review", "secure statement handling"]
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-primary/15 bg-black/30 p-4">
                   <p className="text-xs text-muted-foreground">{label}</p>
@@ -87,7 +87,7 @@ export default async function MerchantUploadPortalPage({ searchParams }: { searc
               <div className="mt-5 space-y-3">
                 {[
                   ["1", "Secure link verified", true],
-                  ["2", "Upload requested documents", false],
+                  ["2", "Upload bank statements", false],
                   ["3", "Funding review begins", false],
                   ["4", "Lender matching updates", false]
                 ].map(([step, label, complete]) => (
@@ -103,13 +103,11 @@ export default async function MerchantUploadPortalPage({ searchParams }: { searc
             <div className="rounded-lg border border-white/10 bg-card/80 p-5">
               <div className="flex items-center gap-3">
                 <FileCheck2 className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-white">Required documents</h2>
+              <h2 className="font-semibold text-white">Document checklist</h2>
               </div>
               <div className="mt-5 space-y-3 text-sm text-muted-foreground">
-                <p>Bank statements</p>
-                <p>Voided checks</p>
-                <p>Driver license</p>
-                <p>Processing statements</p>
+                <p>Required: latest business bank statements</p>
+                <p>Optional: processing statements</p>
               </div>
             </div>
             <div className="rounded-lg border border-white/10 bg-card/80 p-5">

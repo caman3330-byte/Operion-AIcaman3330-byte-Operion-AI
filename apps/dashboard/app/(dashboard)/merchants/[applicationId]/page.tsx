@@ -203,11 +203,13 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
 
           <Card>
             <CardHeader>
-              <CardTitle>Funding offers</CardTitle>
+              <CardTitle>Funding outcomes and commission tracking</CardTitle>
             </CardHeader>
             <CardContent>
               {offers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No funding offers have been created yet.</p>
+                <p className="text-sm text-muted-foreground">
+                  No lender-confirmed funding outcome has been logged yet. Final terms are handled directly between lender and merchant.
+                </p>
               ) : (
                 <div className="space-y-3">
                   {offers.map((offer) => (
@@ -218,7 +220,7 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
                           {offer.status.replaceAll("_", " ")}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">{offer.repayment_frequency ?? "Term unknown"}</p>
+                      <p className="text-sm text-muted-foreground">{offer.repayment_frequency ?? "Lender-reported terms pending"}</p>
                     </div>
                   ))}
                 </div>

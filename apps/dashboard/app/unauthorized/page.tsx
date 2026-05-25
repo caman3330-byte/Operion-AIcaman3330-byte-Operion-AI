@@ -7,8 +7,8 @@ export default function UnauthorizedPage() {
         <h1 className="text-xl font-semibold">Unauthorized</h1>
         <p className="mt-4 text-sm text-muted-foreground">You do not have permission to access this area.</p>
         <div className="mt-6 flex justify-end">
-          <Link href="/signin" className="text-primary hover:underline">
-            Sign in
+          <Link href="/supervisor/login" className="text-primary hover:underline">
+            Operator sign in
           </Link>
         </div>
       </section>

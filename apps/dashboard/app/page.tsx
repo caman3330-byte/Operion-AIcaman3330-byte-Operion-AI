@@ -28,7 +28,7 @@ const stats = [
 const process = [
   {
     title: "Apply securely",
-    text: "Submit core business, revenue, deposit, ownership, and funding needs through an encrypted application flow.",
+    text: "Submit core business details, requested capital, contact information, and latest bank statements through an encrypted flow.",
     icon: FileCheck2
   },
   {
@@ -42,8 +42,8 @@ const process = [
     icon: Network
   },
   {
-    title: "Track next steps",
-    text: "Business owners get a clean portal for progress, requirements, documents, and funding status.",
+    title: "Direct funding follow-up",
+    text: "Review updates, document requests, and lender next steps are handled by email and direct specialist contact.",
     icon: CheckCircle2
   }
 ];
@@ -192,7 +192,7 @@ export default function HomePage() {
             <SectionHeading
               eyebrow="Lender network"
               title="Designed for intelligent lender matching as the network scales."
-              description="Operion Capital's infrastructure prepares clean application records for lender routing, product fit, offer tracking, and funding-status visibility."
+            description="Operion Capital's infrastructure prepares clean application records for lender routing, product fit, submission packages, and funding-stage visibility for internal operators."
             />
             <div className="grid gap-3">
               {["MCA providers", "Working-capital lenders", "Business loan partners", "Specialty financing paths"].map((item) => (
@@ -214,8 +214,8 @@ export default function HomePage() {
             <div className="mt-10 grid gap-4 lg:grid-cols-3">
               {[
                 ["Bank-level security posture", "Secure application handling, protected routes, and restricted server-side data access."],
-                ["Transparent workflow", "Customers can see where their application stands and what information is needed next."],
-                ["Verified stories coming soon", "Customer outcomes will be added only after launch verification and customer approval."]
+                ["Concierge workflow", "Applicants receive email-driven updates and direct specialist follow-up without portal complexity."],
+                ["Verified stories coming soon", "Customer outcomes will be added only after launch verification and merchant authorization."]
               ].map(([title, text]) => (
                 <div key={title} className="rounded-lg border border-white/10 bg-white/[0.035] p-6">
                   <h3 className="font-semibold text-white">{title}</h3>

@@ -1,9 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const customerProtectedPrefixes = [
+const deprecatedMerchantPrefixes = [
   "/dashboard",
   "/application-status",
   "/settings"
+];
+
+const deprecatedMerchantAuthPrefixes = [
+  "/login",
+  "/signin",
+  "/signup",
+  "/forgot-password",
+  "/reset-password"
 ];
 
 const internalProtectedPrefixes = [
@@ -63,6 +71,20 @@ const builtInFounderEmails = ["founder@operion.ai", "founder@operioncapital.com"
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const internalApiKey = process.env.OPERION_INTERNAL_API_KEY;
+
+  if (isDeprecatedMerchantRoute(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/thank-you";
+    url.searchParams.set("source", "deprecated_merchant_portal");
+    return NextResponse.redirect(url);
+  }
+
+  if (isDeprecatedMerchantAuthRoute(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/apply";
+    url.searchParams.set("source", "merchant_auth_removed");
+    return NextResponse.redirect(url);
+  }
 
   // Only run middleware for protected routes to avoid interfering with the public root and marketing pages.
   if (!isProtectedRoute(pathname)) {
@@ -207,13 +229,6 @@ export async function middleware(request: NextRequest) {
 
   const { data } = await supabase.auth.getUser();
 
-  if (!data.user && isCustomerProtectedRoute(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/signin";
-    url.searchParams.set("redirectTo", `${pathname}${request.nextUrl.search}`);
-    return NextResponse.redirect(url);
-  }
-
   if (!data.user && isInternalProtectedRoute(pathname)) {
     // If this is an API admin route, return 401 JSON instead of redirecting.
     if (pathname.startsWith("/api/")) {
@@ -230,7 +245,7 @@ export async function middleware(request: NextRequest) {
     const role = await resolveRole(supabase, data.user.id, data.user.email ?? "", data.user);
     if (!internalRoles.has(role)) {
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname = "/unauthorized";
       url.searchParams.set("auth", "insufficient_role");
       return NextResponse.redirect(url);
     }
@@ -245,8 +260,12 @@ export async function middleware(request: NextRequest) {
   return withSecurityHeaders(response);
 }
 
-function isCustomerProtectedRoute(pathname: string) {
-  return customerProtectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+function isDeprecatedMerchantRoute(pathname: string) {
+  return deprecatedMerchantPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isDeprecatedMerchantAuthRoute(pathname: string) {
+  return deprecatedMerchantAuthPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 function isInternalProtectedRoute(pathname: string) {
@@ -266,7 +285,7 @@ function isOperationalTestingRoute(pathname: string) {
 }
 
 function isProtectedRoute(pathname: string) {
-  return isCustomerProtectedRoute(pathname) || isInternalProtectedRoute(pathname) || pathname.startsWith("/api");
+  return isInternalProtectedRoute(pathname) || pathname.startsWith("/api");
 }
 
 function isPublicApiRoute(pathname: string) {
@@ -370,6 +389,11 @@ export const config = {
     "/dashboard/:path*",
     "/application-status/:path*",
     "/settings/:path*",
+    "/login",
+    "/signin",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
     "/supervisor/:path*",
     "/executive/:path*",
     "/manager-agent/:path*",

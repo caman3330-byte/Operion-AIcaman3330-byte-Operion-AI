@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       file_size: buffer.byteLength,
       status: "uploaded",
       uploaded_at: new Date().toISOString(),
-      notes: `Uploaded by ${actorRole === "merchant_magic_link" ? "merchant magic link" : "customer"} through secure portal.`,
+      notes: `Uploaded by ${actorRole === "merchant_magic_link" ? "merchant magic link" : "authorized operator"} through secure portal.`,
       uploaded_by_role: actorRole,
       processing_status: "pending",
       processing_requested_at: new Date().toISOString(),
@@ -221,7 +221,7 @@ async function resolveDocumentUploadAccess(request: Request, businessApplication
     };
   } catch {
     if (!merchantToken) {
-      throw new ValidationError("A valid customer session or merchant upload link is required.");
+      throw new ValidationError("A valid operator session or merchant upload link is required.");
     }
 
     const session = await validateMerchantUploadToken(merchantToken);

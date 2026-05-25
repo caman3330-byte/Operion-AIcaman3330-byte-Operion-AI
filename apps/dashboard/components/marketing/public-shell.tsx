@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowRight, LockKeyhole } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { OperionLogo } from "@/components/brand/operion-logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -27,12 +27,6 @@ export function PublicShell({ children, className }: { children: React.ReactNode
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-              <Link href="/signin">
-                <LockKeyhole className="h-4 w-4" />
-                Login
-              </Link>
-            </Button>
             <Button asChild size="sm" className="px-4">
               <Link href="/apply">
                 Apply
@@ -53,12 +47,12 @@ export function PublicShell({ children, className }: { children: React.ReactNode
               Private capital access for growth-focused businesses through secure applications, funding analysis, and lender matching infrastructure.
             </p>
           </div>
-          <FooterGroup title="Platform" links={[["Apply", "/apply"], ["Funding Solutions", "/funding-solutions"], ["Status", "/application-status"]]} />
-          <FooterGroup title="Company" links={[["About", "/about"], ["Contact", "/contact"], ["Login", "/login"]]} />
+          <FooterGroup title="Platform" links={[["Apply", "/apply"], ["Secure Upload", "/portal/upload"], ["Funding Solutions", "/funding-solutions"]]} />
+          <FooterGroup title="Company" links={[["About", "/about"], ["Contact", "/contact"]]} />
           <div>
             <p className="text-sm font-semibold text-white">Security</p>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Encrypted application intake, protected customer access, secure lender distribution, and signed-access document handling.
+              Encrypted application intake, secure lender distribution, and signed-access document handling without account friction.
             </p>
           </div>
         </div>

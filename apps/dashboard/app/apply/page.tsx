@@ -13,17 +13,17 @@ export default function ApplyPage() {
               Private funding intake
             </div>
             <h1 className="mt-6 font-serif text-4xl font-medium leading-tight tracking-normal text-white sm:text-5xl">
-              Apply for business funding with a cleaner process.
+              Apply for private business funding without portal friction.
             </h1>
             <p className="mt-5 text-base leading-8 text-muted-foreground">
-              Share your business details once. Operion Capital prepares a structured funding profile for MCA, business loan,
-              and lender matching review.
+              Submit core business details and recent bank statements once. Operion Capital prepares a structured file for MCA,
+              business funding analysis, and lender matching review.
             </p>
             <div className="mt-8 grid gap-3">
               {[
-                [ShieldCheck, "Secure intake", "Application data is handled through protected server-side workflows."],
-                [Timer, "Fast review path", "Complete profiles are designed for quicker funding readiness review."],
-                [Sparkles, "Private profile preparation", "Funding signals are structured for qualification and matching."]
+                [ShieldCheck, "Secure intake", "Applications and statements are handled through protected server-side workflows."],
+                [Timer, "Fast review path", "Complete files are designed for quicker funding readiness review."],
+                [Sparkles, "Email-driven updates", "No merchant login is required after submission."]
               ].map(([Icon, title, text]) => {
                 const ItemIcon = Icon as typeof ShieldCheck;
                 return (
