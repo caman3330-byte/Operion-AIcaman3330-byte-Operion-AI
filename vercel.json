@@ -11,6 +11,20 @@
   ],
   "routes": [
     {
+      "src": "^/(dashboard|application-status|settings)(/.*)?$",
+      "status": 307,
+      "headers": {
+        "Location": "/thank-you?source=deprecated_merchant_portal"
+      }
+    },
+    {
+      "src": "^/(login|signin|signup|forgot-password|reset-password)$",
+      "status": 307,
+      "headers": {
+        "Location": "/apply?source=merchant_auth_removed"
+      }
+    },
+    {
       "src": "^/(?!apps/dashboard)(.*)$",
       "dest": "/apps/dashboard/$1"
     }
