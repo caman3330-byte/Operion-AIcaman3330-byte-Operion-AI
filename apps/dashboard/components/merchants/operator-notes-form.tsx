@@ -38,11 +38,11 @@ export function OperatorNotesForm({
     setSaveState({ status: "idle", message: "Saving operator notes..." });
     startTransition(async () => {
       try {
-        const response = await fetch(`/api/operations/applications/${applicationId}/notes`, {
+        const response = await fetch("/api/operations/application-notes", {
           method: "PATCH",
           credentials: "same-origin",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(notes)
+          body: JSON.stringify({ applicationId, ...notes })
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
