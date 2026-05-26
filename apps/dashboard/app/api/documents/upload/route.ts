@@ -21,6 +21,11 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
+    if (!contentType.includes("multipart/form-data")) {
+      throw new ValidationError("Document uploads must use multipart form data.");
+    }
+
     const formData = await request.formData();
     const file = formData.get("file");
     const documentType = String(formData.get("document_type") ?? "").trim();
