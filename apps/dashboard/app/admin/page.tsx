@@ -12,6 +12,7 @@ import {
   TimerReset
 } from "lucide-react";
 import { OperationalTestControls } from "@/components/admin/operational-test-controls";
+import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,11 @@ const commandLinks = [
 ] as const;
 
 export default async function AdminPage() {
+  const access = await getInternalPageAccess();
+  if (!access.allowed) {
+    return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+  }
+
   const [supervisor, production, operator, monitoring] = await Promise.all([
     getSupervisorSummary(),
     getProductionSupervisorSummary(),

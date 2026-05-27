@@ -86,11 +86,15 @@ async function claimTask(task: AgentTaskQueueItem, workerId: string) {
     claimed_at: new Date().toISOString()
   } as Json;
 
-  const claimed = await orchestrationRepository.updateTask(task.id, {
+  const claimed = await orchestrationRepository.claimTask(task.id, {
     status: "running",
     started_at: task.started_at ?? new Date().toISOString(),
     context
   });
+
+  if (!claimed) {
+    return null;
+  }
 
   await writeAuditLog({
     eventType: "agent_task_claimed",

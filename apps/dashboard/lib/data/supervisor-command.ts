@@ -2,6 +2,7 @@ import { logger } from "@/lib/logger";
 import { getConfigurationStatus } from "@/lib/env";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { productionRepository } from "@/lib/repositories/production";
+import { cachedFor } from "@/lib/runtime/ttl-cache";
 
 export interface ProductionSupervisorSummary {
   source: "supabase" | "unavailable";
@@ -53,10 +54,16 @@ export interface ProductionSupervisorSummary {
     uploadCompletionRate: number;
     leadConversionRate: number;
     lenderResponseRate: number;
+    oldestAiQueuedAgeHours: number | null;
+    oldestAiRetryAgeHours: number | null;
   };
 }
 
 export async function getProductionSupervisorSummary(): Promise<ProductionSupervisorSummary> {
+  return cachedFor("production-supervisor-summary", 20_000, loadProductionSupervisorSummary);
+}
+
+async function loadProductionSupervisorSummary(): Promise<ProductionSupervisorSummary> {
   const configurationStatus = getConfigurationStatus();
   const environmentReady =
     configurationStatus.supabase &&
@@ -80,7 +87,7 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
 
     const lifecycle = summarizeLifecycle(applications);
     const emailOperations = summarizeEmailOperations(outreachLogs, configurationStatus.sendgrid);
-    const operationalMetrics = summarizeOperationalMetrics({ leads: leads.data, applications, outreachLogs, matches, documents });
+    const operationalMetrics = summarizeOperationalMetrics({ leads: leads.data, applications, aiTasks, outreachLogs, matches, documents });
 
     return {
       source: "supabase",
@@ -138,7 +145,9 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
         documentsUploaded: 0,
         uploadCompletionRate: 0,
         leadConversionRate: 0,
-        lenderResponseRate: 0
+        lenderResponseRate: 0,
+        oldestAiQueuedAgeHours: null,
+        oldestAiRetryAgeHours: null
       }
     };
   }
@@ -146,7 +155,8 @@ export async function getProductionSupervisorSummary(): Promise<ProductionSuperv
 
 function summarizeOperationalMetrics(input: {
   leads: Array<{ created_at?: string | null }>;
-  applications: Array<{ created_at?: string | null; submitted_at?: string | null; status: string }>;
+  applications: Array<{ created_at?: string | null; updated_at?: string | null; submitted_at?: string | null; status: string }>;
+  aiTasks: Array<{ status: string; created_at?: string | null; updated_at?: string | null; attempts?: number | null }>;
   outreachLogs: Array<{ status: string | null; sent_at?: string | null; replied_at?: string | null; lender_id?: string | null }>;
   matches: Array<{ lender_id: string | null; status: string }>;
   documents: Array<{ status: string; uploaded_at?: string | null }>;
@@ -171,8 +181,27 @@ function summarizeOperationalMetrics(input: {
     documentsUploaded: uploadedDocuments.length,
     uploadCompletionRate: input.documents.length === 0 ? 0 : Number(((uploadedDocuments.length / input.documents.length) * 100).toFixed(1)),
     leadConversionRate: Number((conversionBase * 100).toFixed(1)),
-    lenderResponseRate: Number((lenderResponseBase * 100).toFixed(1))
+    lenderResponseRate: Number((lenderResponseBase * 100).toFixed(1)),
+    oldestAiQueuedAgeHours: oldestAgeHours(
+      input.aiTasks
+        .filter((task) => task.status === "queued")
+        .map((task) => task.updated_at ?? task.created_at ?? null)
+    ),
+    oldestAiRetryAgeHours: oldestAgeHours(
+      input.aiTasks
+        .filter((task) => task.status === "queued" && Number(task.attempts ?? 0) > 0)
+        .map((task) => task.updated_at ?? task.created_at ?? null)
+    )
   };
+}
+
+function oldestAgeHours(values: Array<string | null | undefined>) {
+  const timestamps = values
+    .filter((value): value is string => Boolean(value))
+    .map((value) => Date.parse(value))
+    .filter(Number.isFinite);
+  if (timestamps.length === 0) return null;
+  return Number(((Date.now() - Math.min(...timestamps)) / 3600000).toFixed(2));
 }
 
 function summarizeLifecycle(applications: Array<{ status: string }>) {

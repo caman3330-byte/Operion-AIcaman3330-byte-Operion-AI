@@ -181,6 +181,23 @@ export const orchestrationRepository = {
     return data;
   },
 
+  async claimTask(id: string, payload: AgentTaskQueueUpdate, allowedStatuses: AgentQueueStatus[] = ["queued", "assigned"]) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("agent_task_queue")
+      .update(payload)
+      .eq("id", id)
+      .in("status", allowedStatuses)
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      throwOrchestrationDatabaseError(error);
+    }
+
+    return data;
+  },
+
   async listMessages(taskId?: string) {
     const supabase = getSupabaseAdmin();
     let query = supabase.from("agent_messages").select("*").order("created_at", { ascending: true }).limit(100);

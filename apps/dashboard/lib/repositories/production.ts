@@ -356,6 +356,18 @@ export const productionRepository = {
     return data;
   },
 
+  async claimAiTask(id: string, payload: AiTaskUpdate) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("ai_tasks")
+      .update(payload)
+      .eq("id", id)
+      .eq("status", "queued")
+      .select("*")
+      .maybeSingle();
+    if (error) throwProductionSchemaError(error);
+    return data;
+  },
+
   async listAiTasks(limit = 100) {
     const { data, error } = await getSupabaseAdmin().from("ai_tasks").select("*").order("created_at", { ascending: false }).limit(limit);
     if (error) throwProductionSchemaError(error);

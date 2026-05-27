@@ -25,6 +25,21 @@ export interface UnderwritingQueueItem {
   summary: string | null;
 }
 
+export type OperationalBusinessApplication = Pick<
+  BusinessApplication,
+  | "id"
+  | "business_name"
+  | "industry"
+  | "status"
+  | "requested_amount"
+  | "monthly_deposits"
+  | "metadata"
+  | "updated_at"
+  | "created_at"
+> & {
+  submitted_at?: string | null;
+};
+
 export interface UnderwritingDashboard {
   queue: PaginatedOperationalResult<UnderwritingQueueItem>;
   metrics: {
@@ -36,8 +51,8 @@ export interface UnderwritingDashboard {
 }
 
 export interface CrmOperatorDashboard {
-  intakeQueue: PaginatedOperationalResult<BusinessApplication>;
-  staleQueue: PaginatedOperationalResult<BusinessApplication>;
+  intakeQueue: PaginatedOperationalResult<OperationalBusinessApplication>;
+  staleQueue: PaginatedOperationalResult<OperationalBusinessApplication>;
   recentActivities: PaginatedOperationalResult<CrmActivity>;
 }
 
@@ -69,6 +84,8 @@ export interface WorkflowControlDashboard {
     retryCount: number;
     failureCount: number;
     averageLatencyMs: number | null;
+    oldestTraceAgeHours: number | null;
+    oldestRetryAgeHours: number | null;
     byWorkflow: Record<string, number>;
   };
 }

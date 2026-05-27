@@ -2,6 +2,7 @@ import type { AiTaskStatus, BusinessApplication, LenderMatchStatus } from "@oper
 import { getOperationsAnalyticsSnapshot } from "../analytics/service";
 import { getFundingPipelineSnapshot } from "../crm/lifecycle";
 import { buildLenderDistributionPlan, type DistributionMerchantProfile } from "../lenders/distribution";
+import type { OperationalBusinessApplication } from "../operator-dashboard/types";
 import { getSupabaseAdmin } from "../supabase/server";
 
 export interface OperatorListOptions {
@@ -23,12 +24,12 @@ export interface PaginatedOperationalResult<T> {
   error?: string;
 }
 
-export async function getUnderwritingQueue(options: Partial<OperatorListOptions> = {}): Promise<PaginatedOperationalResult<BusinessApplication>> {
+export async function getUnderwritingQueue(options: Partial<OperatorListOptions> = {}): Promise<PaginatedOperationalResult<OperationalBusinessApplication>> {
   const normalized = normalizeOptions(options);
   const supabase = await getSupabaseAdmin();
   let query = supabase
     .from("business_applications")
-    .select("*")
+    .select("id,business_name,industry,status,requested_amount,monthly_deposits,metadata,updated_at,created_at")
     .in("status", ["ai_review", "underwriting_review", "reviewing", "needs_review"])
     .order("updated_at", { ascending: true })
     .range(normalized.offset, normalized.offset + normalized.limit - 1);
@@ -41,12 +42,12 @@ export async function getUnderwritingQueue(options: Partial<OperatorListOptions>
   return paginated(data ?? [], normalized);
 }
 
-export async function getIntakeReviewQueue(options: Partial<OperatorListOptions> = {}): Promise<PaginatedOperationalResult<BusinessApplication>> {
+export async function getIntakeReviewQueue(options: Partial<OperatorListOptions> = {}): Promise<PaginatedOperationalResult<OperationalBusinessApplication>> {
   const normalized = normalizeOptions(options);
   const supabase = await getSupabaseAdmin();
   let query = supabase
     .from("business_applications")
-    .select("*")
+    .select("id,business_name,industry,status,requested_amount,monthly_deposits,metadata,updated_at,created_at,submitted_at")
     .in("status", ["submitted", "documents_pending", "new_lead", "onboarding"])
     .order("created_at", { ascending: false })
     .range(normalized.offset, normalized.offset + normalized.limit - 1);
@@ -66,7 +67,7 @@ export async function getStaleLeadQueue(options: Partial<OperatorListOptions> & 
   const cutoff = new Date(Date.now() - threshold * 60 * 60 * 1000).toISOString();
   let query = supabase
     .from("business_applications")
-    .select("*")
+    .select("id,business_name,industry,status,requested_amount,monthly_deposits,metadata,updated_at,created_at,submitted_at")
     .lt("updated_at", cutoff)
     .not("status", "in", "(funded,rejected,withdrawn,inactive)")
     .order("updated_at", { ascending: true })
@@ -85,7 +86,7 @@ export async function getAiExecutionReviewFeed(options: Partial<OperatorListOpti
   const supabase = await getSupabaseAdmin();
   let query = supabase
     .from("ai_task_logs")
-    .select("*")
+    .select("id,ai_task_id,status,message,provider,model,input_tokens,output_tokens,latency_ms,cost_estimate_usd,metadata,created_at")
     .order("created_at", { ascending: false })
     .range(normalized.offset, normalized.offset + normalized.limit - 1);
 
@@ -104,7 +105,7 @@ export async function getLenderRoutingExecutionFeed(options: Partial<OperatorLis
   const supabase = await getSupabaseAdmin();
   let query = supabase
     .from("lender_matches")
-    .select("*")
+    .select("id,lead_id,business_application_id,lender_id,match_score,status,criteria_snapshot,decision_at,submitted_at,commission_estimate,notes,created_at")
     .order("created_at", { ascending: false })
     .range(normalized.offset, normalized.offset + normalized.limit - 1);
 
@@ -139,6 +140,12 @@ export async function getWorkflowRetryMetrics(options: Partial<OperatorListOptio
       retryCount: traces.filter((trace) => trace.status === "retried" || trace.step_key.includes("retry")).length,
       failureCount: traces.filter((trace) => trace.status === "failed" || trace.error_message).length,
       averageLatencyMs: average(traces.map((trace) => trace.latency_ms).filter((value): value is number => typeof value === "number")),
+      oldestTraceAgeHours: oldestAgeHours(traces.map((trace) => trace.created_at)),
+      oldestRetryAgeHours: oldestAgeHours(
+        traces
+          .filter((trace) => trace.status === "retried" || trace.step_key.includes("retry"))
+          .map((trace) => trace.created_at)
+      ),
       byWorkflow: countBy(traces, (trace) => trace.workflow_key)
     }
   };
@@ -196,6 +203,13 @@ function countBy<T>(items: T[], keyFn: (item: T) => string): Record<string, numb
 
 function average(values: number[]) {
   return values.length > 0 ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)) : null;
+}
+
+function oldestAgeHours(values: string[]) {
+  if (values.length === 0) return null;
+  const oldest = Math.min(...values.map((value) => Date.parse(value)).filter(Number.isFinite));
+  if (!Number.isFinite(oldest)) return null;
+  return Number(((Date.now() - oldest) / 3600000).toFixed(2));
 }
 
 function aiTaskStatus(value: string | undefined): AiTaskStatus | null {

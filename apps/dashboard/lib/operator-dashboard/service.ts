@@ -1,6 +1,7 @@
 import type { AiTaskLog, BusinessApplication, CrmActivity, CrmActivityType, LenderMatch, WorkflowExecutionTrace, WorkflowTraceStatus } from "@operion/shared";
 import { getOperationsAnalyticsSnapshot } from "../analytics/service";
 import { categorizeAiExecutionFailure } from "../operations/ai-failure-categories";
+import { cachedFor, stableCacheKey } from "../runtime/ttl-cache";
 import { getSupabaseAdmin } from "../supabase/server";
 import {
   getAiExecutionReviewFeed,
@@ -18,6 +19,7 @@ import type {
   CrmOperatorDashboard,
   LenderRoutingDashboard,
   OperatorDashboardSummary,
+  OperationalBusinessApplication,
   UnderwritingDashboard,
   UnderwritingQueueItem,
   WorkflowControlDashboard
@@ -121,6 +123,8 @@ export async function getWorkflowControlDashboard(
       retryCount: 0,
       failureCount: 0,
       averageLatencyMs: null,
+      oldestTraceAgeHours: null,
+      oldestRetryAgeHours: null,
       byWorkflow: {}
     }
   };
@@ -144,6 +148,14 @@ export async function getLenderRoutingDashboard(
 }
 
 export async function getOperatorDashboardSummary(
+  options: Partial<OperatorListOptions> & { staleThresholdHours?: number } = {}
+): Promise<OperatorDashboardSummary> {
+  return cachedFor(stableCacheKey("operator-dashboard-summary", options), 20_000, () =>
+    loadOperatorDashboardSummary(options)
+  );
+}
+
+async function loadOperatorDashboardSummary(
   options: Partial<OperatorListOptions> & { staleThresholdHours?: number } = {}
 ): Promise<OperatorDashboardSummary> {
   const [underwriting, crm, analytics, ai, workflows, lenders] = await Promise.all([
@@ -210,7 +222,7 @@ async function getWorkflowTraceFeed(
   return paginate(data ?? [], normalized, error?.message);
 }
 
-function toUnderwritingQueueItem(application: BusinessApplication): UnderwritingQueueItem {
+function toUnderwritingQueueItem(application: BusinessApplication | OperationalBusinessApplication): UnderwritingQueueItem {
   const metadata = isRecord(application.metadata) ? application.metadata : {};
   const underwriting = isRecord(metadata.underwriting) ? metadata.underwriting : {};
   const staleHours = Math.max(0, (Date.now() - new Date(application.updated_at).getTime()) / 3600000);

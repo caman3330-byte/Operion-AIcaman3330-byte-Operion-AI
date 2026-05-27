@@ -38,12 +38,22 @@ async function executeAiTask(task: AiTask, workerId: string): Promise<AiTaskDisp
   const startedAt = new Date().toISOString();
   const attempts = (task.attempts ?? 0) + 1;
 
-  await productionRepository.updateAiTask(task.id, {
+  const claimedTask = await productionRepository.claimAiTask(task.id, {
     status: "running",
     attempts,
     started_at: task.started_at ?? startedAt,
     error_message: null
   });
+  if (!claimedTask) {
+    return {
+      task_id: task.id,
+      task_type: task.task_type,
+      status: task.status,
+      summary: "Task was already claimed by another worker"
+    };
+  }
+
+  task = claimedTask;
   await productionRepository.createAiTaskLog({
     ai_task_id: task.id,
     status: "running",

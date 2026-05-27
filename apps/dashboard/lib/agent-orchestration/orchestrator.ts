@@ -18,6 +18,7 @@ import { alertsRepository } from "@/lib/repositories/alerts";
 import { isOrchestrationMigrationMissing, orchestrationRepository } from "@/lib/repositories/orchestration";
 import { agentRegistry } from "@/lib/manager-agent/registry";
 import { dispatchN8nWorkflow } from "@/lib/n8n";
+import { cachedFor } from "@/lib/runtime/ttl-cache";
 
 export interface RouteWorkflowInput {
   workflowKey: string;
@@ -174,6 +175,10 @@ export async function routeWorkflow(input: RouteWorkflowInput) {
 }
 
 export async function getSupervisorSummary(): Promise<SupervisorSummary> {
+  return cachedFor("supervisor-agent-summary", 20_000, loadSupervisorSummary);
+}
+
+async function loadSupervisorSummary(): Promise<SupervisorSummary> {
   const [alerts, aiUsage] = await Promise.all([
     alertsRepository.listUnresolved(50).catch(() => []),
     apiUsageRepository.summary(30).catch(() => ({
