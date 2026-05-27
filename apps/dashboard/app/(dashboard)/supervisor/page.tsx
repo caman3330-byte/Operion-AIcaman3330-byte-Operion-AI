@@ -53,6 +53,69 @@ export default async function SupervisorPage() {
   const pendingLenderResponses = timelines.filter((timeline) =>
     timeline.steps.some((step) => step.key === "waiting_lender_response" && step.state === "active")
   ).length;
+  const pendingApprovalCount = Math.max(production.pendingApprovals, summary.pending_approvals);
+  const queuedAiCount = production.aiQueued + production.aiRunning;
+  const blockedAiCount = production.aiFailed;
+  const workflowExceptionCount = summary.failed_tasks + monitoring.counters.workflowFailures;
+  const oldestQueuedAgeLabel = formatQueueAge(production.operationalMetrics.oldestAiQueuedAgeHours);
+  const manualReadinessScore = Math.max(
+    0,
+    100 -
+      Math.min(28, pendingApprovalCount * 4) -
+      Math.min(24, blockedAiCount * 3) -
+      Math.min(18, production.underwritingQueue * 2) -
+      Math.min(18, workflowExceptionCount * 3) -
+      Math.min(12, monitoring.counters.retryCount * 2)
+  );
+  const manualReadinessTone =
+    manualReadinessScore >= 80 ? "operational" : manualReadinessScore >= 60 ? "watch" : "needs review";
+  const founderActionItems = [
+    {
+      label: "Approvals",
+      count: pendingApprovalCount,
+      detail:
+        pendingApprovalCount > 0
+          ? "Review distribution and manager approval requests before outreach."
+          : "No approval backlog.",
+      tone: pendingApprovalCount > 0 ? "warning" : "success",
+      icon: CheckCircle2
+    },
+    {
+      label: "Blocked AI",
+      count: blockedAiCount,
+      detail:
+        blockedAiCount > 0
+          ? "Keep blocked items founder-reviewed until missing context is resolved."
+          : "No blocked AI tasks.",
+      tone: blockedAiCount > 0 ? "danger" : "success",
+      icon: Bot
+    },
+    {
+      label: "AI Queue",
+      count: queuedAiCount,
+      detail: queuedAiCount > 0 ? `Oldest queued task is ${oldestQueuedAgeLabel}.` : "No active AI queue pressure.",
+      tone: queuedAiCount > 0 ? "warning" : "success",
+      icon: Workflow
+    },
+    {
+      label: "Underwriting",
+      count: production.underwritingQueue,
+      detail:
+        production.underwritingQueue > 0 ? "Manual review needed before lender routing." : "No underwriting queue backlog.",
+      tone: production.underwritingQueue > 0 ? "warning" : "success",
+      icon: FileText
+    },
+    {
+      label: "Workflow Exceptions",
+      count: workflowExceptionCount,
+      detail:
+        workflowExceptionCount > 0
+          ? "Resolve exceptions before increasing live traffic."
+          : "No workflow exceptions reported.",
+      tone: workflowExceptionCount > 0 ? "danger" : "success",
+      icon: AlertTriangle
+    }
+  ];
 
   return (
     <div className="space-y-6">
@@ -132,6 +195,43 @@ export default async function SupervisorPage() {
               <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{detail}</p>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/25 bg-primary/5 shadow-sm">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Founder Action Queue</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Manual priorities for controlled live beta operations.</p>
+          </div>
+          <Badge variant={manualReadinessScore >= 80 ? "success" : manualReadinessScore >= 60 ? "warning" : "destructive"}>
+            {manualReadinessScore}/100 {manualReadinessTone}
+          </Badge>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {founderActionItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="rounded-md border bg-background/80 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+                    <p className="mt-1 text-2xl font-semibold tracking-normal text-white">{item.count}</p>
+                  </div>
+                  <Icon
+                    className={
+                      item.tone === "danger"
+                        ? "h-5 w-5 text-destructive"
+                        : item.tone === "warning"
+                          ? "h-5 w-5 text-amber-600"
+                          : "h-5 w-5 text-emerald-600"
+                    }
+                  />
+                </div>
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -489,7 +589,11 @@ export default async function SupervisorPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-4 xl:grid-cols-4">
+        <QueuePanel
+          title="Queued / Blocked Tasks"
+          tasks={summary.tasks.filter((task) => task.status === "queued" || task.status === "blocked")}
+        />
         <QueuePanel title="Running Tasks" tasks={summary.tasks.filter((task) => task.status === "running")} />
         <QueuePanel title="Completed Tasks" tasks={summary.tasks.filter((task) => task.status === "completed")} />
         <QueuePanel title="Failed Tasks" tasks={summary.tasks.filter((task) => task.status === "failed")} />
@@ -544,7 +648,13 @@ export default async function SupervisorPage() {
   );
 }
 
-function QueuePanel({ title, tasks }: { title: string; tasks: Array<{ id: string; title: string; assigned_agent_key: string }> }) {
+function QueuePanel({
+  title,
+  tasks
+}: {
+  title: string;
+  tasks: Array<{ id: string; title: string; assigned_agent_key: string; status?: string }>;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -556,7 +666,14 @@ function QueuePanel({ title, tasks }: { title: string; tasks: Array<{ id: string
         ) : (
           tasks.slice(0, 6).map((task) => (
             <div key={task.id} className="rounded-md border p-3">
-              <p className="text-sm font-medium">{task.title}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-medium">{task.title}</p>
+                {task.status ? (
+                  <Badge variant={task.status === "blocked" || task.status === "failed" ? "destructive" : "secondary"}>
+                    {task.status}
+                  </Badge>
+                ) : null}
+              </div>
               <p className="mt-1 text-xs text-muted-foreground">{task.assigned_agent_key}</p>
             </div>
           ))
@@ -624,4 +741,20 @@ function formatCurrency(value: number) {
     currency: "USD",
     maximumFractionDigits: value < 1 ? 4 : 2
   }).format(value);
+}
+
+function formatQueueAge(value: number | null) {
+  if (value === null) {
+    return "not aged";
+  }
+
+  if (value < 1) {
+    return "under 1 hour old";
+  }
+
+  if (value < 24) {
+    return `${value.toFixed(1)} hours old`;
+  }
+
+  return `${(value / 24).toFixed(1)} days old`;
 }
