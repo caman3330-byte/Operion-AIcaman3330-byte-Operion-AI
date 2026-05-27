@@ -1,12 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireInternalUser } from "@/lib/auth";
 import { collectDiagnosticsSnapshot } from "@/lib/diagnostics/summary";
 import { getConfigurationStatus } from "@/lib/env";
 import { handleRouteError } from "@/lib/errors";
+import { startRouteTiming, timedJson } from "@/lib/runtime/route-timing";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const timing = startRouteTiming();
   try {
     await requireInternalUser(request);
     const [configuration, diagnostics] = await Promise.all([
@@ -14,7 +16,7 @@ export async function GET(request: NextRequest) {
       collectDiagnosticsSnapshot()
     ]);
 
-    return NextResponse.json({
+    return timedJson({
       status: diagnostics.health_status,
       timestamp: new Date().toISOString(),
       services: {
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
         n8n: configuration.n8n ? "configured" : "not_configured"
       },
       diagnostics
-    });
+    }, timing);
   } catch (error) {
     return handleRouteError(error);
   }

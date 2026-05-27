@@ -1,16 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireInternalUser } from "@/lib/auth";
 import { handleRouteError } from "@/lib/errors";
 import { getAiControlCenterDashboard } from "@/lib/operator-dashboard/service";
 import { operatorQueueSchema } from "@/lib/operations/schemas";
+import { startRouteTiming, timedJson } from "@/lib/runtime/route-timing";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const timing = startRouteTiming();
   try {
     await requireInternalUser(request);
     const query = operatorQueueSchema.parse(Object.fromEntries(request.nextUrl.searchParams));
-    return NextResponse.json({ data: await getAiControlCenterDashboard(query) });
+    return timedJson({ data: await getAiControlCenterDashboard(query) }, timing);
   } catch (error) {
     return handleRouteError(error);
   }

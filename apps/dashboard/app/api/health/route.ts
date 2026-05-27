@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
 import { getConfigurationStatus } from "@/lib/env";
+import { startRouteTiming, timedJson } from "@/lib/runtime/route-timing";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const timing = startRouteTiming();
   const configuration = getConfigurationStatus();
   const coreReady =
     configuration.supabase &&
@@ -11,7 +12,7 @@ export async function GET() {
     configuration.sendgrid &&
     (configuration.openai || configuration.anthropic);
 
-  return NextResponse.json({
+  return timedJson({
     status: coreReady ? "ok" : "degraded",
     timestamp: new Date().toISOString(),
     services: {
@@ -20,5 +21,5 @@ export async function GET() {
       ai: configuration.openai || configuration.anthropic ? "configured" : "not_configured",
       sendgrid: configuration.sendgrid ? "configured" : "not_configured"
     }
-  });
+  }, timing);
 }
