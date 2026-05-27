@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/utils";
+import { updateFounderWorkflowState } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,11 @@ export default async function SupervisorPage() {
     .filter((task) => task.status === "queued" || task.status === "assigned" || task.status === "blocked" || task.status === "failed")
     .map((task) => ({ ...task, ageHours: taskAgeHours(task) }))
     .sort(sortReviewTasks);
+  const scopedReviewTasks = reviewTasks.map((task) => ({ ...task, scope: classifyOperationalScope(task).scope }));
+  const liveReviewTasks = scopedReviewTasks.filter((task) => task.scope === "live");
+  const qaReviewTasks = scopedReviewTasks.filter((task) => task.scope === "qa");
+  const unresolvedLiveWorkflows = liveReviewTasks.filter((task) => task.status !== "completed" && task.status !== "cancelled");
+  const pendingFounderApprovals = summary.approvals.filter((approval) => approval.status === "pending");
   const approvalBlockedTasks = reviewTasks.filter((task) => task.status === "blocked" && Boolean(task.approval_id));
   const oldestReviewTaskAgeLabel = formatQueueAge(reviewTasks[0]?.ageHours ?? null);
   const oldestApprovalTaskAgeLabel = formatQueueAge(approvalBlockedTasks[0]?.ageHours ?? null);
@@ -69,7 +75,7 @@ export default async function SupervisorPage() {
     operator.underwriting.queue.items.length > 0
       ? formatQueueAge(Math.max(...operator.underwriting.queue.items.map((item) => item.staleHours)))
       : "not aged";
-  const qaReviewTaskCount = reviewTasks.filter((task) => classifyOperationalScope(task).scope === "qa").length;
+  const qaReviewTaskCount = qaReviewTasks.length;
   const qaUnderwritingCount = operator.underwriting.queue.items.filter((item) => classifyOperationalScope(item).scope === "qa").length;
   const qaIntakeCount = operator.crm.intakeQueue.items.filter((item) => classifyOperationalScope(item).scope === "qa").length;
   const qaWorkflowTraceCount = operator.workflows.traces.items.filter((item) => classifyOperationalScope(item).scope === "qa").length;
@@ -307,6 +313,14 @@ export default async function SupervisorPage() {
           ))}
         </CardContent>
       </Card>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <QueuePanel title="Live-Only Queue View" tasks={liveReviewTasks} />
+        <QueuePanel title="QA-Only Queue View" tasks={qaReviewTasks} />
+        <QueuePanel title="Unresolved Live Workflows" tasks={unresolvedLiveWorkflows} />
+      </div>
+
+      <PendingApprovalsPanel approvals={pendingFounderApprovals} />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Applications" value={String(production.applications)} detail="Business funding requests" icon={FileText} />
@@ -668,11 +682,11 @@ export default async function SupervisorPage() {
       <div className="grid gap-4 xl:grid-cols-4">
         <QueuePanel
           title="Queued / Blocked Tasks"
-          tasks={reviewTasks.filter((task) => task.status === "queued" || task.status === "assigned" || task.status === "blocked")}
+          tasks={scopedReviewTasks.filter((task) => task.status === "queued" || task.status === "assigned" || task.status === "blocked")}
         />
         <QueuePanel title="Running Tasks" tasks={summary.tasks.filter((task) => task.status === "running").map((task) => ({ ...task, ageHours: taskAgeHours(task) }))} />
         <QueuePanel title="Completed Tasks" tasks={summary.tasks.filter((task) => task.status === "completed").map((task) => ({ ...task, ageHours: taskAgeHours(task) }))} />
-        <QueuePanel title="Failed Tasks" tasks={reviewTasks.filter((task) => task.status === "failed")} />
+        <QueuePanel title="Failed Tasks" tasks={scopedReviewTasks.filter((task) => task.status === "failed")} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -739,6 +753,7 @@ function QueuePanel({
     approval_id?: string | null;
     context?: unknown;
     ageHours?: number | null;
+    scope?: "live" | "qa";
   }>;
 }) {
   return (
@@ -750,7 +765,9 @@ function QueuePanel({
         {tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No tasks in this state.</p>
         ) : (
-          tasks.slice(0, 6).map((task) => (
+          tasks.slice(0, 6).map((task) => {
+            const scope = task.scope ?? classifyOperationalScope(task).scope;
+            return (
             <div key={task.id} className="rounded-md border p-3">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-sm font-medium">{task.title}</p>
@@ -767,10 +784,88 @@ function QueuePanel({
                 <Badge variant={(task.ageHours ?? 0) >= 72 ? "warning" : "outline"}>{formatQueueAge(task.ageHours ?? null)}</Badge>
                 {task.approval_id ? <Badge variant="warning">approval needed</Badge> : null}
                 {task.priority ? <Badge variant="outline">{task.priority}</Badge> : null}
-                <Badge variant={classifyOperationalScope(task).scope === "qa" ? "warning" : "outline"}>
-                  {classifyOperationalScope(task).label}
+                <Badge variant={scope === "qa" ? "warning" : "outline"}>
+                  {scope === "qa" ? "QA" : "live"}
                 </Badge>
               </div>
+              <WorkflowActionButtons taskId={task.id} scope={scope} status={task.status} />
+            </div>
+          );
+          })
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function WorkflowActionButtons({ taskId, scope, status }: { taskId: string; scope: "live" | "qa"; status: string | undefined }) {
+  const canResolve = status !== "cancelled" && status !== "completed";
+  const canReopen = status === "cancelled" || status === "completed" || status === "failed";
+
+  return (
+    <form action={updateFounderWorkflowState} className="mt-3 flex flex-wrap gap-2">
+      <input type="hidden" name="taskId" value={taskId} />
+      {scope === "qa" ? (
+        <button name="action" value="archive_qa" className="rounded-md border border-warning px-2 py-1 text-xs text-warning-foreground">
+          Archive QA
+        </button>
+      ) : null}
+      {scope === "qa" ? (
+        <button name="action" value="mark_live" className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
+          Mark live
+        </button>
+      ) : (
+        <button name="action" value="mark_qa" className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
+          Mark QA
+        </button>
+      )}
+      {canResolve ? (
+        <button name="action" value="resolve_stale" className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
+          Resolve stale
+        </button>
+      ) : null}
+      {canReopen ? (
+        <button name="action" value="reopen_review" className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
+          Reopen review
+        </button>
+      ) : null}
+    </form>
+  );
+}
+
+function PendingApprovalsPanel({
+  approvals
+}: {
+  approvals: Array<{
+    id: string;
+    title: string;
+    approval_type: string;
+    requested_by_agent_key: string;
+    task_id: string | null;
+    created_at: string;
+  }>;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle>Pending Founder Approvals</CardTitle>
+          <Badge variant={approvals.length > 0 ? "warning" : "success"}>{approvals.length}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {approvals.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No approval requests are waiting on founder review.</p>
+        ) : (
+          approvals.slice(0, 8).map((approval) => (
+            <div key={approval.id} className="rounded-md border p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="min-w-0 text-sm font-medium">{approval.title}</p>
+                <Badge variant="warning">{approval.approval_type.replaceAll("_", " ")}</Badge>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {approval.requested_by_agent_key} / {formatQueueAge(taskAgeHours(approval))} / task {approval.task_id ?? "unlinked"}
+              </p>
             </div>
           ))
         )}

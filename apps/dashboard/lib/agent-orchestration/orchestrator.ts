@@ -1,5 +1,6 @@
 import type {
   AgentDefinition,
+  AgentApprovalRequest,
   AgentDepartment,
   AgentDepartmentType,
   AgentPerformanceMetric,
@@ -60,6 +61,7 @@ export interface SupervisorSummary {
   departments: SupervisorDepartmentSummary[];
   agents: AgentDefinition[];
   tasks: AgentTaskQueueItem[];
+  approvals: AgentApprovalRequest[];
   workflow_routes: WorkflowRoute[];
   alerts: Alert[];
   metrics: AgentPerformanceMetric[];
@@ -230,6 +232,7 @@ async function loadSupervisorSummary(): Promise<SupervisorSummary> {
       departments: departmentSummaries,
       agents: normalizedAgents,
       tasks,
+      approvals,
       workflow_routes: routes,
       alerts,
       metrics,
@@ -266,6 +269,7 @@ async function loadSupervisorSummary(): Promise<SupervisorSummary> {
       ),
       agents: agentRegistry,
       tasks: [],
+      approvals: [],
       workflow_routes: [],
       alerts,
       metrics: [],
