@@ -20,9 +20,9 @@ import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layou
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WorkflowActionButtons } from "@/components/supervisor/workflow-action-buttons";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/utils";
-import { updateFounderWorkflowState } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -795,41 +795,6 @@ function QueuePanel({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function WorkflowActionButtons({ taskId, scope, status }: { taskId: string; scope: "live" | "qa"; status: string | undefined }) {
-  const canResolve = status !== "cancelled" && status !== "completed";
-  const canReopen = status === "cancelled" || status === "completed" || status === "failed";
-
-  return (
-    <form action={updateFounderWorkflowState} className="mt-3 flex flex-wrap gap-2">
-      <input type="hidden" name="taskId" value={taskId} />
-      {scope === "qa" ? (
-        <button name="action" value="archive_qa" className="rounded-md border border-warning px-2 py-1 text-xs text-warning-foreground">
-          Archive QA
-        </button>
-      ) : null}
-      {scope === "qa" ? (
-        <button name="action" value="mark_live" className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
-          Mark live
-        </button>
-      ) : (
-        <button name="action" value="mark_qa" className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
-          Mark QA
-        </button>
-      )}
-      {canResolve ? (
-        <button name="action" value="resolve_stale" className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
-          Resolve stale
-        </button>
-      ) : null}
-      {canReopen ? (
-        <button name="action" value="reopen_review" className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
-          Reopen review
-        </button>
-      ) : null}
-    </form>
   );
 }
 

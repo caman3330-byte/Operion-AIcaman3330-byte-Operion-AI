@@ -7,55 +7,70 @@ import { getInternalPageAccess } from "@/components/layout/protected-page";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 type FounderWorkflowAction = "archive_qa" | "mark_live" | "mark_qa" | "resolve_stale" | "reopen_review";
+export type FounderWorkflowActionState = {
+  status: "idle" | "success" | "error";
+  message: string | null;
+};
 
-export async function updateFounderWorkflowState(formData: FormData) {
-  const access = await getInternalPageAccess();
-  if (!access.allowed) {
-    throw new Error("Internal operator session required.");
+export async function updateFounderWorkflowState(
+  _state: FounderWorkflowActionState,
+  formData: FormData
+): Promise<FounderWorkflowActionState> {
+  try {
+    const access = await getInternalPageAccess();
+    if (!access.allowed) {
+      return { status: "error", message: "Internal operator session required." };
+    }
+
+    const taskId = stringValue(formData.get("taskId"));
+    const action = stringValue(formData.get("action")) as FounderWorkflowAction;
+    if (!taskId || !isFounderWorkflowAction(action)) {
+      return { status: "error", message: "Invalid workflow action." };
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { data: task, error } = await supabase.from("agent_task_queue").select("*").eq("id", taskId).maybeSingle();
+    if (error) throw error;
+    if (!task) return { status: "error", message: "Workflow task not found." };
+
+    const context = asRecord(task.context);
+    const now = new Date().toISOString();
+    const payload = buildWorkflowUpdate(action, task, context, now);
+
+    const { data: updated, error: updateError } = await supabase
+      .from("agent_task_queue")
+      .update(payload)
+      .eq("id", task.id)
+      .eq("status", task.status)
+      .select("*")
+      .single();
+
+    if (updateError) throw updateError;
+
+    await writeAuditLog({
+      eventType: `founder_workflow_${action}`,
+      actorType: "founder",
+      actorId: access.user.email ?? null,
+      entityType: "manager_agent",
+      entityId: task.id,
+      beforeState: task as Json,
+      afterState: updated as Json,
+      metadata: {
+        action,
+        workflow_key: task.workflow_key,
+        previous_status: task.status,
+        next_status: updated.status
+      } as Json
+    });
+
+    revalidatePath("/supervisor");
+    return { status: "success", message: successMessage(action) };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Workflow action failed."
+    };
   }
-
-  const taskId = stringValue(formData.get("taskId"));
-  const action = stringValue(formData.get("action")) as FounderWorkflowAction;
-  if (!taskId || !isFounderWorkflowAction(action)) {
-    throw new Error("Invalid workflow action.");
-  }
-
-  const supabase = getSupabaseAdmin();
-  const { data: task, error } = await supabase.from("agent_task_queue").select("*").eq("id", taskId).maybeSingle();
-  if (error) throw error;
-  if (!task) throw new Error("Workflow task not found.");
-
-  const context = asRecord(task.context);
-  const now = new Date().toISOString();
-  const payload = buildWorkflowUpdate(action, task, context, now);
-
-  const { data: updated, error: updateError } = await supabase
-    .from("agent_task_queue")
-    .update(payload)
-    .eq("id", task.id)
-    .eq("status", task.status)
-    .select("*")
-    .single();
-
-  if (updateError) throw updateError;
-
-  await writeAuditLog({
-    eventType: `founder_workflow_${action}`,
-    actorType: "founder",
-    actorId: access.user.email ?? null,
-    entityType: "manager_agent",
-    entityId: task.id,
-    beforeState: task as Json,
-    afterState: updated as Json,
-    metadata: {
-      action,
-      workflow_key: task.workflow_key,
-      previous_status: task.status,
-      next_status: updated.status
-    } as Json
-  });
-
-  revalidatePath("/supervisor");
 }
 
 function buildWorkflowUpdate(
@@ -144,6 +159,14 @@ function stringValue(value: FormDataEntryValue | null) {
 
 function isFounderWorkflowAction(value: string | null): value is FounderWorkflowAction {
   return value === "archive_qa" || value === "mark_live" || value === "mark_qa" || value === "resolve_stale" || value === "reopen_review";
+}
+
+function successMessage(action: FounderWorkflowAction) {
+  if (action === "archive_qa") return "QA artifact archived.";
+  if (action === "mark_live") return "Workflow marked live.";
+  if (action === "mark_qa") return "Workflow marked QA.";
+  if (action === "resolve_stale") return "Stale workflow resolved.";
+  return "Workflow reopened for manual review.";
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
