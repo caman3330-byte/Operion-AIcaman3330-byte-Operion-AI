@@ -22,6 +22,7 @@
     "supabase:reconcile-ledger": "node ./scripts/reconcile-migration-ledger.mjs",
     "supabase:create-admin-user": "node ./scripts/create-admin-user.js",
     "supabase:create-admin-profile": "node ./scripts/create-admin-profile.js",
+    "operations:classify-records": "node ./scripts/classify-operational-records.js",
     "verify:deployment": "node ./scripts/verify-deployment.js"
   },
   "engines": {

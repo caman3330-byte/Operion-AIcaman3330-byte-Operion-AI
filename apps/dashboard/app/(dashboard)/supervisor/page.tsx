@@ -69,6 +69,10 @@ export default async function SupervisorPage() {
     operator.underwriting.queue.items.length > 0
       ? formatQueueAge(Math.max(...operator.underwriting.queue.items.map((item) => item.staleHours)))
       : "not aged";
+  const qaReviewTaskCount = reviewTasks.filter((task) => classifyOperationalScope(task).scope === "qa").length;
+  const qaUnderwritingCount = operator.underwriting.queue.items.filter((item) => classifyOperationalScope(item).scope === "qa").length;
+  const qaIntakeCount = operator.crm.intakeQueue.items.filter((item) => classifyOperationalScope(item).scope === "qa").length;
+  const qaWorkflowTraceCount = operator.workflows.traces.items.filter((item) => classifyOperationalScope(item).scope === "qa").length;
   const manualReadinessScore = Math.max(
     0,
     100 -
@@ -148,6 +152,12 @@ export default async function SupervisorPage() {
       value: String(monitoring.counters.workflowFailures + monitoring.counters.staleLeads),
       detail: `${monitoring.counters.retryCount} retry event(s)`
     }
+  ];
+  const qaVisibilityItems = [
+    ["Review tasks", qaReviewTaskCount, `${reviewTasks.length} active review task(s)`],
+    ["Underwriting", qaUnderwritingCount, `${operator.underwriting.queue.items.length} visible item(s)`],
+    ["Intake", qaIntakeCount, `${operator.crm.intakeQueue.items.length} visible item(s)`],
+    ["Workflow traces", qaWorkflowTraceCount, `${operator.workflows.traces.items.length} recent trace(s)`]
   ];
 
   return (
@@ -278,6 +288,21 @@ export default async function SupervisorPage() {
               <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{item.label}</p>
               <p className="mt-2 text-lg font-semibold text-white">{item.value}</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>QA / Live Separation</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {qaVisibilityItems.map(([label, value, detail]) => (
+            <div key={label} className="rounded-md border bg-white/[0.025] p-3">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+              <p className="mt-2 text-lg font-semibold text-white">{value} QA</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
             </div>
           ))}
         </CardContent>
@@ -503,7 +528,8 @@ export default async function SupervisorPage() {
             id: item.applicationId,
             label: item.businessName,
             detail: `${item.status} / ${formatCurrency(item.requestedAmount)} / ${item.riskTier}`,
-            tone: item.stale || item.riskTier === "critical" ? "warning" : "secondary"
+            tone: item.stale || item.riskTier === "critical" ? "warning" : "secondary",
+            scope: classifyOperationalScope(item).scope
           }))}
           nextOffset={operator.underwriting.queue.pagination.nextOffset}
         />
@@ -514,7 +540,8 @@ export default async function SupervisorPage() {
             id: item.id,
             label: item.business_name,
             detail: `${item.status} / ${item.industry} / ${formatCurrency(item.requested_amount)}`,
-            tone: "secondary"
+            tone: "secondary",
+            scope: classifyOperationalScope(item).scope
           }))}
           nextOffset={operator.crm.intakeQueue.pagination.nextOffset}
         />
@@ -525,7 +552,8 @@ export default async function SupervisorPage() {
             id: item.id,
             label: `${item.workflow_key} / ${item.step_key}`,
             detail: `${item.status} / ${item.latency_ms ?? 0}ms`,
-            tone: item.status === "failed" ? "destructive" : item.status === "retried" ? "warning" : "secondary"
+            tone: item.status === "failed" ? "destructive" : item.status === "retried" ? "warning" : "secondary",
+            scope: classifyOperationalScope(item).scope
           }))}
           nextOffset={operator.workflows.traces.pagination.nextOffset}
         />
@@ -709,6 +737,7 @@ function QueuePanel({
     status?: string;
     priority?: string | null;
     approval_id?: string | null;
+    context?: unknown;
     ageHours?: number | null;
   }>;
 }) {
@@ -738,6 +767,9 @@ function QueuePanel({
                 <Badge variant={(task.ageHours ?? 0) >= 72 ? "warning" : "outline"}>{formatQueueAge(task.ageHours ?? null)}</Badge>
                 {task.approval_id ? <Badge variant="warning">approval needed</Badge> : null}
                 {task.priority ? <Badge variant="outline">{task.priority}</Badge> : null}
+                <Badge variant={classifyOperationalScope(task).scope === "qa" ? "warning" : "outline"}>
+                  {classifyOperationalScope(task).label}
+                </Badge>
               </div>
             </div>
           ))
@@ -769,6 +801,7 @@ function OperationalQueuePanel({
     label: string;
     detail: string;
     tone: "secondary" | "warning" | "destructive";
+    scope?: "live" | "qa";
   }>;
   nextOffset: number | null;
 }) {
@@ -788,7 +821,10 @@ function OperationalQueuePanel({
             <div key={item.id} className="rounded-md border p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="min-w-0 text-sm font-medium">{item.label}</p>
-                <Badge variant={item.tone}>{item.tone}</Badge>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant={item.scope === "qa" ? "warning" : "outline"}>{item.scope === "qa" ? "QA" : "live"}</Badge>
+                  <Badge variant={item.tone}>{item.tone}</Badge>
+                </div>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
             </div>
@@ -846,4 +882,19 @@ function taskUrgency(task: { status?: string; priority?: string | null; ageHours
   const priorityScore = task.priority === "critical" ? 30 : task.priority === "high" ? 20 : task.priority === "medium" ? 10 : 0;
   const ageScore = (task.ageHours ?? 0) >= 72 ? 20 : (task.ageHours ?? 0) >= 24 ? 10 : 0;
   return statusScore + priorityScore + ageScore;
+}
+
+function classifyOperationalScope(record: unknown): { scope: "live" | "qa"; label: "live" | "QA" } {
+  const text = JSON.stringify(record ?? {}).toLowerCase();
+  const isQa =
+    text.includes('"is_test_data":true') ||
+    text.includes('"test_mode":true') ||
+    text.includes('"simulation":true') ||
+    text.includes("simulation") ||
+    text.includes("operion-e2e") ||
+    text.includes("live-verification") ||
+    text.includes("approval verification") ||
+    text.includes(".test.operion.ai");
+
+  return isQa ? { scope: "qa", label: "QA" } : { scope: "live", label: "live" };
 }
