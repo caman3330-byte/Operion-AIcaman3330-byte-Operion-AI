@@ -76,13 +76,13 @@ async function loadProductionSupervisorSummary(): Promise<ProductionSupervisorSu
     const [leads, applications, aiTasks, approvals, reviews, matches, outreachLogs, usage, documents] = await Promise.all([
       leadsRepository.list({ pageSize: 100 }),
       productionRepository.listBusinessApplications(500),
-      productionRepository.listAiTasks(500),
-      productionRepository.listApprovals(500),
-      productionRepository.listUnderwritingReviews(500),
-      productionRepository.listLenderMatches(500),
-      productionRepository.listOutreachLogs(500),
-      productionRepository.listApiUsage(500),
-      productionRepository.listDocuments(1000)
+      productionRepository.listAiTasks(300),
+      productionRepository.listApprovals(300),
+      productionRepository.listUnderwritingReviews(300),
+      productionRepository.listLenderMatches(300),
+      productionRepository.listOutreachLogs(300),
+      productionRepository.listApiUsage(200),
+      productionRepository.listDocuments(300)
     ]);
 
     const lifecycle = summarizeLifecycle(applications);

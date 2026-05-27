@@ -32,9 +32,9 @@ export default async function SupervisorPage() {
   const [summary, production, operator, monitoring, timelines] = await Promise.all([
     getSupervisorSummary(),
     getProductionSupervisorSummary(),
-    getOperatorDashboardSummary({ limit: 10 }),
-    getLaunchMonitoringSnapshot({ limit: 100 }),
-    getApplicationWorkflowTimelines(6)
+    getOperatorDashboardSummary({ limit: 8 }),
+    getLaunchMonitoringSnapshot({ limit: 60 }),
+    getApplicationWorkflowTimelines(4)
   ]);
   const emailTotal = production.emailOperations.sent + production.emailOperations.failed;
   const emailSuccessRate = emailTotal === 0 ? 100 : Math.round((production.emailOperations.sent / emailTotal) * 100);
@@ -58,6 +58,17 @@ export default async function SupervisorPage() {
   const blockedAiCount = production.aiFailed;
   const workflowExceptionCount = summary.failed_tasks + monitoring.counters.workflowFailures;
   const oldestQueuedAgeLabel = formatQueueAge(production.operationalMetrics.oldestAiQueuedAgeHours);
+  const reviewTasks = summary.tasks
+    .filter((task) => task.status === "queued" || task.status === "assigned" || task.status === "blocked" || task.status === "failed")
+    .map((task) => ({ ...task, ageHours: taskAgeHours(task) }))
+    .sort(sortReviewTasks);
+  const approvalBlockedTasks = reviewTasks.filter((task) => task.status === "blocked" && Boolean(task.approval_id));
+  const oldestReviewTaskAgeLabel = formatQueueAge(reviewTasks[0]?.ageHours ?? null);
+  const oldestApprovalTaskAgeLabel = formatQueueAge(approvalBlockedTasks[0]?.ageHours ?? null);
+  const oldestUnderwritingAgeLabel =
+    operator.underwriting.queue.items.length > 0
+      ? formatQueueAge(Math.max(...operator.underwriting.queue.items.map((item) => item.staleHours)))
+      : "not aged";
   const manualReadinessScore = Math.max(
     0,
     100 -
@@ -75,7 +86,7 @@ export default async function SupervisorPage() {
       count: pendingApprovalCount,
       detail:
         pendingApprovalCount > 0
-          ? "Review distribution and manager approval requests before outreach."
+          ? `Oldest approval-gated task is ${oldestApprovalTaskAgeLabel}.`
           : "No approval backlog.",
       tone: pendingApprovalCount > 0 ? "warning" : "success",
       icon: CheckCircle2
@@ -110,10 +121,32 @@ export default async function SupervisorPage() {
       count: workflowExceptionCount,
       detail:
         workflowExceptionCount > 0
-          ? "Resolve exceptions before increasing live traffic."
+          ? `Oldest review task is ${oldestReviewTaskAgeLabel}.`
           : "No workflow exceptions reported.",
       tone: workflowExceptionCount > 0 ? "danger" : "success",
       icon: AlertTriangle
+    }
+  ];
+  const workflowAgingItems = [
+    {
+      label: "Oldest queued AI",
+      value: oldestQueuedAgeLabel,
+      detail: `${queuedAiCount} active AI task(s)`
+    },
+    {
+      label: "Oldest review task",
+      value: oldestReviewTaskAgeLabel,
+      detail: `${reviewTasks.length} queued, blocked, or failed task(s)`
+    },
+    {
+      label: "Oldest underwriting item",
+      value: oldestUnderwritingAgeLabel,
+      detail: `${production.underwritingQueue} application(s) in review`
+    },
+    {
+      label: "Stale workflow signals",
+      value: String(monitoring.counters.workflowFailures + monitoring.counters.staleLeads),
+      detail: `${monitoring.counters.retryCount} retry event(s)`
     }
   ];
 
@@ -232,6 +265,21 @@ export default async function SupervisorPage() {
               </div>
             );
           })}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Workflow Aging Snapshot</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {workflowAgingItems.map((item) => (
+            <div key={item.label} className="rounded-md border bg-white/[0.025] p-3">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{item.label}</p>
+              <p className="mt-2 text-lg font-semibold text-white">{item.value}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
@@ -592,11 +640,11 @@ export default async function SupervisorPage() {
       <div className="grid gap-4 xl:grid-cols-4">
         <QueuePanel
           title="Queued / Blocked Tasks"
-          tasks={summary.tasks.filter((task) => task.status === "queued" || task.status === "blocked")}
+          tasks={reviewTasks.filter((task) => task.status === "queued" || task.status === "assigned" || task.status === "blocked")}
         />
-        <QueuePanel title="Running Tasks" tasks={summary.tasks.filter((task) => task.status === "running")} />
-        <QueuePanel title="Completed Tasks" tasks={summary.tasks.filter((task) => task.status === "completed")} />
-        <QueuePanel title="Failed Tasks" tasks={summary.tasks.filter((task) => task.status === "failed")} />
+        <QueuePanel title="Running Tasks" tasks={summary.tasks.filter((task) => task.status === "running").map((task) => ({ ...task, ageHours: taskAgeHours(task) }))} />
+        <QueuePanel title="Completed Tasks" tasks={summary.tasks.filter((task) => task.status === "completed").map((task) => ({ ...task, ageHours: taskAgeHours(task) }))} />
+        <QueuePanel title="Failed Tasks" tasks={reviewTasks.filter((task) => task.status === "failed")} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -653,7 +701,16 @@ function QueuePanel({
   tasks
 }: {
   title: string;
-  tasks: Array<{ id: string; title: string; assigned_agent_key: string; status?: string }>;
+  tasks: Array<{
+    id: string;
+    title: string;
+    assigned_agent_key: string;
+    workflow_key?: string | null;
+    status?: string;
+    priority?: string | null;
+    approval_id?: string | null;
+    ageHours?: number | null;
+  }>;
 }) {
   return (
     <Card>
@@ -674,7 +731,14 @@ function QueuePanel({
                   </Badge>
                 ) : null}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">{task.assigned_agent_key}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {task.workflow_key ?? "manual"} / {task.assigned_agent_key}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Badge variant={(task.ageHours ?? 0) >= 72 ? "warning" : "outline"}>{formatQueueAge(task.ageHours ?? null)}</Badge>
+                {task.approval_id ? <Badge variant="warning">approval needed</Badge> : null}
+                {task.priority ? <Badge variant="outline">{task.priority}</Badge> : null}
+              </div>
             </div>
           ))
         )}
@@ -757,4 +821,29 @@ function formatQueueAge(value: number | null) {
   }
 
   return `${(value / 24).toFixed(1)} days old`;
+}
+
+function taskAgeHours(task: { updated_at?: string | null; created_at?: string | null }) {
+  const timestamp = task.updated_at ?? task.created_at;
+  if (!timestamp) {
+    return null;
+  }
+
+  const parsed = Date.parse(timestamp);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return Number(((Date.now() - parsed) / 3600000).toFixed(1));
+}
+
+function sortReviewTasks<T extends { status?: string; priority?: string | null; ageHours?: number | null }>(a: T, b: T) {
+  return taskUrgency(b) - taskUrgency(a) || Number(b.ageHours ?? 0) - Number(a.ageHours ?? 0);
+}
+
+function taskUrgency(task: { status?: string; priority?: string | null; ageHours?: number | null }) {
+  const statusScore = task.status === "blocked" || task.status === "failed" ? 40 : task.status === "queued" ? 20 : 10;
+  const priorityScore = task.priority === "critical" ? 30 : task.priority === "high" ? 20 : task.priority === "medium" ? 10 : 0;
+  const ageScore = (task.ageHours ?? 0) >= 72 ? 20 : (task.ageHours ?? 0) >= 24 ? 10 : 0;
+  return statusScore + priorityScore + ageScore;
 }
