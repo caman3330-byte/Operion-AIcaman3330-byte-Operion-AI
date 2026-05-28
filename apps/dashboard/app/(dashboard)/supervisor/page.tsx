@@ -22,13 +22,19 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkflowActionButtons } from "@/components/supervisor/workflow-action-buttons";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function SupervisorPage() {
+export default async function SupervisorPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ approvalFilter?: string }>;
+}) {
   const access = await getInternalPageAccess();
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
+  const params = await searchParams;
+  const approvalFilter = normalizeApprovalFilter(params?.approvalFilter);
 
   const [summary, production, operator, monitoring, timelines] = await Promise.all([
     getSupervisorSummary(),
@@ -78,6 +84,25 @@ export default async function SupervisorPage() {
   const pendingLiveApprovals = pendingFounderApprovals.filter((approval) => approval.scope === "live").length;
   const pendingQaApprovals = pendingFounderApprovals.length - pendingLiveApprovals;
   const oldestPendingApprovalAgeLabel = formatQueueAge(pendingFounderApprovals[0]?.ageHours ?? null);
+  const missingDocumentApprovals = pendingFounderApprovals.filter(hasMissingDocumentSignal);
+  const fundingReadyApprovals = pendingFounderApprovals.filter(hasFundingReadySignal);
+  const highRiskApprovals = pendingFounderApprovals.filter((approval) => Number(approval.ageHours ?? 0) >= 72);
+  const filteredFounderApprovals = filterApprovals(pendingFounderApprovals, approvalFilter);
+  const approvalAverageAgeLabel = formatQueueAge(averageAgeHours(pendingFounderApprovals));
+  const workflowStallMetrics = buildWorkflowStallMetrics(scopedReviewTasks);
+  const workflowBottlenecks = buildWorkflowBottlenecks({
+    approvals: pendingFounderApprovals,
+    reviewTasks: scopedReviewTasks,
+    missingDocumentCount: missingDocumentApprovals.length
+  });
+  const approvalFilters = [
+    { key: "oldest", label: "Oldest first", count: pendingFounderApprovals.length },
+    { key: "live", label: "Live only", count: pendingLiveApprovals },
+    { key: "qa", label: "QA only", count: pendingQaApprovals },
+    { key: "risk", label: "Highest risk", count: highRiskApprovals.length },
+    { key: "missing_docs", label: "Missing documents", count: missingDocumentApprovals.length },
+    { key: "funding_ready", label: "Funding ready", count: fundingReadyApprovals.length }
+  ] satisfies Array<{ key: ApprovalFilter; label: string; count: number }>;
   const oldestReviewTaskAgeLabel = formatQueueAge(reviewTasks[0]?.ageHours ?? null);
   const oldestUnderwritingAgeLabel =
     operator.underwriting.queue.items.length > 0
@@ -322,6 +347,19 @@ export default async function SupervisorPage() {
         </CardContent>
       </Card>
 
+      <ApprovalActionCenter
+        activeFilter={approvalFilter}
+        averageAgeLabel={approvalAverageAgeLabel}
+        bottlenecks={workflowBottlenecks}
+        filters={approvalFilters}
+        fundingReadyCount={fundingReadyApprovals.length}
+        liveCount={pendingLiveApprovals}
+        missingDocumentCount={missingDocumentApprovals.length}
+        oldestApproval={pendingFounderApprovals[0] ?? null}
+        qaCount={pendingQaApprovals}
+        stallMetrics={workflowStallMetrics}
+      />
+
       <div className="grid gap-4 xl:grid-cols-3">
         <QueuePanel title="Live-Only Queue View" tasks={liveReviewTasks} />
         <QueuePanel title="QA-Only Queue View" tasks={qaReviewTasks} />
@@ -329,7 +367,8 @@ export default async function SupervisorPage() {
       </div>
 
       <PendingApprovalsPanel
-        approvals={pendingFounderApprovals}
+        activeFilter={approvalFilter}
+        approvals={filteredFounderApprovals}
         liveCount={pendingLiveApprovals}
         qaCount={pendingQaApprovals}
       />
@@ -810,21 +849,165 @@ function QueuePanel({
   );
 }
 
+type ApprovalFilter = "oldest" | "live" | "qa" | "risk" | "missing_docs" | "funding_ready";
+
+type SupervisorApprovalItem = {
+  id: string;
+  title: string;
+  approval_type: string;
+  requested_by_agent_key: string;
+  task_id: string | null;
+  created_at: string;
+  details?: unknown;
+  ageHours?: number | null;
+  scope?: "live" | "qa";
+};
+
+function ApprovalActionCenter({
+  activeFilter,
+  averageAgeLabel,
+  bottlenecks,
+  filters,
+  fundingReadyCount,
+  liveCount,
+  missingDocumentCount,
+  oldestApproval,
+  qaCount,
+  stallMetrics
+}: {
+  activeFilter: ApprovalFilter;
+  averageAgeLabel: string;
+  bottlenecks: Array<{ label: string; value: number; detail: string; tone: "outline" | "warning" | "destructive" }>;
+  filters: Array<{ key: ApprovalFilter; label: string; count: number }>;
+  fundingReadyCount: number;
+  liveCount: number;
+  missingDocumentCount: number;
+  oldestApproval: SupervisorApprovalItem | null;
+  qaCount: number;
+  stallMetrics: Array<{ label: string; value: number; detail: string; tone: "outline" | "warning" | "destructive" }>;
+}) {
+  return (
+    <Card className="border-amber-500/30 bg-gradient-to-b from-amber-500/[0.08] to-background">
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle>Approval Action Center</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Founder-gated approvals and stalled workflow intelligence.</p>
+          </div>
+          <Badge variant={oldestApproval ? approvalAgeBucket(oldestApproval.ageHours ?? null).variant : "success"}>
+            {oldestApproval ? approvalAgeBucket(oldestApproval.ageHours ?? null).label : "clear"}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <ActionCenterStat
+            label="oldest pending approval"
+            value={oldestApproval ? formatQueueAge(oldestApproval.ageHours ?? null) : "none"}
+            detail={oldestApproval?.title ?? "No founder approval gate is open."}
+            tone={oldestApproval ? approvalAgeBucket(oldestApproval.ageHours ?? null).variant : "outline"}
+          />
+          <ActionCenterStat label="average approval age" value={averageAgeLabel} detail={`${liveCount} live / ${qaCount} QA`} />
+          <ActionCenterStat
+            label="missing documents"
+            value={String(missingDocumentCount)}
+            detail="Approval text or context references documents, uploads, or statements."
+            tone={missingDocumentCount > 0 ? "warning" : "outline"}
+          />
+          <ActionCenterStat
+            label="funding ready"
+            value={String(fundingReadyCount)}
+            detail="Distribution, lender, or routing approvals ready for founder review."
+            tone={fundingReadyCount > 0 ? "warning" : "outline"}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Quick filters</p>
+          <div className="flex flex-wrap gap-2">
+            {filters.map((filter) => {
+              const active = activeFilter === filter.key;
+              return (
+                <a
+                  key={filter.key}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold transition-colors",
+                    active
+                      ? "border-amber-400 bg-amber-400/15 text-amber-100"
+                      : "border-border bg-background/70 text-muted-foreground hover:border-amber-500/60 hover:text-foreground"
+                  )}
+                  href={`/supervisor?approvalFilter=${filter.key}#pending-approvals`}
+                >
+                  <span>{filter.label}</span>
+                  <Badge variant={filter.count > 0 ? "outline" : "secondary"}>{filter.count}</Badge>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-2">
+          <OperationalSignalGroup title="Workflow Bottlenecks" items={bottlenecks} />
+          <OperationalSignalGroup title="Workflow Stall Detection" items={stallMetrics} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActionCenterStat({
+  label,
+  value,
+  detail,
+  tone = "outline"
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "outline" | "secondary" | "warning" | "destructive";
+}) {
+  return (
+    <div className={cn("rounded-md border bg-background/80 p-3", tone === "destructive" ? "border-destructive/60" : tone === "warning" ? "border-amber-500/60" : "")}>
+      <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+      <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function OperationalSignalGroup({
+  title,
+  items
+}: {
+  title: string;
+  items: Array<{ label: string; value: number; detail: string; tone: "outline" | "warning" | "destructive" }>;
+}) {
+  return (
+    <div className="rounded-md border bg-background/70 p-3">
+      <p className="text-sm font-medium text-white">{title}</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {items.map((item) => (
+          <div key={item.label} className="rounded-md border bg-white/[0.025] p-3">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{item.label}</p>
+              <Badge variant={item.tone}>{item.value}</Badge>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PendingApprovalsPanel({
+  activeFilter,
   approvals,
   liveCount,
   qaCount
 }: {
-  approvals: Array<{
-    id: string;
-    title: string;
-    approval_type: string;
-    requested_by_agent_key: string;
-    task_id: string | null;
-    created_at: string;
-    ageHours?: number | null;
-    scope?: "live" | "qa";
-  }>;
+  activeFilter: ApprovalFilter;
+  approvals: SupervisorApprovalItem[];
   liveCount: number;
   qaCount: number;
 }) {
@@ -841,7 +1024,7 @@ function PendingApprovalsPanel({
     .join(" / ");
 
   return (
-    <Card>
+    <Card id="pending-approvals">
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
           <CardTitle>Pending Founder Approvals</CardTitle>
@@ -859,15 +1042,23 @@ function PendingApprovalsPanel({
               <MiniApprovalStat label="top types" value={approvalTypeSummary || "pending review"} />
             </div>
             <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-              Oldest pending approvals first
+              {approvalFilterLabel(activeFilter)} approvals
             </p>
             {approvals.slice(0, 8).map((approval) => {
               const scope = approval.scope ?? classifyOperationalScope(approval).scope;
+              const ageBucket = approvalAgeBucket(approval.ageHours ?? taskAgeHours(approval));
               return (
-                <div key={approval.id} className="rounded-md border p-3">
+                <div
+                  key={approval.id}
+                  className={cn(
+                    "rounded-md border p-3",
+                    ageBucket.key === "7d+" ? "border-destructive/60 bg-destructive/[0.05]" : ageBucket.key === "72h+" ? "border-amber-500/60 bg-amber-500/[0.04]" : ""
+                  )}
+                >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <p className="min-w-0 text-sm font-medium">{approval.title}</p>
                     <div className="flex flex-wrap gap-2">
+                      <Badge variant={ageBucket.variant}>{ageBucket.label}</Badge>
                       <Badge variant="warning">{approval.approval_type.replaceAll("_", " ")}</Badge>
                       <Badge variant={scope === "qa" ? "warning" : "outline"}>{scope === "qa" ? "QA" : "live"}</Badge>
                     </div>
@@ -949,6 +1140,143 @@ function OperationalQueuePanel({
       </CardContent>
     </Card>
   );
+}
+
+function normalizeApprovalFilter(value: string | undefined): ApprovalFilter {
+  const allowed: ApprovalFilter[] = ["oldest", "live", "qa", "risk", "missing_docs", "funding_ready"];
+  return allowed.includes(value as ApprovalFilter) ? (value as ApprovalFilter) : "oldest";
+}
+
+function approvalFilterLabel(filter: ApprovalFilter) {
+  if (filter === "live") return "Live-only";
+  if (filter === "qa") return "QA-only";
+  if (filter === "risk") return "Highest-risk";
+  if (filter === "missing_docs") return "Missing-document";
+  if (filter === "funding_ready") return "Funding-ready";
+  return "Oldest-first";
+}
+
+function filterApprovals<T extends SupervisorApprovalItem>(approvals: T[], filter: ApprovalFilter) {
+  if (filter === "live") return approvals.filter((approval) => approval.scope === "live");
+  if (filter === "qa") return approvals.filter((approval) => approval.scope === "qa");
+  if (filter === "risk") return approvals.filter((approval) => Number(approval.ageHours ?? 0) >= 72);
+  if (filter === "missing_docs") return approvals.filter(hasMissingDocumentSignal);
+  if (filter === "funding_ready") return approvals.filter(hasFundingReadySignal);
+  return approvals;
+}
+
+function approvalAgeBucket(ageHours: number | null): {
+  key: "<24h" | "24-72h" | "72h+" | "7d+";
+  label: string;
+  variant: "outline" | "secondary" | "warning" | "destructive";
+} {
+  const age = Number(ageHours ?? 0);
+  if (age >= 168) return { key: "7d+", label: "7d+", variant: "destructive" };
+  if (age >= 72) return { key: "72h+", label: "72h+", variant: "warning" };
+  if (age >= 24) return { key: "24-72h", label: "24-72h", variant: "secondary" };
+  return { key: "<24h", label: "<24h", variant: "outline" };
+}
+
+function averageAgeHours(items: Array<{ ageHours?: number | null }>) {
+  const ages = items.map((item) => item.ageHours).filter((age): age is number => typeof age === "number");
+  if (ages.length === 0) return null;
+  return Number((ages.reduce((total, age) => total + age, 0) / ages.length).toFixed(1));
+}
+
+function buildWorkflowBottlenecks({
+  approvals,
+  reviewTasks,
+  missingDocumentCount
+}: {
+  approvals: SupervisorApprovalItem[];
+  reviewTasks: Array<{ title: string; workflow_key?: string | null; status?: string; approval_id?: string | null; ageHours?: number | null; context?: unknown }>;
+  missingDocumentCount: number;
+}) {
+  const founderActionCount = approvals.filter((approval) => !hasMissingDocumentSignal(approval)).length;
+  const lenderRoutingCount = reviewTasks.filter(hasLenderRoutingSignal).length + approvals.filter(hasFundingReadySignal).length;
+  const criticalAgingCount = approvals.filter((approval) => Number(approval.ageHours ?? 0) >= 168).length;
+
+  return [
+    {
+      label: "missing docs",
+      value: missingDocumentCount,
+      detail: "Needs document or upload follow-up before approval can move cleanly.",
+      tone: missingDocumentCount > 0 ? "warning" : "outline"
+    },
+    {
+      label: "founder action",
+      value: founderActionCount,
+      detail: "Approval gates waiting on a human decision, not automation.",
+      tone: founderActionCount > 0 ? "warning" : "outline"
+    },
+    {
+      label: "lender routing",
+      value: lenderRoutingCount,
+      detail: "Funding distribution or lender matching items waiting for review.",
+      tone: lenderRoutingCount > 0 ? "warning" : "outline"
+    },
+    {
+      label: "critical aging",
+      value: criticalAgingCount,
+      detail: "Pending approvals aged seven days or more.",
+      tone: criticalAgingCount > 0 ? "destructive" : "outline"
+    }
+  ] satisfies Array<{ label: string; value: number; detail: string; tone: "outline" | "warning" | "destructive" }>;
+}
+
+function buildWorkflowStallMetrics(
+  reviewTasks: Array<{ title: string; workflow_key?: string | null; status?: string; approval_id?: string | null; ageHours?: number | null; context?: unknown }>
+) {
+  const inactive24h = reviewTasks.filter((task) => Number(task.ageHours ?? 0) >= 24).length;
+  const inactive72h = reviewTasks.filter((task) => Number(task.ageHours ?? 0) >= 72).length;
+  const founderReview = reviewTasks.filter((task) => Boolean(task.approval_id) || task.status === "blocked").length;
+  const lenderRouting = reviewTasks.filter(hasLenderRoutingSignal).length;
+
+  return [
+    {
+      label: "inactive >24h",
+      value: inactive24h,
+      detail: "Open workflow tasks with no recent state movement for at least one day.",
+      tone: inactive24h > 0 ? "warning" : "outline"
+    },
+    {
+      label: "inactive >72h",
+      value: inactive72h,
+      detail: "Stalled items that should be reviewed before broader live onboarding.",
+      tone: inactive72h > 0 ? "destructive" : "outline"
+    },
+    {
+      label: "manual review",
+      value: founderReview,
+      detail: "Items awaiting founder or supervisor review.",
+      tone: founderReview > 0 ? "warning" : "outline"
+    },
+    {
+      label: "lender routing",
+      value: lenderRouting,
+      detail: "Items that appear to be waiting on lender matching or distribution review.",
+      tone: lenderRouting > 0 ? "warning" : "outline"
+    }
+  ] satisfies Array<{ label: string; value: number; detail: string; tone: "outline" | "warning" | "destructive" }>;
+}
+
+function hasMissingDocumentSignal(record: unknown) {
+  const text = recordText(record);
+  return text.includes("document") || text.includes("upload") || text.includes("statement") || text.includes("bank_statement") || text.includes("missing docs");
+}
+
+function hasFundingReadySignal(record: unknown) {
+  const text = recordText(record);
+  return text.includes("distribution") || text.includes("lender") || text.includes("routing") || text.includes("funding") || text.includes("offer");
+}
+
+function hasLenderRoutingSignal(record: unknown) {
+  const text = recordText(record);
+  return text.includes("lender") || text.includes("routing") || text.includes("distribution") || text.includes("match");
+}
+
+function recordText(record: unknown) {
+  return JSON.stringify(record ?? {}).toLowerCase();
 }
 
 function formatCurrency(value: number) {
