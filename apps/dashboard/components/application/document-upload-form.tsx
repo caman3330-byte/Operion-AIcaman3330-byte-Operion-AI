@@ -6,7 +6,7 @@ import { AlertTriangle, CheckCircle2, FileText, ShieldCheck, UploadCloud, X } fr
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { DOCUMENT_TYPE_OPTIONS } from "@/lib/documents/processing";
+import { ALLOWED_DOCUMENT_MIME_TYPES, DOCUMENT_TYPE_OPTIONS, MAX_DOCUMENT_UPLOAD_BYTES } from "@/lib/documents/processing";
 import { cn } from "@/lib/utils";
 import type { DocumentRecord } from "@operion/shared";
 
@@ -48,10 +48,12 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
   const activeDocument = documentsByType.find((item) => item.value === selectedDocumentType);
 
   function handleFiles(nextFiles: File[]) {
-    setFiles(nextFiles);
-    setStatus("idle");
-    setMessage(null);
+    const validationMessage = validateSelectedFiles(nextFiles);
+    setFiles(validationMessage ? [] : nextFiles);
+    setStatus(validationMessage ? "error" : "idle");
+    setMessage(validationMessage);
     setProgress(0);
+    if (validationMessage && fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
@@ -191,6 +193,15 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
                     <p className="text-xs text-muted-foreground">{Math.max(1, Math.round(selectedFile.size / 1024))} KB</p>
                   </div>
                 </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleFiles(files.filter((file) => file !== selectedFile))}
+                  aria-label={`Remove ${selectedFile.name}`}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             ))}
             <div className="flex justify-end">
@@ -288,4 +299,19 @@ function uploadWithProgress(formData: FormData, onProgress: (value: number) => v
     xhr.onerror = () => reject(new Error("Upload failed"));
     xhr.send(formData);
   });
+}
+
+function validateSelectedFiles(files: File[]) {
+  if (files.length === 0) return null;
+  const unsupported = files.find((file) => !ALLOWED_DOCUMENT_MIME_TYPES.includes(file.type as typeof ALLOWED_DOCUMENT_MIME_TYPES[number]));
+  if (unsupported) {
+    return `${unsupported.name} is not supported. Upload PDF, PNG, JPG, XLS, or XLSX files.`;
+  }
+
+  const oversized = files.find((file) => file.size === 0 || file.size > MAX_DOCUMENT_UPLOAD_BYTES);
+  if (oversized) {
+    return `${oversized.name} must be larger than 0 bytes and no more than 50MB.`;
+  }
+
+  return null;
 }
