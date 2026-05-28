@@ -7,7 +7,7 @@ import { EditLenderModal } from "@/components/lenders/edit-lender-modal";
 
 interface LendersTableProps {
   lenders: Lender[];
-  onUpdate: (id: string, lender: Omit<Lender, "id" | "created_at">) => Promise<void>;
+  onUpdate: (id: string, lender: Partial<Omit<Lender, "id" | "created_at">>) => Promise<void>;
 }
 
 export function LendersTable({ lenders, onUpdate }: LendersTableProps) {

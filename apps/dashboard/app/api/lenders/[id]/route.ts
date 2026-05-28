@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireInternalUser } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
 import { handleRouteError } from "@/lib/errors";
+import { buildLenderIntelligenceProfile } from "@/lib/lenders/intelligence";
 import { lendersRepository } from "@/lib/repositories/lenders";
 import { lenderUpdateSchema, uuidSchema } from "@/lib/validation";
 
@@ -27,7 +28,32 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const actor = await requireInternalUser(request);
     const { id } = routeParamsSchema.parse(await context.params);
     const payload = lenderUpdateSchema.parse(await request.json());
-    const lender = await lendersRepository.update(id, payload);
+    const shouldRefreshIntelligence = [
+      "company_name",
+      "website_url",
+      "contact_email",
+      "contact_page_url",
+      "broker_program_url",
+      "funding_products",
+      "funding_range_min",
+      "funding_range_max",
+      "industries_served",
+      "states_served",
+      "minimum_requirements",
+      "public_contact_methods",
+      "min_monthly_revenue",
+      "min_months_in_business",
+      "min_fico",
+      "max_funding"
+    ].some((field) => field in payload);
+    const existing = shouldRefreshIntelligence ? await lendersRepository.getById(id) : null;
+    const intelligenceInput = existing
+      ? { ...existing, ...payload, company_name: payload.company_name ?? existing.company_name }
+      : null;
+    const lender = await lendersRepository.update(id, {
+      ...payload,
+      ...(intelligenceInput ? buildLenderIntelligenceProfile(intelligenceInput) : {})
+    });
 
     await writeAuditLog({
       eventType: "manual_action",

@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 
 interface EditLenderModalProps {
   lender: Lender;
-  onUpdate: (id: string, lender: Omit<Lender, "id" | "created_at">) => Promise<void>;
+  onUpdate: (id: string, lender: Partial<Omit<Lender, "id" | "created_at">>) => Promise<void>;
 }
 
 export function EditLenderModal({ lender, onUpdate }: EditLenderModalProps) {

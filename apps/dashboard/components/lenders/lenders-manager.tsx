@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Lender } from "@operion/shared";
 import { AddLenderModal } from "@/components/lenders/add-lender-modal";
+import { LenderIntelligenceCenter } from "@/components/lenders/lender-intelligence-center";
 import { LendersTable } from "@/components/lenders/lenders-table";
 
 interface LendersManagerProps {
@@ -15,7 +16,7 @@ export function LendersManager({ initialLenders }: LendersManagerProps) {
   const [lenders, setLenders] = useState<Lender[]>(initialLenders);
   const [isCreating, setIsCreating] = useState(false);
 
-  async function handleCreateLender(payload: LenderCreatePayload) {
+  async function handleCreateLender(payload: Partial<LenderCreatePayload> & { company_name: string }) {
     setIsCreating(true);
     try {
       const response = await fetch("/api/lenders", {
@@ -36,7 +37,7 @@ export function LendersManager({ initialLenders }: LendersManagerProps) {
     }
   }
 
-  async function handleUpdateLender(id: string, payload: LenderCreatePayload) {
+  async function handleUpdateLender(id: string, payload: Partial<LenderCreatePayload>) {
     const response = await fetch(`/api/lenders/${id}`, {
       method: "PATCH",
       credentials: "same-origin",
@@ -64,6 +65,7 @@ export function LendersManager({ initialLenders }: LendersManagerProps) {
         </div>
         <AddLenderModal onCreate={handleCreateLender} isPending={isCreating} />
       </div>
+      <LenderIntelligenceCenter lenders={lenders} onCreate={handleCreateLender} onUpdate={handleUpdateLender} />
       <LendersTable lenders={lenders} onUpdate={handleUpdateLender} />
     </div>
   );

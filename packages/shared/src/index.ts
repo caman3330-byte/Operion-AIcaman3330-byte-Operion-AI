@@ -188,6 +188,48 @@ export type Lender = {
   company_name: string;
   contact_email: string | null;
   webhook_url: string | null;
+  website_url?: string | null;
+  contact_page_url?: string | null;
+  broker_program_url?: string | null;
+  funding_products?: string[] | null;
+  funding_range_min?: number | null;
+  funding_range_max?: number | null;
+  industries_served?: string[] | null;
+  states_served?: string[] | null;
+  minimum_requirements?: Json;
+  public_contact_methods?: Json;
+  intelligence_summary?: string | null;
+  funding_criteria_summary?: string | null;
+  target_merchant_profile?: string | null;
+  risk_level?: string | null;
+  estimated_responsiveness?: string | null;
+  intelligence_notes?: string | null;
+  lender_tier?: "A" | "B" | "C";
+  acquisition_stage?:
+    | "Discovered"
+    | "Enriched"
+    | "Pending Review"
+    | "Approved"
+    | "Outreach Ready"
+    | "Contacted"
+    | "Responded"
+    | "Partnered"
+    | "Inactive";
+  approval_status?: "pending_review" | "approved" | "rejected" | "archived";
+  first_discovered_at?: string | null;
+  last_intelligence_update_at?: string | null;
+  outreach_history?: Json;
+  outreach_drafts?: Json;
+  min_monthly_revenue?: number | null;
+  min_months_in_business?: number | null;
+  min_fico?: number | null;
+  max_funding?: number | null;
+  industry_restrictions?: string[] | null;
+  state_restrictions?: string[] | null;
+  archived_at?: string | null;
+  lender_type?: string | null;
+  minimum_time_in_business_months?: number | null;
+  minimum_monthly_deposits?: number | null;
   criteria_industries: string[] | null;
   criteria_min_revenue: number | null;
   criteria_max_revenue: number | null;

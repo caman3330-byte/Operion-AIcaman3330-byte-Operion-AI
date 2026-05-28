@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireInternalUser } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
 import { handleRouteError } from "@/lib/errors";
+import { buildLenderIntelligenceProfile } from "@/lib/lenders/intelligence";
 import { lendersRepository } from "@/lib/repositories/lenders";
 import { lenderCreateSchema } from "@/lib/validation";
 
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     const actor = await requireInternalUser(request);
     const payload = lenderCreateSchema.parse(await request.json());
+    const intelligence = buildLenderIntelligenceProfile(payload);
 
     await writeAuditLog({
       eventType: "manual_action",
@@ -31,7 +33,12 @@ export async function POST(request: NextRequest) {
       metadata: { action: "create_lender", company_name: payload.company_name }
     });
 
-    const lender = await lendersRepository.create(payload);
+    const lender = await lendersRepository.create({
+      ...payload,
+      ...intelligence,
+      active: payload.active ?? false,
+      whitelisted: payload.whitelisted ?? false
+    });
     return NextResponse.json({ data: lender }, { status: 201 });
   } catch (error) {
     return handleRouteError(error);
