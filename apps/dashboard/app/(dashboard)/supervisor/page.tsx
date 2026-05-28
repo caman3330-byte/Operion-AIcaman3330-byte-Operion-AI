@@ -18,10 +18,12 @@ import { getApplicationWorkflowTimelines } from "@/lib/operator-dashboard/workfl
 import { getLaunchMonitoringSnapshot } from "@/lib/operations/monitoring";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
+import { OperationalHealthReliabilityCenter } from "@/components/operations/operational-health-reliability-center";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkflowActionButtons } from "@/components/supervisor/workflow-action-buttons";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buildReliabilityCenterModel } from "@/lib/operations/reliability-center";
 import { cn, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -103,6 +105,7 @@ export default async function SupervisorPage({
     { key: "missing_docs", label: "Missing documents", count: missingDocumentApprovals.length },
     { key: "funding_ready", label: "Funding ready", count: fundingReadyApprovals.length }
   ] satisfies Array<{ key: ApprovalFilter; label: string; count: number }>;
+  const reliabilityCenter = buildReliabilityCenterModel({ supervisor: summary, production, operator, monitoring });
   const oldestReviewTaskAgeLabel = formatQueueAge(reviewTasks[0]?.ageHours ?? null);
   const oldestUnderwritingAgeLabel =
     operator.underwriting.queue.items.length > 0
@@ -359,6 +362,8 @@ export default async function SupervisorPage({
         qaCount={pendingQaApprovals}
         stallMetrics={workflowStallMetrics}
       />
+
+      <OperationalHealthReliabilityCenter model={reliabilityCenter} />
 
       <div className="grid gap-4 xl:grid-cols-3">
         <QueuePanel title="Live-Only Queue View" tasks={liveReviewTasks} />

@@ -14,6 +14,7 @@ import {
 import { OperationalTestControls } from "@/components/admin/operational-test-controls";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
+import { OperationalHealthReliabilityCenter } from "@/components/operations/operational-health-reliability-center";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,6 +22,7 @@ import { getSupervisorSummary } from "@/lib/agent-orchestration/orchestrator";
 import { getProductionSupervisorSummary } from "@/lib/data/supervisor-command";
 import { getOperatorDashboardSummary } from "@/lib/operator-dashboard/service";
 import { getLaunchMonitoringSnapshot } from "@/lib/operations/monitoring";
+import { buildReliabilityCenterModel } from "@/lib/operations/reliability-center";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,7 @@ export default async function AdminPage() {
     getOperatorDashboardSummary({ limit: 12 }),
     getLaunchMonitoringSnapshot({ limit: 100 })
   ]);
+  const reliabilityCenter = buildReliabilityCenterModel({ supervisor, production, operator, monitoring });
 
   const readinessRows = [
     {
@@ -106,6 +109,8 @@ export default async function AdminPage() {
         <MetricCard title="Workflow Health" value={monitoring.health} detail={`${monitoring.counters.workflowFailures} failure(s)`} icon={Activity} tone={monitoring.health === "critical" ? "danger" : monitoring.health === "degraded" ? "warning" : "success"} />
         <MetricCard title="AI/API Cost" value={formatCurrency(production.estimatedAiCostUsd + supervisor.total_estimated_cost_usd)} detail="Tracked operational spend" icon={CircleDollarSign} />
       </div>
+
+      <OperationalHealthReliabilityCenter model={reliabilityCenter} />
 
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <Card>
