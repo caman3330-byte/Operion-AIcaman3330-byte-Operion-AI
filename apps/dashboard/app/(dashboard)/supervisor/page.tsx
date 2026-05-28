@@ -67,10 +67,18 @@ export default async function SupervisorPage() {
   const liveReviewTasks = scopedReviewTasks.filter((task) => task.scope === "live");
   const qaReviewTasks = scopedReviewTasks.filter((task) => task.scope === "qa");
   const unresolvedLiveWorkflows = liveReviewTasks.filter((task) => task.status !== "completed" && task.status !== "cancelled");
-  const pendingFounderApprovals = summary.approvals.filter((approval) => approval.status === "pending");
-  const approvalBlockedTasks = reviewTasks.filter((task) => task.status === "blocked" && Boolean(task.approval_id));
+  const pendingFounderApprovals = summary.approvals
+    .filter((approval) => approval.status === "pending")
+    .map((approval) => ({
+      ...approval,
+      ageHours: taskAgeHours(approval),
+      scope: classifyOperationalScope(approval).scope
+    }))
+    .sort(sortOldestFirst);
+  const pendingLiveApprovals = pendingFounderApprovals.filter((approval) => approval.scope === "live").length;
+  const pendingQaApprovals = pendingFounderApprovals.length - pendingLiveApprovals;
+  const oldestPendingApprovalAgeLabel = formatQueueAge(pendingFounderApprovals[0]?.ageHours ?? null);
   const oldestReviewTaskAgeLabel = formatQueueAge(reviewTasks[0]?.ageHours ?? null);
-  const oldestApprovalTaskAgeLabel = formatQueueAge(approvalBlockedTasks[0]?.ageHours ?? null);
   const oldestUnderwritingAgeLabel =
     operator.underwriting.queue.items.length > 0
       ? formatQueueAge(Math.max(...operator.underwriting.queue.items.map((item) => item.staleHours)))
@@ -96,7 +104,7 @@ export default async function SupervisorPage() {
       count: pendingApprovalCount,
       detail:
         pendingApprovalCount > 0
-          ? `Oldest approval-gated task is ${oldestApprovalTaskAgeLabel}.`
+          ? `Oldest pending approval is ${oldestPendingApprovalAgeLabel}.`
           : "No approval backlog.",
       tone: pendingApprovalCount > 0 ? "warning" : "success",
       icon: CheckCircle2
@@ -320,7 +328,11 @@ export default async function SupervisorPage() {
         <QueuePanel title="Unresolved Live Workflows" tasks={unresolvedLiveWorkflows} />
       </div>
 
-      <PendingApprovalsPanel approvals={pendingFounderApprovals} />
+      <PendingApprovalsPanel
+        approvals={pendingFounderApprovals}
+        liveCount={pendingLiveApprovals}
+        qaCount={pendingQaApprovals}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Applications" value={String(production.applications)} detail="Business funding requests" icon={FileText} />
@@ -799,7 +811,9 @@ function QueuePanel({
 }
 
 function PendingApprovalsPanel({
-  approvals
+  approvals,
+  liveCount,
+  qaCount
 }: {
   approvals: Array<{
     id: string;
@@ -808,8 +822,24 @@ function PendingApprovalsPanel({
     requested_by_agent_key: string;
     task_id: string | null;
     created_at: string;
+    ageHours?: number | null;
+    scope?: "live" | "qa";
   }>;
+  liveCount: number;
+  qaCount: number;
 }) {
+  const oldestAgeLabel = formatQueueAge(approvals[0]?.ageHours ?? null);
+  const approvalTypes = approvals.reduce<Record<string, number>>((counts, approval) => {
+    const label = approval.approval_type.replaceAll("_", " ");
+    counts[label] = (counts[label] ?? 0) + 1;
+    return counts;
+  }, {});
+  const approvalTypeSummary = Object.entries(approvalTypes)
+    .sort(([, left], [, right]) => right - left)
+    .slice(0, 3)
+    .map(([label, count]) => `${count} ${label}`)
+    .join(" / ");
+
   return (
     <Card>
       <CardHeader>
@@ -822,20 +852,46 @@ function PendingApprovalsPanel({
         {approvals.length === 0 ? (
           <p className="text-sm text-muted-foreground">No approval requests are waiting on founder review.</p>
         ) : (
-          approvals.slice(0, 8).map((approval) => (
-            <div key={approval.id} className="rounded-md border p-3">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="min-w-0 text-sm font-medium">{approval.title}</p>
-                <Badge variant="warning">{approval.approval_type.replaceAll("_", " ")}</Badge>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {approval.requested_by_agent_key} / {formatQueueAge(taskAgeHours(approval))} / task {approval.task_id ?? "unlinked"}
-              </p>
+          <>
+            <div className="grid gap-2 md:grid-cols-3">
+              <MiniApprovalStat label="oldest gate" value={oldestAgeLabel} />
+              <MiniApprovalStat label="live / QA" value={`${liveCount} / ${qaCount}`} />
+              <MiniApprovalStat label="top types" value={approvalTypeSummary || "pending review"} />
             </div>
-          ))
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              Oldest pending approvals first
+            </p>
+            {approvals.slice(0, 8).map((approval) => {
+              const scope = approval.scope ?? classifyOperationalScope(approval).scope;
+              return (
+                <div key={approval.id} className="rounded-md border p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="min-w-0 text-sm font-medium">{approval.title}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="warning">{approval.approval_type.replaceAll("_", " ")}</Badge>
+                      <Badge variant={scope === "qa" ? "warning" : "outline"}>{scope === "qa" ? "QA" : "live"}</Badge>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {approval.requested_by_agent_key} / {formatQueueAge(approval.ageHours ?? taskAgeHours(approval))} / task{" "}
+                    {approval.task_id ?? "unlinked"}
+                  </p>
+                </div>
+              );
+            })}
+          </>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function MiniApprovalStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-white/[0.025] p-3">
+      <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+    </div>
   );
 }
 
@@ -935,6 +991,10 @@ function taskAgeHours(task: { updated_at?: string | null; created_at?: string | 
 
 function sortReviewTasks<T extends { status?: string; priority?: string | null; ageHours?: number | null }>(a: T, b: T) {
   return taskUrgency(b) - taskUrgency(a) || Number(b.ageHours ?? 0) - Number(a.ageHours ?? 0);
+}
+
+function sortOldestFirst<T extends { ageHours?: number | null }>(a: T, b: T) {
+  return Number(b.ageHours ?? 0) - Number(a.ageHours ?? 0);
 }
 
 function taskUrgency(task: { status?: string; priority?: string | null; ageHours?: number | null }) {
