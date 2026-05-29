@@ -25,6 +25,13 @@
       }
     },
     {
+      "src": "^/merchants/(.*)$",
+      "status": 307,
+      "headers": {
+        "Location": "/apps/dashboard/merchants/$1"
+      }
+    },
+    {
       "src": "^/(?!apps/dashboard)(.*)$",
       "dest": "/apps/dashboard/$1"
     }
