@@ -56,6 +56,9 @@ export interface ProductionSupervisorSummary {
     lenderResponseRate: number;
     oldestAiQueuedAgeHours: number | null;
     oldestAiRetryAgeHours: number | null;
+    documentProcessingBlocked: number;
+    leadQualificationBlocked: number;
+    leadQualificationQueued: number;
   };
 }
 
@@ -147,7 +150,10 @@ async function loadProductionSupervisorSummary(): Promise<ProductionSupervisorSu
         leadConversionRate: 0,
         lenderResponseRate: 0,
         oldestAiQueuedAgeHours: null,
-        oldestAiRetryAgeHours: null
+        oldestAiRetryAgeHours: null,
+        documentProcessingBlocked: 0,
+        leadQualificationBlocked: 0,
+        leadQualificationQueued: 0
       }
     };
   }
@@ -156,7 +162,7 @@ async function loadProductionSupervisorSummary(): Promise<ProductionSupervisorSu
 function summarizeOperationalMetrics(input: {
   leads: Array<{ created_at?: string | null }>;
   applications: Array<{ created_at?: string | null; updated_at?: string | null; submitted_at?: string | null; status: string }>;
-  aiTasks: Array<{ status: string; created_at?: string | null; updated_at?: string | null; attempts?: number | null }>;
+  aiTasks: Array<{ status: string; task_type?: string | null; created_at?: string | null; updated_at?: string | null; attempts?: number | null }>;
   outreachLogs: Array<{ status: string | null; sent_at?: string | null; replied_at?: string | null; lender_id?: string | null }>;
   matches: Array<{ lender_id: string | null; status: string }>;
   documents: Array<{ status: string; uploaded_at?: string | null }>;
@@ -171,6 +177,7 @@ function summarizeOperationalMetrics(input: {
   const uniqueLenders = new Set(input.matches.map((match) => match.lender_id).filter(Boolean));
   const conversionBase = input.leads.length === 0 ? 0 : input.applications.length / input.leads.length;
   const lenderResponseBase = input.matches.length === 0 ? 0 : input.matches.filter((match) => ["approved", "submitted", "accepted", "funded", "rejected"].includes(match.status)).length / input.matches.length;
+  const blockedAiTasks = input.aiTasks.filter((task) => task.status === "blocked" || task.status === "failed");
 
   return {
     leadsGeneratedToday: input.leads.filter((lead) => isToday(lead.created_at)).length,
@@ -191,7 +198,10 @@ function summarizeOperationalMetrics(input: {
       input.aiTasks
         .filter((task) => task.status === "queued" && Number(task.attempts ?? 0) > 0)
         .map((task) => task.updated_at ?? task.created_at ?? null)
-    )
+    ),
+    documentProcessingBlocked: blockedAiTasks.filter((task) => task.task_type === "document_processing").length,
+    leadQualificationBlocked: blockedAiTasks.filter((task) => task.task_type === "lead_qualification").length,
+    leadQualificationQueued: input.aiTasks.filter((task) => task.status === "queued" && task.task_type === "lead_qualification").length
   };
 }
 

@@ -65,6 +65,9 @@ export default async function SupervisorPage({
   const pendingApprovalCount = Math.max(production.pendingApprovals, summary.pending_approvals);
   const queuedAiCount = production.aiQueued + production.aiRunning;
   const blockedAiCount = production.aiFailed;
+  const documentProcessingBlocked = production.operationalMetrics.documentProcessingBlocked;
+  const leadQualificationBlocked = production.operationalMetrics.leadQualificationBlocked;
+  const leadQualificationQueued = production.operationalMetrics.leadQualificationQueued;
   const workflowExceptionCount = summary.failed_tasks + monitoring.counters.workflowFailures;
   const oldestQueuedAgeLabel = formatQueueAge(production.operationalMetrics.oldestAiQueuedAgeHours);
   const reviewTasks = summary.tasks
@@ -141,11 +144,23 @@ export default async function SupervisorPage({
       label: "Blocked AI",
       count: blockedAiCount,
       detail:
-        blockedAiCount > 0
+        documentProcessingBlocked > 0
+          ? `${documentProcessingBlocked} document-processing blocker(s); review upload/document follow-up first.`
+          : blockedAiCount > 0
           ? "Keep blocked items founder-reviewed until missing context is resolved."
           : "No blocked AI tasks.",
       tone: blockedAiCount > 0 ? "danger" : "success",
       icon: Bot
+    },
+    {
+      label: "Document Blockers",
+      count: documentProcessingBlocked,
+      detail:
+        documentProcessingBlocked > 0
+          ? `${production.operationalMetrics.uploadsPending} upload request(s) pending; keep document review manual.`
+          : "No document-processing blockers.",
+      tone: documentProcessingBlocked > 0 ? "warning" : "success",
+      icon: FileText
     },
     {
       label: "AI Queue",
@@ -177,7 +192,12 @@ export default async function SupervisorPage({
     {
       label: "Oldest queued AI",
       value: oldestQueuedAgeLabel,
-      detail: `${queuedAiCount} active AI task(s)`
+      detail: `${queuedAiCount} active AI task(s), ${leadQualificationQueued} qualification queued`
+    },
+    {
+      label: "Blocked document AI",
+      value: String(documentProcessingBlocked),
+      detail: `${leadQualificationBlocked} lead qualification blocker(s)`
     },
     {
       label: "Oldest review task",
