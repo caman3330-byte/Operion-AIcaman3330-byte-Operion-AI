@@ -11,6 +11,8 @@ import {
   Workflow,
   XCircle
 } from "lucide-react";
+import Link from "next/link";
+import type { Route as NextRoute } from "next";
 import { getSupervisorSummary } from "@/lib/agent-orchestration/orchestrator";
 import { getProductionSupervisorSummary } from "@/lib/data/supervisor-command";
 import { getOperatorDashboardSummary } from "@/lib/operator-dashboard/service";
@@ -534,7 +536,9 @@ export default async function SupervisorPage({
               <div key={timeline.applicationId} className="rounded-md border border-white/[0.10] bg-white/[0.025] p-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold text-white">{timeline.businessName}</p>
+                    <Link href={`/merchants/${timeline.applicationId}` as NextRoute} className="text-sm font-semibold text-white hover:text-primary">
+                      {timeline.businessName}
+                    </Link>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {timeline.currentStage} / {timeline.completionRate}% complete / last activity {formatDateTime(timeline.lastActivityAt)}
                     </p>
@@ -619,7 +623,8 @@ export default async function SupervisorPage({
             label: item.businessName,
             detail: `${item.status} / ${formatCurrency(item.requestedAmount)} / ${item.riskTier}`,
             tone: item.stale || item.riskTier === "critical" ? "warning" : "secondary",
-            scope: classifyOperationalScope(item).scope
+            scope: classifyOperationalScope(item).scope,
+            href: `/merchants/${item.applicationId}` as NextRoute
           }))}
           nextOffset={operator.underwriting.queue.pagination.nextOffset}
         />
@@ -631,7 +636,8 @@ export default async function SupervisorPage({
             label: item.business_name,
             detail: `${item.status} / ${item.industry} / ${formatCurrency(item.requested_amount)}`,
             tone: "secondary",
-            scope: classifyOperationalScope(item).scope
+            scope: classifyOperationalScope(item).scope,
+            href: `/merchants/${item.id}` as NextRoute
           }))}
           nextOffset={operator.crm.intakeQueue.pagination.nextOffset}
         />
@@ -643,7 +649,8 @@ export default async function SupervisorPage({
             label: `${item.workflow_key} / ${item.step_key}`,
             detail: `${item.status} / ${item.latency_ms ?? 0}ms`,
             tone: item.status === "failed" ? "destructive" : item.status === "retried" ? "warning" : "secondary",
-            scope: classifyOperationalScope(item).scope
+            scope: classifyOperationalScope(item).scope,
+            ...(item.entity_type === "business_application" && item.entity_id ? { href: `/merchants/${item.entity_id}` as NextRoute } : {})
           }))}
           nextOffset={operator.workflows.traces.pagination.nextOffset}
         />
@@ -1134,6 +1141,7 @@ function OperationalQueuePanel({
     detail: string;
     tone: "secondary" | "warning" | "destructive";
     scope?: "live" | "qa";
+    href?: NextRoute;
   }>;
   nextOffset: number | null;
 }) {
@@ -1152,7 +1160,13 @@ function OperationalQueuePanel({
           items.map((item) => (
             <div key={item.id} className="rounded-md border p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="min-w-0 text-sm font-medium">{item.label}</p>
+                {item.href ? (
+                  <Link href={item.href} className="min-w-0 text-sm font-medium text-white hover:text-primary">
+                    {item.label}
+                  </Link>
+                ) : (
+                  <p className="min-w-0 text-sm font-medium">{item.label}</p>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <Badge variant={item.scope === "qa" ? "warning" : "outline"}>{item.scope === "qa" ? "QA" : "live"}</Badge>
                   <Badge variant={item.tone}>{item.tone}</Badge>

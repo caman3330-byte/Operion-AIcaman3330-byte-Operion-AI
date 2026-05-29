@@ -17,6 +17,10 @@ const routes = [
   "/audit"
 ];
 
+if (process.env.MERCHANT_DETAIL_ID) {
+  routes.push(`/merchants/${process.env.MERCHANT_DETAIL_ID}`);
+}
+
 const forbidden = [
   "Operations Admin",
   "Founder Review Queue",
@@ -29,7 +33,10 @@ const forbidden = [
   "Lead Sources",
   "Lender routing",
   "Workflow Monitor",
-  "Underwriting Queue"
+  "Underwriting Queue",
+  "Merchant profile and application lifecycle",
+  "Uploaded documents",
+  "AI task history"
 ];
 
 async function check(route) {
