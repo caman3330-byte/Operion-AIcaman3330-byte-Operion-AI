@@ -36,6 +36,8 @@ export default async function MerchantsPage() {
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
 
   const { applications, counts } = await getMerchantPipelineData();
+  const liveCount = applications.filter((a) => classifyScope(a) === "live").length;
+  const qaCount = applications.length - liveCount;
 
   return (
     <div className="space-y-6">
@@ -48,8 +50,9 @@ export default async function MerchantsPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-lg border border-white/10 bg-card/80 p-5">
-          <p className="text-sm text-muted-foreground">Total merchants</p>
-          <p className="mt-3 text-3xl font-semibold text-white">{applications.length}</p>
+          <p className="text-sm text-muted-foreground">Live merchants</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{liveCount}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{qaCount} QA / {applications.length} total</p>
         </div>
         <div className="rounded-lg border border-white/10 bg-card/80 p-5">
           <p className="text-sm text-muted-foreground">Documents pending</p>

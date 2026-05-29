@@ -8,8 +8,7 @@ import {
   FileText,
   Mail,
   Route,
-  Workflow,
-  XCircle
+  Workflow
 } from "lucide-react";
 import Link from "next/link";
 import type { Route as NextRoute } from "next";
@@ -55,16 +54,6 @@ export default async function SupervisorPage({
   const emailSuccessRate = emailTotal === 0 ? 100 : Math.round((production.emailOperations.sent / emailTotal) * 100);
   const activeApplications =
     production.lifecycle.raw + production.lifecycle.qualified + production.lifecycle.reviewed + production.lifecycle.routed;
-  const founderMetrics = [
-    ["Active applications", String(activeApplications), "Open merchant files"],
-    ["Pending reviews", String(production.pendingApprovals + production.underwritingQueue), "Approvals + funding review"],
-    ["AI workflows running", String(production.aiQueued + production.aiRunning), `${production.aiFailed} failed or blocked`],
-    ["Lender routes today", String(production.lenderMatches), "Routing records monitored"],
-    ["Failed workflows", String(operator.workflows.metrics.failureCount), `${operator.workflows.metrics.retryCount} retry event(s)`],
-    ["Upload activity", `${production.operationalMetrics.uploadCompletionRate}%`, `${production.operationalMetrics.uploadsPending} pending`],
-    ["Email delivery health", `${emailSuccessRate}%`, `${production.emailOperations.failed} failed`],
-    ["Underwriting queue", String(production.underwritingQueue), "Queued or escalated"]
-  ];
   const pendingLenderResponses = timelines.filter((timeline) =>
     timeline.steps.some((step) => step.key === "waiting_lender_response" && step.state === "active")
   ).length;
@@ -348,26 +337,6 @@ export default async function SupervisorPage({
         </Card>
       ) : null}
 
-      <Card className="overflow-hidden border-primary/20 bg-[radial-gradient(circle_at_top_left,rgba(215,183,106,0.10),transparent_38%),rgba(255,255,255,0.025)]">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-base">Founder Operations Header</CardTitle>
-            <Badge variant={operator.health === "healthy" ? "success" : operator.health === "critical" ? "destructive" : "warning"}>
-              {operator.health}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-          {founderMetrics.map(([label, value, detail]) => (
-            <div key={label} className="rounded-md border border-white/[0.10] bg-black/20 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
-              <p className="mt-2 text-xl font-semibold text-white">{value}</p>
-              <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{detail}</p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
       <Card className="border-primary/25 bg-primary/5 shadow-sm">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -462,17 +431,6 @@ export default async function SupervisorPage({
         liveCount={pendingLiveApprovals}
         qaCount={pendingQaApprovals}
       />
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Applications" value={String(production.applications)} detail="Business funding requests" icon={FileText} />
-        <MetricCard title="Total Leads" value={String(production.leads)} detail={`${production.qualifiedLeads} qualified or approved`} icon={Activity} />
-        <MetricCard title="AI Queue" value={String(production.aiQueued + production.aiRunning)} detail={`${production.aiCompleted} completed, ${production.aiFailed} blocked or failed`} icon={Bot} />
-        <MetricCard title="Approvals Pending" value={String(production.pendingApprovals)} detail="Supervisor or founder review" icon={Clock3} tone="warning" />
-        <MetricCard title="Underwriting Queue" value={String(production.underwritingQueue)} detail="Queued, in review, or escalated" icon={CheckCircle2} />
-        <MetricCard title="Lender Matches" value={String(production.lenderMatches)} detail="Recommended or submitted matches" icon={Route} />
-        <MetricCard title="Outreach Events" value={String(production.outreachLogs)} detail="Production outreach logs" icon={AlertTriangle} />
-        <MetricCard title="AI/API Cost" value={formatCurrency(production.estimatedAiCostUsd)} detail="Tracked in api_usage_logs" icon={CircleDollarSign} />
-      </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card>
@@ -717,17 +675,6 @@ export default async function SupervisorPage({
           }))}
           nextOffset={operator.workflows.traces.pagination.nextOffset}
         />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Active Agents" value={String(summary.active_agents)} detail="Operational and department agents" icon={Bot} />
-        <MetricCard title="Running Tasks" value={String(summary.running_tasks)} detail={`${summary.queued_tasks} queued or blocked`} icon={Activity} />
-        <MetricCard title="Completed Tasks" value={String(summary.completed_tasks)} detail="Recorded in agent task queue" icon={CheckCircle2} tone="success" />
-        <MetricCard title="Failed Tasks" value={String(summary.failed_tasks)} detail="Needs manager review" icon={XCircle} tone="danger" />
-        <MetricCard title="Pending Approvals" value={String(summary.pending_approvals)} detail="Founder or policy review" icon={Clock3} tone="warning" />
-        <MetricCard title="Active Alerts" value={String(summary.alerts_count)} detail={`${summary.critical_alerts_count} critical`} icon={AlertTriangle} tone={summary.critical_alerts_count > 0 ? "danger" : "default"} />
-        <MetricCard title="AI Calls" value={String(summary.ai_usage.successful_calls + summary.ai_usage.failed_calls)} detail={`${summary.ai_usage.failed_calls} failed calls`} icon={Route} />
-        <MetricCard title="Estimated Cost" value={formatCurrency(summary.total_estimated_cost_usd)} detail="AI usage and queued work" icon={CircleDollarSign} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">

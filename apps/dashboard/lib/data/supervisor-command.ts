@@ -214,9 +214,16 @@ function oldestAgeHours(values: Array<string | null | undefined>) {
   return Number(((Date.now() - Math.min(...timestamps)) / 3600000).toFixed(2));
 }
 
-function summarizeLifecycle(applications: Array<{ status: string }>) {
+function isTestApplication(metadata: unknown): boolean {
+  if (!metadata || typeof metadata !== "object") return false;
+  const m = metadata as Record<string, unknown>;
+  return m.test_mode === true || m.is_test_data === true || String(m.source ?? "").includes("test");
+}
+
+function summarizeLifecycle(applications: Array<{ status: string; metadata?: unknown }>) {
   const lifecycle = emptyLifecycle();
   for (const application of applications) {
+    if (isTestApplication(application.metadata)) continue;
     const status = application.status;
     if (["raw", "new_lead", "onboarding", "draft", "submitted", "documents_pending"].includes(status)) {
       lifecycle.raw += 1;
