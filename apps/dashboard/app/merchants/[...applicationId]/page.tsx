@@ -55,15 +55,16 @@ function readNote(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
-export default async function MerchantDetailsPage({ params }: { params: Promise<{ applicationId: string }> }) {
+export default async function MerchantDetailsPage({ params }: { params: Promise<{ applicationId: string[] }> }) {
   const access = await getInternalPageAccess();
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
 
   let data;
   const resolvedParams = await params;
+  const applicationId = resolvedParams.applicationId.join("/");
 
   try {
-    data = await getMerchantProfileData(resolvedParams.applicationId);
+    data = await getMerchantProfileData(applicationId);
   } catch {
     notFound();
   }
