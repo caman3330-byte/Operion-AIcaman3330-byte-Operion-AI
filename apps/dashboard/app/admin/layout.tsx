@@ -1,9 +1,10 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
+import { operionBrand } from "@/lib/brand/operion";
 
 export const metadata = {
-  title: "Operion Capital Admin"
+  title: operionBrand.metadata.adminTitle
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

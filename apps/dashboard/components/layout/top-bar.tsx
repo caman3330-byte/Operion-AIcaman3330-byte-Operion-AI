@@ -4,6 +4,7 @@ import { getAlertsData } from "@/lib/data/live-data";
 import { OperionLogo } from "@/components/brand/operion-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { operionBrand } from "@/lib/brand/operion";
 
 export async function TopBar() {
   const { data: alerts } = await getAlertsData();
@@ -16,12 +17,16 @@ export async function TopBar() {
         <div className="hidden min-w-0 flex-1 md:block">
           <div className="relative max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9" placeholder="Search leads, lenders, workflows" />
+            <Input className="pl-9" placeholder="Search merchants, lenders, workflows" />
           </div>
         </div>
         <div className="flex flex-1 items-center justify-between md:hidden">
           <OperionLogo size="sm" showTagline={false} collapseWordmarkOnMobile />
-          <span className="text-xs text-muted-foreground">Operator</span>
+          <span className="text-xs text-muted-foreground">{operionBrand.platformName}</span>
+        </div>
+        <div className="hidden text-right lg:block">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-primary">{operionBrand.internalPlatformName}</p>
+          <p className="text-[0.7rem] text-muted-foreground">Single platform / three departments</p>
         </div>
         <Button variant="outline" size="sm" className="relative">
           <Bell className="h-4 w-4" />

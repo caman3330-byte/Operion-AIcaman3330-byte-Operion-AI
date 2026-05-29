@@ -1,8 +1,9 @@
 import "./globals.css";
+import { operionBrand } from "@/lib/brand/operion";
 
 export const metadata = {
-  title: "Operion Capital",
-  description: "Private capital access, business funding preparation, and lender matching for growth-focused businesses."
+  title: operionBrand.metadata.title,
+  description: operionBrand.metadata.description
 };
 
 export default function RootLayout({
