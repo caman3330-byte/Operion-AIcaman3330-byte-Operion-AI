@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route as NextRoute } from "next";
 import {
   Activity,
   AlertTriangle,
@@ -22,6 +23,10 @@ import { getApplicationWorkflowTimelines, type ApplicationWorkflowTimeline, type
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+function merchantDetailHref(applicationId: string) {
+  return `/apps/dashboard/merchants/${applicationId}` as NextRoute;
+}
 
 const workflowPath = [
   "Merchant Applied",
@@ -63,7 +68,7 @@ export default async function SupervisorAiAgentsPage() {
         retryCount: trace.attempt,
         linkedApplicationId: trace.entity_type === "business_application" ? trace.entity_id : null,
         timestamp: trace.completed_at ?? trace.started_at ?? trace.created_at,
-        actionHref: trace.entity_type === "business_application" && trace.entity_id ? `/merchants/${trace.entity_id}` : "/supervisor/testing"
+        actionHref: trace.entity_type === "business_application" && trace.entity_id ? merchantDetailHref(trace.entity_id) : "/supervisor/testing"
       })),
     ...operator.ai.executions.items
       .filter((execution) => execution.status === "failed" || execution.status === "blocked")
@@ -76,7 +81,7 @@ export default async function SupervisorAiAgentsPage() {
           retryCount: readNumberFromRecord(execution.metadata, "attempt") ?? readNumberFromRecord(execution.metadata, "retry_count") ?? 0,
           linkedApplicationId,
           timestamp: execution.created_at,
-          actionHref: linkedApplicationId ? `/merchants/${linkedApplicationId}` : "/supervisor/testing"
+          actionHref: linkedApplicationId ? merchantDetailHref(linkedApplicationId) : "/supervisor/testing"
         };
       })
   ].slice(0, 6);
@@ -406,7 +411,7 @@ function TimelineCard({ timeline }: { timeline: ApplicationWorkflowTimeline }) {
     <div className="rounded-md border border-white/[0.10] bg-black/20 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href={`/merchants/${timeline.applicationId}`} className="text-sm font-semibold text-white hover:text-primary">
+          <Link href={merchantDetailHref(timeline.applicationId)} className="text-sm font-semibold text-white hover:text-primary">
             {timeline.businessName}
           </Link>
           <p className="mt-1 text-xs text-muted-foreground">

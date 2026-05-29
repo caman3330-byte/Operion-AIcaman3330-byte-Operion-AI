@@ -30,6 +30,10 @@ import { cn, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+function merchantDetailHref(applicationId: string) {
+  return `/apps/dashboard/merchants/${applicationId}` as NextRoute;
+}
+
 export default async function SupervisorPage({
   searchParams
 }: {
@@ -536,7 +540,7 @@ export default async function SupervisorPage({
               <div key={timeline.applicationId} className="rounded-md border border-white/[0.10] bg-white/[0.025] p-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <Link href={`/merchants/${timeline.applicationId}` as NextRoute} className="text-sm font-semibold text-white hover:text-primary">
+                    <Link href={merchantDetailHref(timeline.applicationId)} className="text-sm font-semibold text-white hover:text-primary">
                       {timeline.businessName}
                     </Link>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -624,7 +628,7 @@ export default async function SupervisorPage({
             detail: `${item.status} / ${formatCurrency(item.requestedAmount)} / ${item.riskTier}`,
             tone: item.stale || item.riskTier === "critical" ? "warning" : "secondary",
             scope: classifyOperationalScope(item).scope,
-            href: `/merchants/${item.applicationId}` as NextRoute
+            href: merchantDetailHref(item.applicationId)
           }))}
           nextOffset={operator.underwriting.queue.pagination.nextOffset}
         />
@@ -637,7 +641,7 @@ export default async function SupervisorPage({
             detail: `${item.status} / ${item.industry} / ${formatCurrency(item.requested_amount)}`,
             tone: "secondary",
             scope: classifyOperationalScope(item).scope,
-            href: `/merchants/${item.id}` as NextRoute
+            href: merchantDetailHref(item.id)
           }))}
           nextOffset={operator.crm.intakeQueue.pagination.nextOffset}
         />
@@ -650,7 +654,7 @@ export default async function SupervisorPage({
             detail: `${item.status} / ${item.latency_ms ?? 0}ms`,
             tone: item.status === "failed" ? "destructive" : item.status === "retried" ? "warning" : "secondary",
             scope: classifyOperationalScope(item).scope,
-            ...(item.entity_type === "business_application" && item.entity_id ? { href: `/merchants/${item.entity_id}` as NextRoute } : {})
+            ...(item.entity_type === "business_application" && item.entity_id ? { href: merchantDetailHref(item.entity_id) } : {})
           }))}
           nextOffset={operator.workflows.traces.pagination.nextOffset}
         />

@@ -1,10 +1,15 @@
 import Link from "next/link";
+import type { Route as NextRoute } from "next";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { getMerchantPipelineData } from "@/lib/data/merchant-profile";
 
 export const dynamic = "force-dynamic";
+
+function merchantDetailHref(applicationId: string) {
+  return `/apps/dashboard/merchants/${applicationId}` as NextRoute;
+}
 
 function statusVariant(status: string) {
   if (status === "funded" || status === "approved") return "success";
@@ -59,7 +64,7 @@ export default async function MerchantsPage() {
               <tr key={application.id} className="hover:bg-white/5">
                 <td className="px-4 py-4">
                   <Link
-                    href={`/merchants/${application.id}`}
+                    href={merchantDetailHref(application.id)}
                     className="font-medium text-white hover:text-primary"
                   >
                     {application.business_name}
