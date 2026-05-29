@@ -2,14 +2,14 @@ import {
   Activity,
   BadgeDollarSign,
   Bot,
+  BrainCircuit,
+  Building2,
   ClipboardList,
   FileBarChart,
-  FileText,
   Gauge,
   type LucideIcon,
   Mail,
   PenLine,
-  Route,
   Search,
   ShieldCheck,
   TimerReset
@@ -32,43 +32,37 @@ export interface DepartmentNavGroup {
 
 export const departmentNavGroups: DepartmentNavGroup[] = [
   {
-    key: "merchant-operations",
-    label: "Merchant Operations",
-    purpose: "Merchant acquisition, document collection, underwriting preparation, and deal lifecycle.",
+    key: "merchant-pipeline",
+    label: "Merchant Pipeline",
+    purpose: "Lead acquisition, qualification, merchant applications, and outreach campaigns.",
     items: [
-      { href: "/acquisition", label: "Lead Sources", icon: Search },
+      { href: "/acquisition", label: "Acquisition", icon: Search },
       { href: "/leads", label: "Leads", icon: ClipboardList },
       { href: "/merchants", label: "Merchants", icon: BadgeDollarSign },
-      { href: "/merchants", label: "Documents", icon: FileText, badge: "via merchants" },
-      { href: "/supervisor/ai-agents", label: "Underwriting", icon: Activity, badge: "review" },
-      { href: "/reports", label: "Funding Pipeline", icon: Route, badge: "reports" }
+      { href: "/outreach", label: "Outreach", icon: Mail }
     ]
   },
   {
     key: "lender-operations",
     label: "Lender Operations",
-    purpose: "Lender acquisition, enrichment, relationship management, and future lender matching.",
+    purpose: "Lender portfolio, criteria management, pricing, and relationship tracking.",
     items: [
-      { href: "/lenders", label: "Lenders", icon: BadgeDollarSign },
-      { href: "/lenders", label: "Lender Discovery", icon: Search, badge: "intelligence" },
-      { href: "/lenders", label: "Lender Intelligence", icon: Bot, badge: "AI" },
-      { href: "/outreach", label: "Outreach", icon: Mail },
-      { href: "/lenders", label: "Partnerships", icon: ShieldCheck, badge: "review" }
+      { href: "/lenders", label: "Lenders", icon: Building2 }
     ]
   },
   {
-    key: "executive-operations",
-    label: "Executive Operations",
-    purpose: "Executive visibility, operational control, auditability, and reliability monitoring.",
+    key: "platform-control",
+    label: "Platform Control",
+    purpose: "Operational command, AI monitoring, auditing, prompt management, and founder controls.",
     items: [
-      { href: "/admin", label: "Admin Cockpit", icon: Gauge, exact: true },
-      { href: "/supervisor", label: "Supervisor", icon: Gauge },
-      { href: "/supervisor/ai-operations", label: "Reliability Center", icon: Activity },
-      { href: "/admin/ai", label: "AI Ops", icon: Bot },
-      { href: "/prompts", label: "AI Prompts", icon: PenLine },
+      { href: "/supervisor", label: "Command Center", icon: Gauge, exact: true },
+      { href: "/supervisor/ai-agents", label: "Underwriting", icon: Activity },
+      { href: "/supervisor/ai-operations", label: "AI Operations", icon: Bot },
+      { href: "/manager-agent", label: "Manager Agent", icon: BrainCircuit },
       { href: "/reports", label: "Reports", icon: FileBarChart },
+      { href: "/prompts", label: "AI Prompts", icon: PenLine },
       { href: "/audit", label: "Audit", icon: ShieldCheck },
-      { href: "/admin/testing", label: "Testing", icon: TimerReset }
+      { href: "/testing", label: "Testing", icon: TimerReset }
     ]
   }
 ] as const;

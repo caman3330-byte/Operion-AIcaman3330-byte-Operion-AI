@@ -242,6 +242,65 @@ export default async function SupervisorPage({
         </Badge>
       </div>
 
+      <Card className="border-primary/30 bg-[radial-gradient(circle_at_top_left,rgba(215,183,106,0.12),transparent_40%),rgba(255,255,255,0.025)]">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Founder Dashboard</p>
+              <CardTitle className="mt-1">Live Operations Snapshot</CardTitle>
+            </div>
+            <Badge variant={founderActionItems.some((item) => item.count > 0) ? "warning" : "success"}>
+              {founderActionItems.filter((item) => item.count > 0).length} area(s) need attention
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <MetricCard
+              title="Live Merchants"
+              value={String(activeApplications)}
+              detail={`${production.lifecycle.funded} funded / ${production.lifecycle.rejected} rejected`}
+              icon={FileText}
+            />
+            <MetricCard
+              title="Funded Deals"
+              value={String(production.lifecycle.funded)}
+              detail="Fully completed funding"
+              icon={CircleDollarSign}
+              tone="success"
+            />
+            <MetricCard
+              title="Pending Underwriting"
+              value={String(production.underwritingQueue)}
+              detail="Applications awaiting manual review"
+              icon={CheckCircle2}
+              tone={production.underwritingQueue > 0 ? "warning" : "success"}
+            />
+            <MetricCard
+              title="Pending Approvals"
+              value={String(pendingApprovalCount)}
+              detail={`${pendingLiveApprovals} live / ${pendingQaApprovals} QA`}
+              icon={Clock3}
+              tone={pendingApprovalCount > 0 ? "warning" : "success"}
+            />
+            <MetricCard
+              title="Lender-Ready Deals"
+              value={String(fundingReadyApprovals.length)}
+              detail="Funding distribution approvals"
+              icon={Route}
+              tone={fundingReadyApprovals.length > 0 ? "warning" : "success"}
+            />
+            <MetricCard
+              title="Action Required"
+              value={String(founderActionItems.filter((item) => item.count > 0).length)}
+              detail={`of ${founderActionItems.length} monitored areas`}
+              icon={AlertTriangle}
+              tone={founderActionItems.some((item) => item.count > 0) ? "danger" : "success"}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {summary.migration_required ? (
         <Card className="border-warning bg-warning/10">
           <CardHeader>
