@@ -25,14 +25,6 @@
       }
     },
     {
-      "src": "^/merchants$",
-      "dest": "/apps/dashboard/merchants"
-    },
-    {
-      "src": "^/merchants/(.*)$",
-      "dest": "/apps/dashboard/merchants/$1"
-    },
-    {
       "src": "^/(?!apps/dashboard)(.*)$",
       "dest": "/apps/dashboard/$1"
     }
