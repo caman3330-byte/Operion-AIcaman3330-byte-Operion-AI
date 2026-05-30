@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle2, ChevronDown, ChevronUp, Globe, Plus, XCircle } from "lucide-react";
+import { Bot, CheckCircle2, ChevronDown, ChevronUp, Globe, Plus, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ interface DiscoveryRow {
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 interface Props {
@@ -53,6 +54,12 @@ function confidenceColor(score: number | null) {
   return "text-red-400";
 }
 
+function fmtCurrency(n: number) {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
+}
+
 const emptyForm = {
   company_name: "",
   website_url: "",
@@ -72,6 +79,7 @@ export function LenderDiscoveryPanel({ initialRows }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState<string | null>(null);
+  const [agentStatus, setAgentStatus] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
 
@@ -79,6 +87,33 @@ export function LenderDiscoveryPanel({ initialRows }: Props) {
 
   function handleFormChange(key: keyof typeof emptyForm, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function handleRunAgent() {
+    setAgentStatus("Running discovery agent — this may take 30–60 seconds...");
+    startTransition(async () => {
+      try {
+        const res = await fetch("/api/workers/lender-discovery-agent", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ limit: 28 })
+        });
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          setAgentStatus(`Agent failed: ${String(payload?.error ?? "Unknown error")}`);
+          return;
+        }
+        const payload = await res.json() as { data: { discovered: number; skipped: number; enriched: number; failed: number } };
+        const d = payload.data;
+        setAgentStatus(
+          `Agent complete — ${d.discovered} discovered (${d.enriched} AI-enriched), ${d.skipped} already present, ${d.failed} failed.`
+        );
+        router.refresh();
+      } catch (err) {
+        setAgentStatus(`Agent error: ${err instanceof Error ? err.message : "Unknown error"}`);
+      }
+    });
   }
 
   function handleSubmitLender() {
@@ -140,8 +175,9 @@ export function LenderDiscoveryPanel({ initialRows }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(["all", "pending_review", "approved", "outreach_ready", "rejected"] as const).map((s) => (
             <Button
               key={s}
@@ -153,12 +189,31 @@ export function LenderDiscoveryPanel({ initialRows }: Props) {
             </Button>
           ))}
         </div>
-        <Button size="sm" onClick={() => setShowAddForm((v) => !v)}>
-          {showAddForm ? <ChevronUp className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {showAddForm ? "Cancel" : "Add lender"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isPending}
+            onClick={handleRunAgent}
+          >
+            <Bot className="h-4 w-4" />
+            {isPending ? "Running agent..." : "Run discovery agent"}
+          </Button>
+          <Button size="sm" onClick={() => setShowAddForm((v) => !v)}>
+            {showAddForm ? <ChevronUp className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {showAddForm ? "Cancel" : "Add lender"}
+          </Button>
+        </div>
       </div>
 
+      {/* Agent status feedback */}
+      {agentStatus ? (
+        <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+          <span className="font-medium text-primary">Discovery agent:</span> {agentStatus}
+        </div>
+      ) : null}
+
+      {/* Manual add form */}
       {showAddForm ? (
         <Card className="border-primary/20">
           <CardHeader>
@@ -225,95 +280,168 @@ export function LenderDiscoveryPanel({ initialRows }: Props) {
         </Card>
       ) : null}
 
+      {/* Lender cards */}
       {filtered.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No lenders found{statusFilter !== "all" ? ` with status "${statusFilter.replaceAll("_", " ")}"` : ""}. Add the first one above.
+            No lenders found{statusFilter !== "all" ? ` with status "${statusFilter.replaceAll("_", " ")}"` : ""}. Run the discovery agent or add one manually.
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {filtered.map((row) => (
-            <Card key={row.id} className="border-white/10">
-              <CardContent className="p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-white">{row.company_name}</p>
-                      <Badge variant={statusVariant(row.status)}>{row.status.replaceAll("_", " ")}</Badge>
-                      <span className={`text-xs font-medium ${confidenceColor(row.confidence_score)}`}>
-                        {confidenceLabel(row.confidence_score)} confidence
-                        {row.confidence_score !== null ? ` (${Math.round(row.confidence_score * 100)}%)` : ""}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      {row.website_url ? (
-                        <a href={row.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-primary">
-                          <Globe className="h-3 w-3" />
-                          {row.website_url.replace(/^https?:\/\//, "")}
-                        </a>
-                      ) : null}
-                      {row.contact_email ? <span>{row.contact_email}</span> : null}
-                      {row.contact_phone ? <span>{row.contact_phone}</span> : null}
-                    </div>
-                    {row.states_served?.length ? (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {row.states_served.slice(0, 8).map((s) => (
-                          <span key={s} className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-muted-foreground">{s}</span>
-                        ))}
-                        {row.states_served.length > 8 ? <span className="text-[10px] text-muted-foreground">+{row.states_served.length - 8} more</span> : null}
-                      </div>
-                    ) : null}
-                    {row.funding_range_min || row.funding_range_max ? (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Funding: ${(row.funding_range_min ?? 0).toLocaleString()} – ${(row.funding_range_max ?? 0).toLocaleString()}
-                      </p>
-                    ) : null}
-                    {row.intelligence_summary ? (
-                      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{row.intelligence_summary}</p>
-                    ) : null}
-                    {row.founder_notes ? (
-                      <p className="mt-1 text-xs italic text-muted-foreground">Note: {row.founder_notes}</p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-col items-end gap-2 text-xs text-muted-foreground">
-                    <span>Source: {row.discovery_source}</span>
-                    <span>{new Date(row.created_at).toLocaleDateString()}</span>
-                    {row.reviewed_by ? <span>Reviewed by {row.reviewed_by}</span> : null}
-                  </div>
-                </div>
+          {filtered.map((row) => {
+            const meta = (row.metadata ?? {}) as Record<string, unknown>;
+            const products = Array.isArray(meta.products) ? (meta.products as string[]) : [];
+            const minFico = typeof meta.min_fico === "number" ? meta.min_fico : null;
+            const minRevenue = typeof meta.min_monthly_revenue === "number" ? meta.min_monthly_revenue : null;
+            const minMonths = typeof meta.min_time_in_business_months === "number" ? meta.min_time_in_business_months : null;
+            const differentiators = Array.isArray(meta.key_differentiators) ? (meta.key_differentiators as string[]) : [];
+            const enrichmentMethod = typeof meta.enrichment_method === "string" ? meta.enrichment_method : null;
 
-                {row.status === "pending_review" ? (
-                  <div className="mt-3 border-t border-white/10 pt-3">
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs">Founder notes (optional)</Label>
-                        <Input
-                          value={reviewNotes[row.id] ?? ""}
-                          onChange={(e) => setReviewNotes((prev) => ({ ...prev, [row.id]: e.target.value }))}
-                          placeholder="Add a note before approving or rejecting..."
-                          className="h-8 text-xs"
-                        />
+            return (
+              <Card key={row.id} className="border-white/10">
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      {/* Header row */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-white">{row.company_name}</p>
+                        <Badge variant={statusVariant(row.status)}>{row.status.replaceAll("_", " ")}</Badge>
+                        <span className={`text-xs font-medium ${confidenceColor(row.confidence_score)}`}>
+                          {confidenceLabel(row.confidence_score)} confidence
+                          {row.confidence_score !== null ? ` (${Math.round(row.confidence_score * 100)}%)` : ""}
+                        </span>
+                        {enrichmentMethod === "claude_ai" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                            <Bot className="h-2.5 w-2.5" />
+                            AI enriched
+                          </span>
+                        ) : null}
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" disabled={isPending} onClick={() => handleReview(row.id, "approved")}>
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Approve
-                        </Button>
-                        <Button size="sm" variant="outline" disabled={isPending} onClick={() => handleReview(row.id, "outreach_ready")}>
-                          Outreach ready
-                        </Button>
-                        <Button size="sm" variant="ghost" disabled={isPending} onClick={() => handleReview(row.id, "rejected")}>
-                          <XCircle className="h-3.5 w-3.5" />
-                          Reject
-                        </Button>
+
+                      {/* Contact + website */}
+                      <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        {row.website_url ? (
+                          <a href={row.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-primary">
+                            <Globe className="h-3 w-3" />
+                            {row.website_url.replace(/^https?:\/\//, "")}
+                          </a>
+                        ) : null}
+                        {row.contact_email ? <span>{row.contact_email}</span> : null}
+                        {row.contact_phone ? <span>{row.contact_phone}</span> : null}
                       </div>
+
+                      {/* Products */}
+                      {products.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {products.map((p) => (
+                            <span key={p} className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                              {p.replaceAll("_", " ")}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {/* States */}
+                      {row.states_served?.length ? (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                          <span className="text-[10px] text-muted-foreground">States:</span>
+                          {row.states_served.length >= 45 ? (
+                            <span className="text-[10px] text-muted-foreground">National (all 50)</span>
+                          ) : (
+                            <>
+                              {row.states_served.slice(0, 10).map((s) => (
+                                <span key={s} className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-muted-foreground">{s}</span>
+                              ))}
+                              {row.states_served.length > 10 ? (
+                                <span className="text-[10px] text-muted-foreground">+{row.states_served.length - 10} more</span>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
+                      ) : null}
+
+                      {/* Funding range */}
+                      {row.funding_range_min || row.funding_range_max ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Funding: {fmtCurrency(row.funding_range_min ?? 0)} – {fmtCurrency(row.funding_range_max ?? 0)}
+                        </p>
+                      ) : null}
+
+                      {/* Underwriting requirements */}
+                      {(minFico !== null || minRevenue !== null || minMonths !== null) ? (
+                        <div className="mt-1.5 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                          {minFico !== null ? <span>Min FICO: <span className="text-white">{minFico}</span></span> : null}
+                          {minRevenue !== null ? <span>Min monthly revenue: <span className="text-white">{fmtCurrency(minRevenue)}</span></span> : null}
+                          {minMonths !== null ? <span>Min time in business: <span className="text-white">{minMonths}mo</span></span> : null}
+                        </div>
+                      ) : null}
+
+                      {/* Intelligence summary */}
+                      {row.intelligence_summary ? (
+                        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{row.intelligence_summary}</p>
+                      ) : null}
+
+                      {/* Key differentiators */}
+                      {differentiators.length > 0 ? (
+                        <div className="mt-1.5">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Differentiators</p>
+                          <ul className="mt-1 list-disc pl-4">
+                            {differentiators.map((d) => (
+                              <li key={d} className="text-xs text-muted-foreground">{d}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+
+                      {/* Founder notes */}
+                      {row.founder_notes ? (
+                        <p className="mt-1.5 text-xs italic text-muted-foreground">Note: {row.founder_notes}</p>
+                      ) : null}
+                    </div>
+
+                    {/* Right meta column */}
+                    <div className="flex flex-col items-end gap-1.5 text-xs text-muted-foreground">
+                      <span>Source: {row.discovery_source.replaceAll("_", " ")}</span>
+                      <span>{new Date(row.created_at).toLocaleDateString()}</span>
+                      {row.reviewed_by ? <span>Reviewed by {row.reviewed_by}</span> : null}
+                      {row.reviewed_at ? <span>{new Date(row.reviewed_at).toLocaleDateString()}</span> : null}
                     </div>
                   </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          ))}
+
+                  {/* Review actions — only for pending_review */}
+                  {row.status === "pending_review" ? (
+                    <div className="mt-3 border-t border-white/10 pt-3">
+                      <div className="flex flex-wrap items-end gap-3">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-xs">Founder notes (optional)</Label>
+                          <Input
+                            value={reviewNotes[row.id] ?? ""}
+                            onChange={(e) => setReviewNotes((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                            placeholder="Add a note before approving or rejecting..."
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" disabled={isPending} onClick={() => handleReview(row.id, "approved")}>
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Approve
+                          </Button>
+                          <Button size="sm" variant="outline" disabled={isPending} onClick={() => handleReview(row.id, "outreach_ready")}>
+                            Outreach ready
+                          </Button>
+                          <Button size="sm" variant="ghost" disabled={isPending} onClick={() => handleReview(row.id, "rejected")}>
+                            <XCircle className="h-3.5 w-3.5" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

@@ -1,6 +1,5 @@
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { LenderDiscoveryPanel } from "./discovery-panel";
 
@@ -23,6 +22,7 @@ interface DiscoveryRow {
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 async function loadDiscoveryQueue(): Promise<{ rows: DiscoveryRow[]; counts: Record<string, number> }> {
@@ -31,7 +31,7 @@ async function loadDiscoveryQueue(): Promise<{ rows: DiscoveryRow[]; counts: Rec
       .from("lender_discovery_queue")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(150);
 
     const rows: DiscoveryRow[] = data ?? [];
     const counts = {
@@ -39,11 +39,15 @@ async function loadDiscoveryQueue(): Promise<{ rows: DiscoveryRow[]; counts: Rec
       approved: rows.filter((r) => r.status === "approved").length,
       outreach_ready: rows.filter((r) => r.status === "outreach_ready").length,
       rejected: rows.filter((r) => r.status === "rejected").length,
+      ai_enriched: rows.filter((r) => {
+        const meta = (r.metadata ?? {}) as Record<string, unknown>;
+        return meta.enrichment_method === "claude_ai";
+      }).length,
       total: rows.length
     };
     return { rows, counts };
   } catch {
-    return { rows: [], counts: { pending_review: 0, approved: 0, outreach_ready: 0, rejected: 0, total: 0 } };
+    return { rows: [], counts: { pending_review: 0, approved: 0, outreach_ready: 0, rejected: 0, ai_enriched: 0, total: 0 } };
   }
 }
 
@@ -61,7 +65,7 @@ export default async function LenderDiscoveryPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Lender Operations</p>
           <h1 className="mt-2 text-2xl font-semibold tracking-normal">Lender Discovery</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Build the Operion lender network. Discover MCA lenders, review intelligence summaries, and approve for outreach.
+            Build the Operion lender network. Run the AI discovery agent, review intelligence summaries, and approve lenders for outreach.
           </p>
         </div>
         <Badge variant={(pendingCount ?? 0) > 0 ? "warning" : "success"}>
@@ -69,16 +73,18 @@ export default async function LenderDiscoveryPage() {
         </Badge>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {[
           ["Total discovered", counts.total ?? 0, "secondary"],
           ["Pending review", counts.pending_review ?? 0, (counts.pending_review ?? 0) > 0 ? "warning" : "secondary"],
-          ["Approved", counts.approved ?? 0, "success"],
-          ["Outreach ready", counts.outreach_ready ?? 0, (counts.outreach_ready ?? 0) > 0 ? "success" : "secondary"]
-        ].map(([label, value, variant]) => (
-          <div key={String(label)} className="rounded-lg border border-white/10 bg-card/80 p-5">
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="mt-3 text-3xl font-semibold text-white">{value}</p>
+          ["AI enriched", counts.ai_enriched ?? 0, (counts.ai_enriched ?? 0) > 0 ? "success" : "secondary"],
+          ["Approved", counts.approved ?? 0, (counts.approved ?? 0) > 0 ? "success" : "secondary"],
+          ["Outreach ready", counts.outreach_ready ?? 0, (counts.outreach_ready ?? 0) > 0 ? "success" : "secondary"],
+          ["Rejected", counts.rejected ?? 0, (counts.rejected ?? 0) > 0 ? "destructive" : "secondary"]
+        ].map(([label, value]) => (
+          <div key={String(label)} className="rounded-lg border border-white/10 bg-card/80 p-4">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
           </div>
         ))}
       </div>
