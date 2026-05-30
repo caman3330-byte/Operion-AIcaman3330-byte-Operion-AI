@@ -1,14 +1,15 @@
 <svg width="512" height="512" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="oc-mark-gold" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#EDD688"/>
-      <stop offset=".30" stop-color="#C9A84C"/>
-      <stop offset=".68" stop-color="#9A7825"/>
-      <stop offset="1" stop-color="#D4AF5A"/>
+      <stop stop-color="#F0DC90"/>
+      <stop offset=".25" stop-color="#D4AE52"/>
+      <stop offset=".55" stop-color="#A07828"/>
+      <stop offset=".82" stop-color="#C9A84C"/>
+      <stop offset="1" stop-color="#E8D07A"/>
     </linearGradient>
   </defs>
-  <rect x="1.5" y="1.5" width="61" height="61" rx="15" fill="#090704"/>
-  <rect x="1.5" y="1.5" width="61" height="61" rx="15" stroke="url(#oc-mark-gold)" stroke-width="1.2" opacity=".75"/>
-  <text x="9" y="46" font-family="Georgia, 'Times New Roman', serif" font-size="42" fill="url(#oc-mark-gold)" opacity=".84">O</text>
-  <text x="25" y="46" font-family="Georgia, 'Times New Roman', serif" font-size="42" fill="url(#oc-mark-gold)">C</text>
+  <rect x="1" y="1" width="62" height="62" rx="16" fill="#0A0906"/>
+  <rect x="1" y="1" width="62" height="62" rx="16" stroke="url(#oc-mark-gold)" stroke-width="1.1" opacity=".65"/>
+  <text x="7" y="47" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="bold" font-style="italic" fill="url(#oc-mark-gold)" opacity=".88">O</text>
+  <text x="22" y="47" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="bold" font-style="italic" fill="url(#oc-mark-gold)">C</text>
 </svg>

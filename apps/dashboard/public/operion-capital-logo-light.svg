@@ -1,18 +1,22 @@
 <svg width="560" height="340" viewBox="0 0 560 340" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="oc-light-gold" x1="190" y1="30" x2="370" y2="200" gradientUnits="userSpaceOnUse">
+    <linearGradient id="oc-light-gold" x1="180" y1="20" x2="380" y2="210" gradientUnits="userSpaceOnUse">
       <stop stop-color="#C9A84C"/>
-      <stop offset=".40" stop-color="#9A7825"/>
-      <stop offset=".75" stop-color="#C9A84C"/>
+      <stop offset=".38" stop-color="#9A7825"/>
+      <stop offset=".72" stop-color="#C9A84C"/>
       <stop offset="1" stop-color="#8A6A22"/>
     </linearGradient>
   </defs>
-  <rect width="560" height="340" rx="20" fill="#F8F4ED"/>
-  <rect x="1" y="1" width="558" height="338" rx="19.5" stroke="url(#oc-light-gold)" stroke-width="1" opacity=".45"/>
-  <text x="216" y="190" font-family="Georgia, 'Times New Roman', serif" font-size="135" fill="url(#oc-light-gold)" opacity=".78">O</text>
-  <text x="275" y="190" font-family="Georgia, 'Times New Roman', serif" font-size="135" fill="url(#oc-light-gold)">C</text>
-  <text x="280" y="250" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="38" font-weight="700" letter-spacing="16" fill="#0D0B08">OPERION</text>
-  <line x1="118" y1="277" x2="168" y2="277" stroke="#9A7825" stroke-width="1.4"/>
-  <text x="280" y="283" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="9" fill="#9A7825">CAPITAL</text>
-  <line x1="392" y1="277" x2="442" y2="277" stroke="#9A7825" stroke-width="1.4"/>
+  <!-- Light brand card background -->
+  <rect width="560" height="340" rx="24" fill="#F8F4ED"/>
+  <rect x=".75" y=".75" width="558.5" height="338.5" rx="23.5" stroke="url(#oc-light-gold)" stroke-width="1.2" opacity=".45"/>
+  <!-- OC Monogram on light: gold gradient -->
+  <text x="200" y="195" font-family="Georgia, 'Times New Roman', serif" font-size="145" font-weight="bold" font-style="italic" fill="url(#oc-light-gold)" opacity=".80">O</text>
+  <text x="264" y="195" font-family="Georgia, 'Times New Roman', serif" font-size="145" font-weight="bold" font-style="italic" fill="url(#oc-light-gold)">C</text>
+  <!-- OPERION wordmark: dark on light -->
+  <text x="280" y="255" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="700" letter-spacing="18" fill="#0D0B08">OPERION</text>
+  <!-- — CAPITAL — -->
+  <line x1="122" y1="280" x2="172" y2="280" stroke="#9A7825" stroke-width="1.5"/>
+  <text x="280" y="287" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="10" fill="#9A7825">CAPITAL</text>
+  <line x1="388" y1="280" x2="438" y2="280" stroke="#9A7825" stroke-width="1.5"/>
 </svg>

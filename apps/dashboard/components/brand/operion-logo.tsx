@@ -28,16 +28,19 @@ export function OperionMark({ className }: OperionMarkProps) {
     >
       <defs>
         <linearGradient id="oc-mark-gold" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#EDD688" />
-          <stop offset="0.30" stopColor="#C9A84C" />
-          <stop offset="0.68" stopColor="#9A7825" />
-          <stop offset="1" stopColor="#D4AF5A" />
+          <stop stopColor="#F0DC90" />
+          <stop offset="0.25" stopColor="#D4AE52" />
+          <stop offset="0.55" stopColor="#A07828" />
+          <stop offset="0.82" stopColor="#C9A84C" />
+          <stop offset="1" stopColor="#E8D07A" />
         </linearGradient>
       </defs>
-      <rect x="1.5" y="1.5" width="61" height="61" rx="15" fill="#090704" />
-      <rect x="1.5" y="1.5" width="61" height="61" rx="15" stroke="url(#oc-mark-gold)" strokeWidth="1.2" opacity="0.75" />
-      <text x="9" y="46" fontFamily="Georgia, 'Times New Roman', serif" fontSize="42" fill="url(#oc-mark-gold)" opacity="0.84">O</text>
-      <text x="25" y="46" fontFamily="Georgia, 'Times New Roman', serif" fontSize="42" fill="url(#oc-mark-gold)">C</text>
+      {/* Dark card — matches brand card background */}
+      <rect x="1" y="1" width="62" height="62" rx="16" fill="#0A0906" />
+      <rect x="1" y="1" width="62" height="62" rx="16" stroke="url(#oc-mark-gold)" strokeWidth="1.1" opacity="0.65" />
+      {/* OC monogram — italic bold serif, O behind, C overlapping in front */}
+      <text x="7" y="47" fontFamily="Georgia, 'Times New Roman', serif" fontSize="44" fontWeight="bold" fontStyle="italic" fill="url(#oc-mark-gold)" opacity="0.88">O</text>
+      <text x="22" y="47" fontFamily="Georgia, 'Times New Roman', serif" fontSize="44" fontWeight="bold" fontStyle="italic" fill="url(#oc-mark-gold)">C</text>
     </svg>
   );
 }
