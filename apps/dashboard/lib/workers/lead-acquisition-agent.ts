@@ -236,22 +236,38 @@ Return ONLY a valid JSON array (no markdown, no explanation):
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model,
+        model: model || "claude-sonnet-4-6",
         max_tokens: 2500,
-        temperature: 0.4,
+        temperature: 0,
         messages: [{ role: "user", content: prompt }]
-      }),
-      signal: AbortSignal.timeout(30000)
+      })
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      logger.error("lead_acquisition_claude_seed_api_error", {
+        status: response.status,
+        error: errText.slice(0, 300),
+        model
+      });
+      return [];
+    }
 
     const data = await response.json() as { content?: Array<{ type: string; text?: string }> };
     const rawText = data.content?.find((c) => c.type === "text")?.text ?? "";
     const cleanText = rawText.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
-    if (!cleanText) return [];
+    if (!cleanText) {
+      logger.warn("lead_acquisition_claude_seed_empty_response", { model, count });
+      return [];
+    }
 
     const profiles = JSON.parse(cleanText) as ClaudeLeadProfile[];
+    if (!Array.isArray(profiles) || profiles.length === 0) {
+      logger.warn("lead_acquisition_claude_seed_no_profiles", { raw: cleanText.slice(0, 200), count });
+      return [];
+    }
+
+    logger.info("lead_acquisition_claude_seed_success", { generated: profiles.length, model });
 
     return profiles.map((p) => ({
       business_name: p.business_name,
@@ -267,8 +283,10 @@ Return ONLY a valid JSON array (no markdown, no explanation):
       raw_payload: p as unknown as Json
     }));
   } catch (err) {
-    logger.warn("lead_acquisition_claude_seed_failed", {
-      error: err instanceof Error ? err.message : "unknown"
+    logger.error("lead_acquisition_claude_seed_exception", {
+      error: err instanceof Error ? err.message : "unknown",
+      model,
+      count
     });
     return [];
   }

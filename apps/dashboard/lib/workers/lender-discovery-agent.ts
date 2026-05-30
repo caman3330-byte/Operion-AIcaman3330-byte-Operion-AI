@@ -404,27 +404,31 @@ export async function runLenderDiscoveryAgent(limit = 10): Promise<LenderDiscove
     (existing ?? []).map((r: { website_url: string | null }) => (r.website_url ?? "").toLowerCase().trim()).filter(Boolean)
   );
 
-  const seedsToProcess = LENDER_SEEDS.filter((seed) => {
+  // Filter out seeds already in queue (true dedup), then slice to limit
+  const newSeeds = LENDER_SEEDS.filter((seed) => {
     const nameDupe = existingNames.has(seed.company_name.toLowerCase().trim());
     const urlDupe = existingUrls.has(seed.website_url.toLowerCase().trim());
     return !nameDupe && !urlDupe;
-  }).slice(0, limit);
+  });
+  const seedsToProcess = newSeeds.slice(0, limit);
+
+  // skipped = seeds confirmed already in DB (dedup hits), NOT seeds truncated by limit
+  const alreadyPresent = LENDER_SEEDS.length - newSeeds.length;
+  result.skipped = alreadyPresent;
 
   logger.info("lender_discovery_agent_started", {
     total_seeds: LENDER_SEEDS.length,
-    already_present: LENDER_SEEDS.length - seedsToProcess.length,
-    to_process: seedsToProcess.length
+    already_in_queue: alreadyPresent,
+    new_to_process: newSeeds.length,
+    processing_now: seedsToProcess.length
   });
-
-  // Seeds already in queue
-  const alreadyPresent = LENDER_SEEDS.length - seedsToProcess.length;
-  result.skipped = alreadyPresent;
 
   for (const seed of seedsToProcess) {
     try {
-      // Call Claude for AI enrichment
-      const enrichment = (await callClaudeForEnrichment(seed)) ?? buildFallbackEnrichment(seed);
-      const usedAi = enrichment !== null;
+      // Call Claude for AI enrichment; fall back to rule-based if unavailable
+      const claudeResult = await callClaudeForEnrichment(seed);
+      const enrichment = claudeResult ?? buildFallbackEnrichment(seed);
+      const usedAi = claudeResult !== null;
 
       // Insert into lender_discovery_queue
       const { data: inserted, error: insertError } = await (getSupabaseAdmin() as any)
@@ -439,7 +443,7 @@ export async function runLenderDiscoveryAgent(limit = 10): Promise<LenderDiscove
           funding_range_max: seed.funding_range_max,
           intelligence_summary: enrichment.intelligence_summary,
           confidence_score: enrichment.confidence_score,
-          discovery_source: "ai_discovery_agent",
+          discovery_source: "directory",
           status: "pending_review",
           metadata: {
             products: enrichment.products,
