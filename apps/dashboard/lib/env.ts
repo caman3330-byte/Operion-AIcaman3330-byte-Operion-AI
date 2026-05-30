@@ -28,6 +28,7 @@ const serverSchema = z.object({
   CRM_WEBHOOK_URL: optionalUrl,
   APOLLO_API_KEY: optionalString,
   APOLLO_API_BASE_URL: z.string().url().default("https://api.apollo.io/api/v1"),
+  GOOGLE_PLACES_API_KEY: optionalString,
   STRIPE_SECRET_KEY: optionalString,
   STRIPE_WEBHOOK_SECRET: optionalString,
   SLACK_WEBHOOK_URL: optionalUrl,

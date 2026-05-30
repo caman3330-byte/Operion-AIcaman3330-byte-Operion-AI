@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { acquisitionRepository, isAcquisitionMigrationMissing } from "@/lib/repositories/acquisition";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/utils";
+import { AcquisitionQueuePanel } from "./acquisition-queue-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +16,27 @@ export default async function AcquisitionPage() {
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
 
   try {
-    const [summary, sources, jobs, enrichment, contacts] = await Promise.all([
+    const [summary, sources, jobs, enrichment, contacts, pendingLeadsResult] = await Promise.all([
       acquisitionRepository.summary(),
       acquisitionRepository.listSources(),
       acquisitionRepository.listJobs(8),
       acquisitionRepository.listEnrichment(8),
-      acquisitionRepository.listContacts(8)
+      acquisitionRepository.listContacts(8),
+      (getSupabaseAdmin() as any)
+        .from("leads")
+        .select("id,business_name,contact_name,email,phone,industry,state,qualification_score,tier,status,ai_summary,internal_notes,created_at")
+        .eq("status", "pending_approval")
+        .eq("is_test_data", false)
+        .order("created_at", { ascending: false })
+        .limit(50)
     ]);
+
+    const pendingLeads = (pendingLeadsResult?.data ?? []) as Array<{
+      id: string; business_name: string; contact_name: string | null; email: string | null;
+      phone: string | null; industry: string | null; state: string | null;
+      qualification_score: number | null; tier: string | null; status: string;
+      ai_summary: string | null; internal_notes: string | null; created_at: string;
+    }>;
 
     return (
       <div className="space-y-6">
@@ -154,25 +170,39 @@ export default async function AcquisitionPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Lead Acquisition Queue — founder approval gate */}
+        <AcquisitionQueuePanel initialLeads={pendingLeads} />
       </div>
     );
   } catch (error) {
     if (isAcquisitionMigrationMissing(error)) {
+      // Acquisition job tables not yet migrated, but leads table is live — show the queue
+      const { data: pendingFallback } = await (getSupabaseAdmin() as any)
+        .from("leads")
+        .select("id,business_name,contact_name,email,phone,industry,state,qualification_score,tier,status,ai_summary,internal_notes,created_at")
+        .eq("status", "pending_approval")
+        .eq("is_test_data", false)
+        .order("created_at", { ascending: false })
+        .limit(50)
+        .catch(() => ({ data: [] }));
+
       return (
         <div className="space-y-6">
           <div>
             <h1 className="text-2xl font-semibold tracking-normal">Lead Acquisition</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Acquisition infrastructure is coded and waiting for the database migration.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Discover MCA prospects, review quality scores, and approve leads for the pipeline.</p>
           </div>
           <Card className="border-warning bg-warning/10">
             <CardHeader>
-              <CardTitle>Migration Required</CardTitle>
+              <CardTitle>Acquisition Job Migration Pending</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               Apply <span className="font-medium text-foreground">packages/database/migrations/0004_lead_acquisition_outreach.sql</span> in
-              Supabase SQL Editor to activate source storage, enrichment records, acquisition jobs, campaigns, queues, and replies.
+              Supabase SQL Editor to activate source storage, enrichment records, and acquisition jobs. The lead discovery agent is operational.
             </CardContent>
           </Card>
+          <AcquisitionQueuePanel initialLeads={pendingFallback ?? []} />
         </div>
       );
     }
