@@ -1,21 +1,14 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="4" y="4" width="56" height="56" rx="14" fill="#030303" stroke="#DAB96B" stroke-width="1.05"/>
-  <rect x="7.5" y="7.5" width="49" height="49" rx="11.5" stroke="url(#frame)" stroke-width=".7" opacity=".58"/>
-  <circle cx="26.25" cy="32" r="14.1" stroke="url(#gold)" stroke-width="4.2"/>
-  <path d="M40.2 18.3c7.1 1.1 12.55 6.85 13.25 13.9M53.45 32.2c-.72 7.02-6.18 12.76-13.25 13.86" stroke="url(#gold)" stroke-width="4.2" stroke-linecap="round"/>
-  <path d="M35.7 18.9c-3.9 3.45-6.35 8.12-6.35 13.1 0 5.02 2.45 9.67 6.35 13.1" stroke="#F7E7B7" stroke-width="1.15" stroke-linecap="round" opacity=".62"/>
   <defs>
-    <linearGradient id="gold" x1="12" y1="14" x2="54" y2="50" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF4BF"/>
-      <stop offset=".28" stop-color="#E4C56F"/>
-      <stop offset=".58" stop-color="#A77D2E"/>
-      <stop offset=".82" stop-color="#D9B764"/>
-      <stop offset="1" stop-color="#FFF0BC"/>
-    </linearGradient>
-    <linearGradient id="frame" x1="12" y1="9" x2="54" y2="58" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F8E7AF"/>
-      <stop offset=".55" stop-color="#7B6028"/>
-      <stop offset="1" stop-color="#E6C570"/>
+    <linearGradient id="oc-icon-gold" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EDD688"/>
+      <stop offset=".30" stop-color="#C9A84C"/>
+      <stop offset=".68" stop-color="#9A7825"/>
+      <stop offset="1" stop-color="#D4AF5A"/>
     </linearGradient>
   </defs>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="15" fill="#090704"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="15" stroke="url(#oc-icon-gold)" stroke-width="1.2" opacity=".75"/>
+  <text x="9" y="46" font-family="Georgia, 'Times New Roman', serif" font-size="42" fill="url(#oc-icon-gold)" opacity=".84">O</text>
+  <text x="25" y="46" font-family="Georgia, 'Times New Roman', serif" font-size="42" fill="url(#oc-icon-gold)">C</text>
 </svg>

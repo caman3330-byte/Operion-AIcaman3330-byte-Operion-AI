@@ -1,28 +1,18 @@
-<svg width="980" height="340" viewBox="0 0 980 340" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="980" height="340" rx="18" fill="#F7F1E6"/>
-  <g transform="translate(454 42)">
-    <rect x="4" y="4" width="64" height="64" rx="16" fill="#F7F1E6" stroke="#A9822F" stroke-width="1.2"/>
-    <rect x="8.5" y="8.5" width="55" height="55" rx="13" stroke="url(#frame)" stroke-width=".8" opacity=".58"/>
-    <circle cx="29.5" cy="36" r="15.8" stroke="url(#gold)" stroke-width="4.8"/>
-    <path d="M45.1 20.6c8 1.2 14.05 7.7 14.85 15.65M59.95 36.25c-.82 7.9-6.86 14.36-14.85 15.6" stroke="url(#gold)" stroke-width="4.8" stroke-linecap="round"/>
-    <path d="M40.05 21.2c-4.38 3.88-7.12 9.12-7.12 14.8 0 5.64 2.74 10.9 7.12 14.8" stroke="#101820" stroke-width="1.28" stroke-linecap="round" opacity=".5"/>
-  </g>
-  <text x="490" y="188" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="55" font-weight="500" letter-spacing="18" fill="#101820">OPERION CAPITAL</text>
-  <line x1="318" y1="239" x2="414" y2="239" stroke="#A9822F" stroke-width="1.6"/>
-  <text x="490" y="248" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="11" fill="#A9822F">PRIVATE CAPITAL ACCESS</text>
-  <line x1="566" y1="239" x2="662" y2="239" stroke="#A9822F" stroke-width="1.6"/>
+<svg width="560" height="340" viewBox="0 0 560 340" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="gold" x1="13" y1="16" x2="61" y2="56" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF4BF"/>
-      <stop offset=".28" stop-color="#E4C56F"/>
-      <stop offset=".58" stop-color="#A77D2E"/>
-      <stop offset=".82" stop-color="#D9B764"/>
-      <stop offset="1" stop-color="#FFF0BC"/>
-    </linearGradient>
-    <linearGradient id="frame" x1="13" y1="10" x2="61" y2="65" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F8E7AF"/>
-      <stop offset=".55" stop-color="#7B6028"/>
-      <stop offset="1" stop-color="#E6C570"/>
+    <linearGradient id="oc-light-gold" x1="190" y1="30" x2="370" y2="200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C9A84C"/>
+      <stop offset=".40" stop-color="#9A7825"/>
+      <stop offset=".75" stop-color="#C9A84C"/>
+      <stop offset="1" stop-color="#8A6A22"/>
     </linearGradient>
   </defs>
+  <rect width="560" height="340" rx="20" fill="#F8F4ED"/>
+  <rect x="1" y="1" width="558" height="338" rx="19.5" stroke="url(#oc-light-gold)" stroke-width="1" opacity=".45"/>
+  <text x="216" y="190" font-family="Georgia, 'Times New Roman', serif" font-size="135" fill="url(#oc-light-gold)" opacity=".78">O</text>
+  <text x="275" y="190" font-family="Georgia, 'Times New Roman', serif" font-size="135" fill="url(#oc-light-gold)">C</text>
+  <text x="280" y="250" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="38" font-weight="700" letter-spacing="16" fill="#0D0B08">OPERION</text>
+  <line x1="118" y1="277" x2="168" y2="277" stroke="#9A7825" stroke-width="1.4"/>
+  <text x="280" y="283" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="9" fill="#9A7825">CAPITAL</text>
+  <line x1="392" y1="277" x2="442" y2="277" stroke="#9A7825" stroke-width="1.4"/>
 </svg>

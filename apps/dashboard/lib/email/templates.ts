@@ -614,30 +614,28 @@ function renderBodyHtml(bodyHtml: string) {
 }
 
 function renderEmailLogo(brandName: string, brandLine: string) {
+  void brandName;
+  void brandLine;
   return `<table role="presentation" cellspacing="0" cellpadding="0" align="center">
     <tr>
       <td align="center">
-        <div style="height:64px;width:64px;border-radius:16px;background:#050505;border:1px solid #d7b76a;text-align:center;line-height:62px;color:#d7b76a;font-size:28px;font-weight:500;font-family:Georgia,'Times New Roman',serif;box-shadow:0 0 0 1px rgba(255,255,255,.06) inset;">
-          OC
+        <div style="height:80px;width:80px;border-radius:18px;background:#090704;border:1px solid rgba(201,168,76,0.7);text-align:center;overflow:hidden;">
+          <div style="padding-top:10px;font-family:Georgia,'Times New Roman',serif;font-size:44px;line-height:1;color:#C9A84C;letter-spacing:-4px;padding-left:4px;">OC</div>
         </div>
       </td>
     </tr>
     <tr>
-      <td align="center" style="padding-top:22px;">
-        <div style="font-size:22px;color:#ffffff;font-weight:500;letter-spacing:0.26em;font-family:Georgia,'Times New Roman',serif;text-transform:uppercase;">
-          ${escapeHtml(brandName)}
-        </div>
+      <td align="center" style="padding-top:20px;">
+        <div style="font-size:22px;color:#ffffff;font-weight:700;letter-spacing:0.3em;font-family:Arial,Helvetica,sans-serif;text-transform:uppercase;">OPERION</div>
       </td>
     </tr>
     <tr>
-      <td align="center" style="padding-top:11px;">
+      <td align="center" style="padding-top:10px;">
         <table role="presentation" cellspacing="0" cellpadding="0" align="center">
           <tr>
-            <td style="width:54px;height:1px;background:#d7b76a;opacity:.8;"></td>
-            <td style="padding:0 14px;font-size:11px;color:#d7b76a;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;white-space:nowrap;">
-              ${escapeHtml(brandLine)}
-            </td>
-            <td style="width:54px;height:1px;background:#d7b76a;opacity:.8;"></td>
+            <td style="width:48px;height:1px;background:#C9A84C;opacity:.8;"></td>
+            <td style="padding:0 12px;font-size:11px;color:#C9A84C;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;white-space:nowrap;font-family:Arial,Helvetica,sans-serif;">CAPITAL</td>
+            <td style="width:48px;height:1px;background:#C9A84C;opacity:.8;"></td>
           </tr>
         </table>
       </td>
