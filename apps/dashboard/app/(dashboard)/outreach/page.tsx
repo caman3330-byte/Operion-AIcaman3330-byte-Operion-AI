@@ -4,6 +4,7 @@ import { MetricCard } from "@/components/metrics/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { LenderOutreachDraftBuilder } from "@/components/outreach/lender-outreach-draft-builder";
 import { acquisitionRepository, isAcquisitionMigrationMissing } from "@/lib/repositories/acquisition";
 import { formatDateTime } from "@/lib/utils";
 
@@ -34,6 +35,8 @@ export default async function OutreachPage() {
           </div>
           <Badge variant="success">Queue-backed</Badge>
         </div>
+
+        <LenderOutreachDraftBuilder />
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <MetricCard title="Active Campaigns" value={String(summary.outreach.active_campaigns)} detail={`${summary.outreach.campaigns} total`} icon={Mail} />

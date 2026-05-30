@@ -18,6 +18,7 @@ import { getOperatorDashboardSummary } from "@/lib/operator-dashboard/service";
 import { getApplicationWorkflowTimelines } from "@/lib/operator-dashboard/workflow-timeline";
 import { getLaunchMonitoringSnapshot } from "@/lib/operations/monitoring";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { OperationalHealthReliabilityCenter } from "@/components/operations/operational-health-reliability-center";
 import { Badge } from "@/components/ui/badge";
@@ -43,13 +44,22 @@ export default async function SupervisorPage({
   const params = await searchParams;
   const approvalFilter = normalizeApprovalFilter(params?.approvalFilter);
 
-  const [summary, production, operator, monitoring, timelines] = await Promise.all([
+  const [summary, production, operator, monitoring, timelines, discoveryResult] = await Promise.all([
     getSupervisorSummary(),
     getProductionSupervisorSummary(),
     getOperatorDashboardSummary({ limit: 8 }),
     getLaunchMonitoringSnapshot({ limit: 60 }),
-    getApplicationWorkflowTimelines(4)
+    getApplicationWorkflowTimelines(4),
+    (getSupabaseAdmin() as any).from("lender_discovery_queue").select("status").then(({ data }: { data: Array<{ status: string }> | null }) => {
+      const rows = data ?? [];
+      return {
+        total: rows.length,
+        pending: rows.filter((r) => r.status === "pending_review").length,
+        outreach_ready: rows.filter((r) => r.status === "outreach_ready").length
+      };
+    }).catch(() => ({ total: 0, pending: 0, outreach_ready: 0 }))
   ]);
+  const discoveredLenders = discoveryResult as { total: number; pending: number; outreach_ready: number };
   const emailTotal = production.emailOperations.sent + production.emailOperations.failed;
   const emailSuccessRate = emailTotal === 0 ? 100 : Math.round((production.emailOperations.sent / emailTotal) * 100);
   const activeApplications =
@@ -221,9 +231,10 @@ export default async function SupervisorPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-normal text-white">Supervisor Command Center</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Operion Capital</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-normal text-white">Command Center</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Internal funding operations across lead qualification, underwriting review, lender routing, approvals, costs, and AI usage.
+            Live operations: merchants, underwriting, lender routing, approvals, discovery, and AI activity.
           </p>
         </div>
         <Badge variant={summary.migration_required ? "warning" : "success"}>
@@ -244,7 +255,7 @@ export default async function SupervisorPage({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
             <MetricCard
               title="Live Merchants"
               value={String(activeApplications)}
@@ -278,6 +289,13 @@ export default async function SupervisorPage({
               detail="Funding distribution approvals"
               icon={Route}
               tone={fundingReadyApprovals.length > 0 ? "warning" : "success"}
+            />
+            <MetricCard
+              title="Discovered Lenders"
+              value={String(discoveredLenders.total)}
+              detail={`${discoveredLenders.pending} pending review / ${discoveredLenders.outreach_ready} ready`}
+              icon={Activity}
+              tone={discoveredLenders.pending > 0 ? "warning" : "success"}
             />
             <MetricCard
               title="Action Required"

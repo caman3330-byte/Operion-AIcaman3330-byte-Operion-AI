@@ -101,6 +101,45 @@ export async function getRequestUser(request: Request) {
     };
   }
 
+  // Prefer @supabase/ssr via Next.js cookies() — handles chunked/refreshed tokens reliably
+  try {
+    const { createServerClient } = await import("@supabase/ssr");
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    const ssrClient = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet: Array<{ name: string; value: string; options?: unknown }>) {
+            try {
+              for (const { name, value, options } of cookiesToSet) {
+                cookieStore.set(name, value, options as any);
+              }
+            } catch {
+              // Route handlers can set cookies; server components cannot — ignore
+            }
+          }
+        }
+      }
+    );
+    const { data, error } = await ssrClient.auth.getUser();
+    if (!error && data.user?.email) {
+      return {
+        id: data.user.id,
+        email: data.user.email,
+        app_metadata: data.user.app_metadata,
+        user_metadata: data.user.user_metadata
+      };
+    }
+  } catch {
+    // Fall through to legacy cookie parsing if Next.js context unavailable
+  }
+
+  // Legacy fallback: manual Supabase cookie parsing
   const cookieHeader = request.headers.get("cookie");
   if (!cookieHeader) {
     throw new AuthenticationError();

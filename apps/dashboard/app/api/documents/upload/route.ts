@@ -87,10 +87,12 @@ export async function POST(request: Request) {
       ? await productionRepository.updateDocument(existingDocument.id, documentPayload)
       : await productionRepository.createDocument(documentPayload);
 
-    if (application.status === "documents_pending") {
+    const appStatus = application.status as any;
+    const isAwaitingDocuments = appStatus === "awaiting_documents" || appStatus === "documents_pending";
+    if (isAwaitingDocuments) {
       const currentMetadata = typeof application.metadata === "object" && application.metadata ? application.metadata : {};
       await productionRepository.updateBusinessApplication(businessApplicationId, {
-        status: "underwriting_review",
+        status: "documents_uploaded" as any,
         metadata: {
           ...currentMetadata,
           document_upload_ready_at: new Date().toISOString(),
@@ -101,8 +103,8 @@ export async function POST(request: Request) {
       try {
         await enqueueFundingEmail({
           to: actorEmail,
-          subject: "Your funding documents are ready for review",
-          text: `Thanks for uploading your ${getDocumentTypeLabel(documentType).toLowerCase()} for application ${application.id}. Our funding review team has moved your application into private review and will notify you after the next update.`,
+          subject: "Your funding documents have been received",
+          text: `Thanks for uploading your ${getDocumentTypeLabel(documentType).toLowerCase()} for application ${application.id}. Our team will begin the private funding review and notify you with any updates.`,
           lead_id: application.lead_id ?? null,
           email_number: 1,
           purpose: "application_status_update"

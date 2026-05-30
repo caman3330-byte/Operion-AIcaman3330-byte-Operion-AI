@@ -51,7 +51,7 @@ export function Sidebar() {
           <span className="mt-2 block normal-case tracking-normal">{operionBrand.descriptor}</span>
         </div>
       </aside>
-      <nav className="sticky top-16 z-30 flex gap-2 overflow-x-auto border-b border-primary/15 bg-black/85 px-4 py-2 backdrop-blur md:hidden">
+      <nav className="sticky top-14 z-30 flex gap-2 overflow-x-auto border-b border-primary/15 bg-black/85 px-4 py-2 backdrop-blur md:hidden">
         {departmentNavGroups.map((group) => (
           <div key={group.key} className="flex shrink-0 items-center gap-2">
             <span className="px-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-primary">{group.label}</span>

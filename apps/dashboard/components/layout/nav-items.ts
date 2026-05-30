@@ -10,6 +10,7 @@ import {
   type LucideIcon,
   Mail,
   PenLine,
+  Radar,
   Search,
   ShieldCheck,
   TimerReset
@@ -47,7 +48,8 @@ export const departmentNavGroups: DepartmentNavGroup[] = [
     label: "Lender Operations",
     purpose: "Lender portfolio, criteria management, pricing, and relationship tracking.",
     items: [
-      { href: "/lenders", label: "Lenders", icon: Building2 }
+      { href: "/lenders", label: "Lenders", icon: Building2 },
+      { href: "/lender-discovery", label: "Discovery", icon: Radar }
     ]
   },
   {

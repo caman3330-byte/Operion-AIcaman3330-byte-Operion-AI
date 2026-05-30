@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       user_id: actor?.id ?? null,
       profile_id: actor?.id ?? null,
       lead_id: lead.id,
-      status: "documents_pending",
+      status: "awaiting_documents" as any,
       business_name: payload.business_name,
       industry: payload.industry,
       state: payload.state ?? null,
