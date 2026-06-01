@@ -11,7 +11,8 @@ const tickSchema = z.object({
   limit: z.number().int().min(1).max(100).default(30),
   sources: z.array(z.enum(["google_places", "opencorporates", "ai_seed"])).optional(),
   industries: z.array(z.string()).optional(),
-  states: z.array(z.string().length(2)).optional()
+  states: z.array(z.string().length(2)).optional(),
+  researchMode: z.boolean().default(false)
 });
 
 export async function POST(request: NextRequest) {
@@ -22,7 +23,8 @@ export async function POST(request: NextRequest) {
       limit: payload.limit,
       ...(payload.sources ? { sources: payload.sources } : {}),
       ...(payload.industries ? { industries: payload.industries } : {}),
-      ...(payload.states ? { states: payload.states } : {})
+      ...(payload.states ? { states: payload.states } : {}),
+      researchMode: payload.researchMode
     });
     return NextResponse.json({ data: result });
   } catch (error) {

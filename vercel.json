@@ -9,6 +9,16 @@
       "use": "@vercel/next"
     }
   ],
+  "crons": [
+    {
+      "path": "/api/workers/document-processing?limit=10",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/workers/lead-qualification?limit=10",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "routes": [
     {
       "src": "^/(dashboard|application-status|settings)(/.*)?$",

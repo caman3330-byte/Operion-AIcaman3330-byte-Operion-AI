@@ -171,6 +171,13 @@ export type Lead = {
   processing_error: boolean;
   processing_error_detail: string | null;
   distributed_at: string | null;
+  website_verified?: boolean;
+  email_verified?: boolean;
+  phone_verified?: boolean;
+  business_verified?: boolean;
+  validation_score?: number;
+  validation_reason?: string | null;
+  validation_timestamp?: string | null;
   is_test_data: boolean;
   simulation_run_id: string | null;
   business_application_id?: string | null;
@@ -701,6 +708,13 @@ export type AcquisitionSummary = {
     enriched: number;
     qualified: number;
     pending_approval: number;
+    verified: number;
+    unverified: number;
+    invalid: number;
+    parked_domains: number;
+    domains_for_sale: number;
+    placeholder_sites: number;
+    ai_seed: number;
   };
   contacts: number;
   average_quality_score: number;

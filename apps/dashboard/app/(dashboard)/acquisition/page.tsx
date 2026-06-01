@@ -1,4 +1,4 @@
-import { AlertTriangle, BriefcaseBusiness, CheckCircle2, Contact, Database, Search, Star } from "lucide-react";
+import { AlertTriangle, BriefcaseBusiness, CheckCircle2, Contact, Database, Search, ShieldCheck, ShieldQuestion, Star, XCircle } from "lucide-react";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { Badge } from "@/components/ui/badge";
@@ -24,8 +24,8 @@ export default async function AcquisitionPage() {
       acquisitionRepository.listContacts(8),
       (getSupabaseAdmin() as any)
         .from("leads")
-        .select("id,business_name,contact_name,email,phone,industry,state,qualification_score,tier,status,ai_summary,internal_notes,created_at")
-        .eq("status", "pending_approval")
+        .select("id,business_name,contact_name,email,phone,industry,state,qualification_score,tier,status,ai_summary,internal_notes,website_verified,email_verified,phone_verified,business_verified,validation_score,validation_reason,validation_timestamp,created_at")
+        .in("status", ["pending_approval", "rejected"])
         .eq("is_test_data", false)
         .order("created_at", { ascending: false })
         .limit(50)
@@ -35,7 +35,9 @@ export default async function AcquisitionPage() {
       id: string; business_name: string; contact_name: string | null; email: string | null;
       phone: string | null; industry: string | null; state: string | null;
       qualification_score: number | null; tier: string | null; status: string;
-      ai_summary: string | null; internal_notes: string | null; created_at: string;
+      ai_summary: string | null; internal_notes: string | null; website_verified?: boolean;
+      email_verified?: boolean; phone_verified?: boolean; business_verified?: boolean;
+      validation_score?: number; validation_reason?: string | null; validation_timestamp?: string | null; created_at: string;
     }>;
 
     return (
@@ -58,6 +60,10 @@ export default async function AcquisitionPage() {
           <MetricCard title="Total Leads" value={String(summary.leads.total)} detail={`${summary.leads.qualified} qualified`} icon={BriefcaseBusiness} />
           <MetricCard title="Pending Approval" value={String(summary.leads.pending_approval)} detail="Needs founder review" icon={AlertTriangle} tone="warning" />
           <MetricCard title="Queued Outreach" value={String(summary.outreach.queued_emails)} detail={`${summary.outreach.pending_approval_emails} approval gated`} icon={CheckCircle2} />
+          <MetricCard title="Verified Leads" value={String(summary.leads.verified)} detail="Website + business evidence" icon={ShieldCheck} tone="success" />
+          <MetricCard title="Unverified Leads" value={String(summary.leads.unverified)} detail="Capped at Tier C" icon={ShieldQuestion} tone="warning" />
+          <MetricCard title="Invalid Leads" value={String(summary.leads.invalid)} detail="Rejected by validation" icon={XCircle} tone={summary.leads.invalid > 0 ? "danger" : "default"} />
+          <MetricCard title="Parked Domains" value={String(summary.leads.parked_domains)} detail={`${summary.leads.domains_for_sale} for sale / ${summary.leads.placeholder_sites} placeholder`} icon={AlertTriangle} tone={summary.leads.parked_domains > 0 ? "danger" : "default"} />
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
@@ -180,8 +186,8 @@ export default async function AcquisitionPage() {
       // Acquisition job tables not yet migrated, but leads table is live — show the queue
       const { data: pendingFallback } = await (getSupabaseAdmin() as any)
         .from("leads")
-        .select("id,business_name,contact_name,email,phone,industry,state,qualification_score,tier,status,ai_summary,internal_notes,created_at")
-        .eq("status", "pending_approval")
+        .select("id,business_name,contact_name,email,phone,industry,state,qualification_score,tier,status,ai_summary,internal_notes,website_verified,email_verified,phone_verified,business_verified,validation_score,validation_reason,validation_timestamp,created_at")
+        .in("status", ["pending_approval", "rejected"])
         .eq("is_test_data", false)
         .order("created_at", { ascending: false })
         .limit(50)

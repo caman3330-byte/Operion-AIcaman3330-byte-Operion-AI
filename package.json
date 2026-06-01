@@ -23,6 +23,7 @@
     "supabase:create-admin-user": "node ./scripts/create-admin-user.js",
     "supabase:create-admin-profile": "node ./scripts/create-admin-profile.js",
     "operations:classify-records": "node ./scripts/classify-operational-records.js",
+    "operations:validate-acquisition-leads": "node ./scripts/reprocess-acquisition-leads.mjs",
     "verify:deployment": "node ./scripts/verify-deployment.js"
   },
   "engines": {

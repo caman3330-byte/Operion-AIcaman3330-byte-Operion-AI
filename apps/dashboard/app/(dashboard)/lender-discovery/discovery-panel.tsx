@@ -54,6 +54,29 @@ function confidenceColor(score: number | null) {
   return "text-red-400";
 }
 
+function operationalReview(row: DiscoveryRow) {
+  const hasWebsite = Boolean(row.website_url);
+  const hasContact = Boolean(row.contact_email || row.contact_phone);
+  const hasSummary = Boolean(row.intelligence_summary);
+  const confidence = Number(row.confidence_score ?? 0);
+
+  if (hasWebsite && hasContact && hasSummary && confidence >= 0.65) {
+    return { label: "VERIFIED", variant: "success" as const };
+  }
+
+  if (!hasWebsite || confidence < 0.45) {
+    return { label: "UNVERIFIED", variant: "warning" as const };
+  }
+
+  return { label: "MANUAL REVIEW", variant: "outline" as const };
+}
+
+function contactCompleteness(row: DiscoveryRow) {
+  if (row.contact_email && row.contact_phone) return { label: "Contact complete", variant: "success" as const };
+  if (row.contact_email || row.contact_phone) return { label: "Partial contact", variant: "warning" as const };
+  return { label: "Contact missing", variant: "destructive" as const };
+}
+
 function fmtCurrency(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
@@ -291,6 +314,8 @@ export function LenderDiscoveryPanel({ initialRows }: Props) {
         <div className="space-y-3">
           {filtered.map((row) => {
             const meta = (row.metadata ?? {}) as Record<string, unknown>;
+            const review = operationalReview(row);
+            const contact = contactCompleteness(row);
             const products = Array.isArray(meta.products) ? (meta.products as string[]) : [];
             const minFico = typeof meta.min_fico === "number" ? meta.min_fico : null;
             const minRevenue = typeof meta.min_monthly_revenue === "number" ? meta.min_monthly_revenue : null;
@@ -307,6 +332,8 @@ export function LenderDiscoveryPanel({ initialRows }: Props) {
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-white">{row.company_name}</p>
                         <Badge variant={statusVariant(row.status)}>{row.status.replaceAll("_", " ")}</Badge>
+                        <Badge variant={review.variant}>{review.label}</Badge>
+                        <Badge variant={contact.variant}>{contact.label}</Badge>
                         <span className={`text-xs font-medium ${confidenceColor(row.confidence_score)}`}>
                           {confidenceLabel(row.confidence_score)} confidence
                           {row.confidence_score !== null ? ` (${Math.round(row.confidence_score * 100)}%)` : ""}

@@ -296,7 +296,8 @@ export const acquisitionRepository = {
       leadsTotal,
       leadsEnriched,
       leadsQualified,
-      leadsPendingApproval
+      leadsPendingApproval,
+      leadValidation
     ] = await Promise.all([
       countRows("lead_sources"),
       countRows("lead_sources", { active: true }),
@@ -310,13 +311,19 @@ export const acquisitionRepository = {
       countRows("leads"),
       countRows("leads", { status: "enriched" satisfies LeadStatus }),
       countRows("leads", { status: "qualified" satisfies LeadStatus }),
-      countRows("leads", { status: "pending_approval" satisfies LeadStatus })
+      countRows("leads", { status: "pending_approval" satisfies LeadStatus }),
+      supabase
+        .from("leads")
+        .select("status,business_verified,validation_score,validation_reason,internal_notes")
+        .eq("is_test_data", false)
+        .limit(2000)
     ]);
 
     if (jobs.error) throwAcquisitionDatabaseError(jobs.error);
     if (enrichment.error) throwAcquisitionDatabaseError(enrichment.error);
     if (queue.error) throwAcquisitionDatabaseError(queue.error);
     if (replies.error) throwAcquisitionDatabaseError(replies.error);
+    if (leadValidation.error) throwAcquisitionDatabaseError(leadValidation.error);
 
     const jobRows = jobs.data ?? [];
     const queueRows = queue.data ?? [];
@@ -324,6 +331,13 @@ export const acquisitionRepository = {
     const qualityScores = (enrichment.data ?? [])
       .map((row) => Number(row.quality_score ?? 0))
       .filter((score) => Number.isFinite(score) && score > 0);
+    const validationRows = leadValidation.data ?? [];
+    const invalidRows = validationRows.filter((row) => row.status === "rejected" || Number(row.validation_score ?? 0) <= 20);
+    const unverifiedRows = validationRows.filter(
+      (row) => row.business_verified !== true && row.status !== "rejected" && Number(row.validation_score ?? 0) > 20
+    );
+    const validationText = (row: { validation_reason?: string | null | undefined; internal_notes?: string | null | undefined }) =>
+      `${row.validation_reason ?? ""} ${row.internal_notes ?? ""}`.toLowerCase();
 
     return {
       sources,
@@ -339,7 +353,14 @@ export const acquisitionRepository = {
         total: leadsTotal,
         enriched: leadsEnriched,
         qualified: leadsQualified,
-        pending_approval: leadsPendingApproval
+        pending_approval: leadsPendingApproval,
+        verified: validationRows.filter((row) => row.business_verified === true).length,
+        unverified: unverifiedRows.length,
+        invalid: invalidRows.length,
+        parked_domains: validationRows.filter((row) => validationText(row).includes("parked domain")).length,
+        domains_for_sale: validationRows.filter((row) => validationText(row).includes("domain-for-sale")).length,
+        placeholder_sites: validationRows.filter((row) => validationText(row).includes("placeholder")).length,
+        ai_seed: validationRows.filter((row) => validationText(row).includes("ai_seed") || validationText(row).includes("ai seed")).length
       },
       contacts,
       average_quality_score:

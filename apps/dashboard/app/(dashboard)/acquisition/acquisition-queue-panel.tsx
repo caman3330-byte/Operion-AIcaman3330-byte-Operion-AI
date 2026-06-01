@@ -22,6 +22,13 @@ interface AcquisitionLead {
   status: string;
   ai_summary: string | null;
   internal_notes: string | null;
+  website_verified?: boolean;
+  email_verified?: boolean;
+  phone_verified?: boolean;
+  business_verified?: boolean;
+  validation_score?: number;
+  validation_reason?: string | null;
+  validation_timestamp?: string | null;
   created_at: string;
 }
 
@@ -43,6 +50,13 @@ function safeParseNotes(notes: string | null): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+function validationStatus(lead: AcquisitionLead) {
+  const score = Number(lead.validation_score ?? 0);
+  if (lead.business_verified) return { label: "Verified", variant: "success" as const };
+  if (lead.status === "rejected" || score <= 20) return { label: "Invalid", variant: "destructive" as const };
+  return { label: "Unverified", variant: "warning" as const };
 }
 
 export function AcquisitionQueuePanel({ initialLeads }: Props) {
@@ -102,11 +116,11 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
           <p className="text-sm font-semibold text-white">
             Lead Acquisition Queue
             <span className="ml-2 text-xs font-normal text-muted-foreground">
-              {leads.length} pending founder review
+              {leads.length} validation-reviewed lead(s)
             </span>
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Leads discovered via Google Places, OpenCorporates, and AI seed. No contact made until approved.
+            Production leads come from Google Places and OpenCorporates only. AI seed is blocked from live queues.
           </p>
         </div>
         <Button size="sm" variant="outline" disabled={isPending} onClick={handleRunAgent}>
@@ -123,7 +137,7 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
 
       {leads.length === 0 ? (
         <div className="rounded-lg border border-white/10 bg-card/80 px-5 py-10 text-center text-sm text-muted-foreground">
-          No leads pending review. Run the acquisition agent to discover MCA prospects.
+          No production acquisition leads are pending validation review. Run the acquisition agent to discover MCA prospects.
         </div>
       ) : (
         <div className="space-y-3">
@@ -131,6 +145,7 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
             const meta = safeParseNotes(lead.internal_notes);
             const discoverySource = typeof meta.discovery_source === "string" ? meta.discovery_source : "unknown";
             const websiteUrl = typeof meta.website_url === "string" ? meta.website_url : null;
+            const validation = validationStatus(lead);
 
             return (
               <Card key={lead.id} className="border-white/10">
@@ -140,7 +155,8 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
                       {/* Header */}
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-white">{lead.business_name}</p>
-                        <Badge variant="warning">pending review</Badge>
+                        <Badge variant={lead.status === "rejected" ? "destructive" : "warning"}>{lead.status.replaceAll("_", " ")}</Badge>
+                        <Badge variant={validation.variant}>{validation.label}</Badge>
                         {lead.tier ? (
                           <span className={`text-xs font-bold ${tierColor(lead.tier)}`}>
                             Tier {lead.tier} ({lead.qualification_score ?? 0}/100)
@@ -186,48 +202,55 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
                       {lead.ai_summary ? (
                         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{lead.ai_summary}</p>
                       ) : null}
+                      {lead.validation_reason ? (
+                        <p className="mt-2 max-w-2xl rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                          Validation: {lead.validation_reason}
+                        </p>
+                      ) : null}
                     </div>
 
                     {/* Right meta */}
                     <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
                       <span>Source: {discoverySource.replaceAll("_", " ")}</span>
+                      <span>Validation score: {lead.validation_score ?? 0}/100</span>
                       <span>{new Date(lead.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
 
-                  {/* Review actions */}
-                  <div className="mt-3 border-t border-white/10 pt-3">
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs">Notes (optional)</Label>
-                        <Input
-                          value={reviewNotes[lead.id] ?? ""}
-                          onChange={(e) => setReviewNotes((prev) => ({ ...prev, [lead.id]: e.target.value }))}
-                          placeholder="Add a note before approving or rejecting..."
-                          className="h-8 text-xs"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          disabled={isPending}
-                          onClick={() => handleReview(lead.id, "approve")}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={isPending}
-                          onClick={() => handleReview(lead.id, "reject")}
-                        >
-                          <XCircle className="h-3.5 w-3.5" />
-                          Reject
-                        </Button>
+                  {lead.status === "pending_approval" ? (
+                    <div className="mt-3 border-t border-white/10 pt-3">
+                      <div className="flex flex-wrap items-end gap-3">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-xs">Notes (optional)</Label>
+                          <Input
+                            value={reviewNotes[lead.id] ?? ""}
+                            onChange={(e) => setReviewNotes((prev) => ({ ...prev, [lead.id]: e.target.value }))}
+                            placeholder="Add a note before approving or rejecting..."
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            disabled={isPending}
+                            onClick={() => handleReview(lead.id, "approve")}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={isPending}
+                            onClick={() => handleReview(lead.id, "reject")}
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            Reject
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : null}
                 </CardContent>
               </Card>
             );

@@ -2,9 +2,11 @@ import type { Json } from "@operion/shared";
 import { writeAuditLog } from "@/lib/audit";
 import { normalizeBusinessLead, type RawBusinessLead } from "@/lib/acquisition/normalization";
 import { scoreLeadQuality } from "@/lib/acquisition/scoring";
+import { applyValidationToQuality, validateAcquisitionLead } from "@/lib/acquisition/validation";
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { readServerEnv } from "@/lib/env";
+import { ConfigurationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 // ─────────────────────────────────────────────
@@ -53,9 +55,16 @@ const PRIORITY_STATES = ["TX", "FL", "CA", "NY", "IL", "GA", "NC", "OH"];
 interface GooglePlacesResult {
   name: string;
   formatted_address: string;
+  place_id?: string;
   formatted_phone_number?: string;
   website?: string;
   business_status?: string;
+}
+
+interface GooglePlaceDetails {
+  formatted_phone_number?: string;
+  website?: string;
+  url?: string;
 }
 
 async function discoverViaGooglePlaces(
@@ -103,6 +112,66 @@ async function discoverViaGooglePlaces(
     });
     return [];
   }
+}
+
+async function enrichGooglePlacesDetails(apiKey: string, leads: RawBusinessLead[]): Promise<RawBusinessLead[]> {
+  const enriched: RawBusinessLead[] = [];
+
+  for (const lead of leads) {
+    const payload = lead.raw_payload && typeof lead.raw_payload === "object" ? (lead.raw_payload as Record<string, unknown>) : {};
+    const placeId = typeof payload.place_id === "string" ? payload.place_id : null;
+
+    if (!placeId) {
+      enriched.push(lead);
+      continue;
+    }
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=formatted_phone_number,website,url&key=${apiKey}`;
+      const response = await fetch(url, {
+        headers: { "Accept": "application/json" },
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!response.ok) {
+        enriched.push(lead);
+        continue;
+      }
+
+      const data = await response.json() as { status?: string; result?: GooglePlaceDetails };
+      if (data.status !== "OK" || !data.result) {
+        enriched.push(lead);
+        continue;
+      }
+
+      enriched.push({
+        ...lead,
+        phone: lead.phone ?? data.result.formatted_phone_number ?? null,
+        website_url: lead.website_url ?? data.result.website ?? data.result.url ?? null,
+        raw_payload: {
+          ...payload,
+          details: data.result
+        } as unknown as Json
+      });
+    } catch (err) {
+      logger.warn("lead_acquisition_google_places_details_failed", {
+        business_name: lead.business_name,
+        error: err instanceof Error ? err.message : "unknown"
+      });
+      enriched.push(lead);
+    }
+  }
+
+  return enriched;
+}
+
+async function discoverGooglePlacesBatch(
+  apiKey: string,
+  industry: { keyword: string; industry: string; placeType: string },
+  state: string,
+  limit: number
+) {
+  const places = await discoverViaGooglePlaces(apiKey, industry, state, limit);
+  return enrichGooglePlacesDetails(apiKey, places);
 }
 
 // ─────────────────────────────────────────────
@@ -301,6 +370,7 @@ export interface LeadAcquisitionAgentOptions {
   sources?: Array<"google_places" | "opencorporates" | "ai_seed">;
   industries?: string[];
   states?: string[];
+  researchMode?: boolean;
 }
 
 export async function runLeadAcquisitionAgent(
@@ -327,7 +397,12 @@ export async function runLeadAcquisitionAgent(
 
   const hasGooglePlaces = Boolean(env.GOOGLE_PLACES_API_KEY);
   const hasAnthropic = Boolean(env.ANTHROPIC_API_KEY);
-  const requestedSources = options.sources ?? ["google_places", "opencorporates", "ai_seed"];
+  const allowAiSeed = options.researchMode === true;
+  const requestedSources = allowAiSeed ? options.sources ?? ["google_places"] : ["google_places"];
+
+  if (!allowAiSeed && !hasGooglePlaces) {
+    throw new ConfigurationError("GOOGLE_PLACES_API_KEY is required for production lead acquisition");
+  }
 
   // Source 1: Google Places
   if (hasGooglePlaces && requestedSources.includes("google_places")) {
@@ -335,7 +410,7 @@ export async function runLeadAcquisitionAgent(
     const perTarget = Math.ceil(limit / (targetIndustries.length * targetStates.length));
     for (const industry of targetIndustries.slice(0, 3)) {
       for (const state of targetStates.slice(0, 2)) {
-        const found = await discoverViaGooglePlaces(
+        const found = await discoverGooglePlacesBatch(
           env.GOOGLE_PLACES_API_KEY as string,
           industry,
           state,
@@ -371,7 +446,7 @@ export async function runLeadAcquisitionAgent(
   }
 
   // Source 3: Claude AI Seed (when Anthropic is configured)
-  if (hasAnthropic && requestedSources.includes("ai_seed") && rawLeads.length < limit) {
+  if (allowAiSeed && hasAnthropic && requestedSources.includes("ai_seed") && rawLeads.length < limit) {
     result.sources_used.push("ai_seed");
     const needed = Math.min(limit - rawLeads.length, 20);
     const seedLeads = await discoverViaClaudeSeed(
@@ -395,7 +470,14 @@ export async function runLeadAcquisitionAgent(
   for (const raw of rawLeads.slice(0, limit)) {
     try {
       const normalized = normalizeBusinessLead(raw);
-      const quality = scoreLeadQuality(normalized);
+      const validation = await validateAcquisitionLead({
+        businessName: normalized.business_name,
+        websiteUrl: normalized.website_url,
+        email: normalized.email,
+        phone: normalized.phone,
+        source: raw.source
+      });
+      const quality = applyValidationToQuality(scoreLeadQuality(normalized), validation);
 
       // Deduplication check
       const existing = await acquisitionRepository.findLeadByEmailOrName({
@@ -419,6 +501,19 @@ export async function runLeadAcquisitionAgent(
       }
 
       // Insert with pending_approval status — no autonomous action
+      const isResearchLead = raw.source === "ai_seed" || options.researchMode === true;
+      const leadStatus = validation.status === "invalid" ? "rejected" : "pending_approval";
+      const validationMetadata = {
+        status: validation.status,
+        website_verified: validation.website_verified,
+        email_verified: validation.email_verified,
+        phone_verified: validation.phone_verified,
+        business_verified: validation.business_verified,
+        validation_score: validation.validation_score,
+        validation_reason: validation.validation_reason,
+        validation_flags: validation.flags
+      };
+
       const lead = await leadsRepository.create({
         business_name: normalized.business_name,
         contact_name: normalized.contact_name,
@@ -430,8 +525,15 @@ export async function runLeadAcquisitionAgent(
         time_in_business_years: normalized.time_in_business_years,
         qualification_score: quality.score,
         tier: quality.tier,
-        status: "pending_approval",
-        is_test_data: false,
+        status: leadStatus,
+        website_verified: validation.website_verified,
+        email_verified: validation.email_verified,
+        phone_verified: validation.phone_verified,
+        business_verified: validation.business_verified,
+        validation_score: validation.validation_score,
+        validation_reason: validation.validation_reason,
+        validation_timestamp: validation.validation_timestamp,
+        is_test_data: isResearchLead,
         ai_summary: quality.score >= 65
           ? `Tier ${quality.tier} prospect: ${quality.reasons.join(", ")}. Discovered via ${raw.source ?? "agent"}.`
           : null,
@@ -441,6 +543,7 @@ export async function runLeadAcquisitionAgent(
           discovered_at: new Date().toISOString(),
           website_url: normalized.website_url,
           score_reasons: quality.reasons,
+          validation: validationMetadata,
           source_record_id: raw.source_record_id ?? null
         })
       });
@@ -469,7 +572,8 @@ export async function runLeadAcquisitionAgent(
         score: quality.score,
         tier: quality.tier,
         source: raw.source ?? "unknown",
-        status: "inserted"
+        status: "inserted",
+        reason: validation.validation_reason
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";

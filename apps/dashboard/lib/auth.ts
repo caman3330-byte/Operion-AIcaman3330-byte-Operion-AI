@@ -28,6 +28,30 @@ export async function requireInternalUser(request: Request): Promise<FounderActo
   return requireRole(request, ["staff", "supervisor", "founder", "super_admin", "admin", "operator", "analyst"]);
 }
 
+export async function requireScheduler(request: Request): Promise<FounderActor> {
+  const cronSecret = process.env.CRON_SECRET;
+  const internalKey = process.env.OPERION_INTERNAL_API_KEY;
+  const authorization = request.headers.get("authorization");
+
+  if (cronSecret && authorization === `Bearer ${cronSecret}`) {
+    return {
+      id: "vercel_cron",
+      email: "vercel_cron",
+      role: "workflow"
+    };
+  }
+
+  if (internalKey && request.headers.get("x-operion-internal-key") === internalKey) {
+    return {
+      id: "internal_scheduler",
+      email: "internal_scheduler",
+      role: "workflow"
+    };
+  }
+
+  return requireInternalUser(request);
+}
+
 export async function requireCustomer(request: Request): Promise<FounderActor> {
   return requireRole(request, ["customer", "staff", "supervisor", "founder", "super_admin", "admin", "operator", "analyst", "workflow"]);
 }

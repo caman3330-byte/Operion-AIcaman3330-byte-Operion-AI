@@ -2,6 +2,7 @@ import type { Json, Lead } from "@operion/shared";
 import { writeAuditLog } from "@/lib/audit";
 import { normalizeBusinessLead, type RawBusinessLead } from "@/lib/acquisition/normalization";
 import { contactConfidence, scoreLeadQuality } from "@/lib/acquisition/scoring";
+import { applyValidationToQuality, validateAcquisitionLead } from "@/lib/acquisition/validation";
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
 import { leadsRepository } from "@/lib/repositories/leads";
 
@@ -54,7 +55,24 @@ export async function ingestLeadBatch(input: IngestLeadBatchInput) {
         continue;
       }
 
-      const quality = scoreLeadQuality(normalized);
+      const validation = await validateAcquisitionLead({
+        businessName: normalized.business_name,
+        websiteUrl: normalized.website_url,
+        email: normalized.email,
+        phone: normalized.phone,
+        source: rawRecord.source ?? input.sourceKey
+      });
+      const quality = applyValidationToQuality(scoreLeadQuality(normalized), validation);
+      const validationMetadata = {
+        status: validation.status,
+        website_verified: validation.website_verified,
+        email_verified: validation.email_verified,
+        phone_verified: validation.phone_verified,
+        business_verified: validation.business_verified,
+        validation_score: validation.validation_score,
+        validation_reason: validation.validation_reason,
+        validation_flags: validation.flags
+      };
       const lead = await leadsRepository.create({
         business_name: normalized.business_name,
         contact_name: normalized.contact_name,
@@ -64,9 +82,16 @@ export async function ingestLeadBatch(input: IngestLeadBatchInput) {
         state: normalized.state,
         annual_revenue_est: normalized.annual_revenue_est,
         time_in_business_years: normalized.time_in_business_years,
-        status: "enriched",
+        status: validation.status === "invalid" ? "rejected" : "enriched",
         qualification_score: quality.score,
         tier: quality.tier,
+        website_verified: validation.website_verified,
+        email_verified: validation.email_verified,
+        phone_verified: validation.phone_verified,
+        business_verified: validation.business_verified,
+        validation_score: validation.validation_score,
+        validation_reason: validation.validation_reason,
+        validation_timestamp: validation.validation_timestamp,
         is_test_data: input.isTestData ?? false,
         simulation_run_id: input.simulationRunId ?? null
       });
@@ -88,7 +113,7 @@ export async function ingestLeadBatch(input: IngestLeadBatchInput) {
         }),
         quality_score: quality.score,
         duplicate_group_key: normalized.domain ?? normalized.normalized_business_name,
-        funding_signals: { reasons: quality.reasons } as Json,
+        funding_signals: { reasons: quality.reasons, validation: validationMetadata } as Json,
         raw_payload: normalized.raw_payload as Json,
         is_test_data: input.isTestData ?? false,
         enriched_at: new Date().toISOString()
@@ -161,12 +186,21 @@ export async function enrichExistingLead(leadId: string, requestedBy: string) {
     contact_name: lead.contact_name,
     email: lead.email,
     phone: lead.phone,
+    website_url: readWebsiteUrlFromNotes(lead.internal_notes),
     industry: lead.industry,
     state: lead.state,
     annual_revenue_est: lead.annual_revenue_est,
     time_in_business_years: lead.time_in_business_years
   });
-  const quality = scoreLeadQuality(normalized);
+  const source = readDiscoverySourceFromNotes(lead.internal_notes);
+  const validation = await validateAcquisitionLead({
+    businessName: normalized.business_name,
+    websiteUrl: normalized.website_url,
+    email: normalized.email,
+    phone: normalized.phone,
+    source
+  });
+  const quality = applyValidationToQuality(scoreLeadQuality(normalized), validation);
   const enrichment =
     (await acquisitionRepository.getLatestEnrichment(leadId)) ??
     (await acquisitionRepository.createEnrichment({ lead_id: leadId, status: "running", provider: "internal" }));
@@ -185,14 +219,33 @@ export async function enrichExistingLead(leadId: string, requestedBy: string) {
       contactName: normalized.contact_name
     }),
     quality_score: quality.score,
-    funding_signals: { reasons: quality.reasons } as Json,
+    funding_signals: {
+      reasons: quality.reasons,
+      validation: {
+        status: validation.status,
+        website_verified: validation.website_verified,
+        email_verified: validation.email_verified,
+        phone_verified: validation.phone_verified,
+        business_verified: validation.business_verified,
+        validation_score: validation.validation_score,
+        validation_reason: validation.validation_reason,
+        validation_flags: validation.flags
+      }
+    } as Json,
     enriched_at: new Date().toISOString()
   });
 
   const updatedLead = await leadsRepository.update(leadId, {
     qualification_score: quality.score,
     tier: quality.tier,
-    status: quality.score >= 65 ? "qualified" : "nurture"
+    status: validation.status === "invalid" ? "rejected" : quality.score >= 65 ? "qualified" : "nurture",
+    website_verified: validation.website_verified,
+    email_verified: validation.email_verified,
+    phone_verified: validation.phone_verified,
+    business_verified: validation.business_verified,
+    validation_score: validation.validation_score,
+    validation_reason: validation.validation_reason,
+    validation_timestamp: validation.validation_timestamp
   });
 
   await writeAuditLog({
@@ -209,4 +262,23 @@ export async function enrichExistingLead(leadId: string, requestedBy: string) {
   });
 
   return { lead: updatedLead, enrichment: updatedEnrichment, quality };
+}
+
+function readWebsiteUrlFromNotes(notes: string | null | undefined) {
+  const parsed = parseNotes(notes);
+  return typeof parsed.website_url === "string" ? parsed.website_url : null;
+}
+
+function readDiscoverySourceFromNotes(notes: string | null | undefined) {
+  const parsed = parseNotes(notes);
+  return typeof parsed.discovery_source === "string" ? parsed.discovery_source : null;
+}
+
+function parseNotes(notes: string | null | undefined): Record<string, unknown> {
+  if (!notes) return {};
+  try {
+    return JSON.parse(notes) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
 }
