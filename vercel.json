@@ -12,11 +12,11 @@
   "crons": [
     {
       "path": "/api/workers/document-processing?limit=10",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 10 * * *"
     },
     {
       "path": "/api/workers/lead-qualification?limit=10",
-      "schedule": "*/15 * * * *"
+      "schedule": "15 10 * * *"
     }
   ],
   "routes": [
