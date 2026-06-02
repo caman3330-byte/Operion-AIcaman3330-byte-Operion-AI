@@ -5,10 +5,16 @@ import type { LenderInsert, LenderUpdate } from "@/lib/supabase/types";
 export const lendersRepository = {
   async list(activeOnly = false) {
     const supabase = getSupabaseAdmin();
-    let query = supabase.from("lenders").select("*").order("created_at", { ascending: false });
+    let query = supabase
+      .from("lenders")
+      .select("*")
+      .neq("approval_status", "archived")
+      .order("created_at", { ascending: false });
 
     if (activeOnly) {
       query = query.eq("active", true);
+    } else {
+      query = query.neq("active", false);
     }
 
     const { data, error } = await query;

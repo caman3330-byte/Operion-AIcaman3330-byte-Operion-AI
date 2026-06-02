@@ -25,8 +25,9 @@ export default async function AcquisitionPage() {
       (getSupabaseAdmin() as any)
         .from("leads")
         .select("id,business_name,contact_name,email,phone,industry,state,qualification_score,tier,status,ai_summary,internal_notes,website_verified,email_verified,phone_verified,business_verified,validation_score,validation_reason,validation_timestamp,created_at")
-        .in("status", ["pending_approval", "rejected"])
+        .in("status", ["pending_approval", "qualified", "enriched"])
         .eq("is_test_data", false)
+        .eq("business_verified", true)
         .order("created_at", { ascending: false })
         .limit(50)
     ]);
@@ -187,8 +188,9 @@ export default async function AcquisitionPage() {
       const { data: pendingFallback } = await (getSupabaseAdmin() as any)
         .from("leads")
         .select("id,business_name,contact_name,email,phone,industry,state,qualification_score,tier,status,ai_summary,internal_notes,website_verified,email_verified,phone_verified,business_verified,validation_score,validation_reason,validation_timestamp,created_at")
-        .in("status", ["pending_approval", "rejected"])
+        .in("status", ["pending_approval", "qualified", "enriched"])
         .eq("is_test_data", false)
+        .eq("business_verified", true)
         .order("created_at", { ascending: false })
         .limit(50)
         .catch(() => ({ data: [] }));

@@ -308,14 +308,15 @@ export const acquisitionRepository = {
       countRows("outreach_campaigns", { status: "active" }),
       supabase.from("outreach_email_queue").select("status"),
       supabase.from("outreach_replies").select("classification"),
-      countRows("leads"),
-      countRows("leads", { status: "enriched" satisfies LeadStatus }),
-      countRows("leads", { status: "qualified" satisfies LeadStatus }),
-      countRows("leads", { status: "pending_approval" satisfies LeadStatus }),
+      countRows("leads", { is_test_data: false, business_verified: true }),
+      countRows("leads", { status: "enriched" satisfies LeadStatus, is_test_data: false, business_verified: true }),
+      countRows("leads", { status: "qualified" satisfies LeadStatus, is_test_data: false, business_verified: true }),
+      countRows("leads", { status: "pending_approval" satisfies LeadStatus, is_test_data: false, business_verified: true }),
       supabase
         .from("leads")
         .select("status,business_verified,validation_score,validation_reason,internal_notes")
         .eq("is_test_data", false)
+        .neq("status", "archived")
         .limit(2000)
     ]);
 

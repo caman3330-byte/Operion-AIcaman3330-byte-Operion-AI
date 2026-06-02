@@ -67,6 +67,7 @@ export const productionRepository = {
     const { data, error } = await getSupabaseAdmin()
       .from("business_applications")
       .select("*")
+      .neq("status", "inactive")
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error) throwProductionSchemaError(error);
@@ -79,6 +80,7 @@ export const productionRepository = {
       .from("business_applications")
       .select("*")
       .in("status", statuses)
+      .neq("status", "inactive")
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error) throwProductionSchemaError(error);
