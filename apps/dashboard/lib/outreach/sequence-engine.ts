@@ -31,6 +31,7 @@ export interface PrepareSdrOutreachResult {
 export interface OutreachWorkerTickInput {
   workerId: string;
   limit?: number;
+  lifecycleOnly?: boolean;
 }
 
 export interface OutreachWorkerTickResult {
@@ -144,9 +145,15 @@ export async function prepareSdrOutreach(input: PrepareSdrOutreachInput): Promis
 
 export async function runOutreachWorkerTick(input: OutreachWorkerTickInput): Promise<OutreachWorkerTickResult> {
   const limit = Math.min(Math.max(input.limit ?? 10, 1), 50);
-  const queued = await acquisitionRepository.listEmailQueue(limit, "queued");
+  const queued = await acquisitionRepository.listEmailQueue(input.lifecycleOnly ? limit * 5 : limit, "queued");
   const now = Date.now();
-  const due = queued.filter((item) => new Date(item.scheduled_at).getTime() <= now).slice(0, limit);
+  const due = queued
+    .filter((item) => new Date(item.scheduled_at).getTime() <= now)
+    .filter((item) => {
+      if (!input.lifecycleOnly) return true;
+      return item.created_by_agent_key === "email_automation" && item.ai_generated === false;
+    })
+    .slice(0, limit);
   const processed: OutreachWorkerTickResult["processed"] = [];
 
   for (const item of due) {
@@ -251,7 +258,7 @@ async function sendQueuedEmail(item: OutreachEmailQueueItem, workerId: string) {
     const sent = await acquisitionRepository.updateEmailQueueItem(sending.id, {
       status: "sent",
       sent_at: new Date().toISOString(),
-      provider_message_id: String(result.status)
+      provider_message_id: result.messageId ?? String(result.status)
     });
 
     await Promise.all([

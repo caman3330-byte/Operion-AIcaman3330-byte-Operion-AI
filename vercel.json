@@ -11,6 +11,10 @@
   ],
   "crons": [
     {
+      "path": "/api/outreach/workers/tick?limit=10&mode=lifecycle",
+      "schedule": "30 10 * * *"
+    },
+    {
       "path": "/api/workers/document-processing?limit=10",
       "schedule": "0 10 * * *"
     },
