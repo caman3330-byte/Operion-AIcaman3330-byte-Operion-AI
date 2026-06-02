@@ -55,6 +55,57 @@ function readNote(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
+function getDocumentMetadata(document: { metadata?: unknown }) {
+  return typeof document.metadata === "object" && document.metadata && !Array.isArray(document.metadata)
+    ? document.metadata as Record<string, unknown>
+    : {};
+}
+
+function isArchivedDuplicateDocument(document: { status: string; metadata?: unknown }) {
+  const metadata = getDocumentMetadata(document);
+  return document.status === "rejected" && metadata.archived_as_duplicate === true;
+}
+
+function getSubmissionReadiness(input: {
+  application: any;
+  documents: Array<{ document_type: string; status: string; file_name?: string | null; file_size?: number | null; metadata?: unknown }>;
+  lenderMatches: Array<unknown>;
+  aiTasks: Array<{ task_type: string; status: string }>;
+}) {
+  const metadata = typeof input.application.metadata === "object" && input.application.metadata ? input.application.metadata as Record<string, unknown> : {};
+  const timeInBusinessMonths = Number(metadata.time_in_business_months ?? 0);
+  const uniqueUploadedStatements = new Set(
+    input.documents
+      .filter((document) => document.document_type === "bank_statements" && document.status === "uploaded" && !isArchivedDuplicateDocument(document))
+      .map((document) => `${document.file_name ?? "unknown"}:${document.file_size ?? 0}`)
+  );
+  const requestedDocuments = input.documents.filter((document) => document.status === "requested");
+  const unresolvedQualification = input.aiTasks.some((task) => task.task_type === "lead_qualification" && task.status !== "completed");
+  const warnings = [
+    ...(timeInBusinessMonths > 0 && timeInBusinessMonths < 6 ? ["Time in business is below matched lender minimum"] : []),
+    ...(input.application.credit_score_range === "unknown" ? ["Credit score is missing"] : []),
+    ...(!input.application.website_url ? ["Website is missing"] : []),
+    ...(metadata.lender_submission_warnings && typeof metadata.lender_submission_warnings === "object" ? ["Business verification needs founder confirmation"] : []),
+    ...(requestedDocuments.length > 0 ? ["Requested document remains incomplete"] : []),
+    ...(unresolvedQualification ? ["Lead qualification is not completed"] : [])
+  ];
+  const blockers = [
+    ...(uniqueUploadedStatements.size < 4 ? ["Fewer than four unique bank statements"] : []),
+    ...(input.lenderMatches.length === 0 ? ["No lender matches available"] : [])
+  ];
+  const state = blockers.length > 0 ? "Blocked" : warnings.length > 0 ? "Needs Review" : "Ready";
+  const score = Math.max(0, Math.min(100, 92 - warnings.length * 6 - blockers.length * 18));
+
+  return {
+    state,
+    score,
+    warnings,
+    blockers,
+    uniqueUploadedStatements: uniqueUploadedStatements.size,
+    requestedDocuments: requestedDocuments.length
+  };
+}
+
 export default async function MerchantDetailsPage({ params }: { params: Promise<{ applicationId: string[] }> }) {
   const access = await getInternalPageAccess();
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
@@ -75,6 +126,7 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
   const metadata = typeof application.metadata === "object" && application.metadata ? (application.metadata as Record<string, unknown>) : {};
   const operatorNotes = getOperatorNotes(metadata);
   const insights = typeof metadata.ai_summary === "string" ? metadata.ai_summary : typeof metadata.insights === "string" ? metadata.insights : null;
+  const submissionReadiness = getSubmissionReadiness({ application, documents, lenderMatches, aiTasks });
 
   return (
     <div className="space-y-6">
@@ -148,6 +200,52 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
               </div>
               <div className="mt-4">
                 <LifecycleControls applicationId={application.id} currentStatus={application.status} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle>Lender submission readiness</CardTitle>
+                <Badge
+                  variant={
+                    submissionReadiness.state === "Ready"
+                      ? "success"
+                      : submissionReadiness.state === "Blocked"
+                        ? "destructive"
+                        : "warning"
+                  }
+                >
+                  {submissionReadiness.state}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs text-muted-foreground">Readiness score</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">{submissionReadiness.score}%</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs text-muted-foreground">Unique statements</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">{submissionReadiness.uniqueUploadedStatements}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs text-muted-foreground">Lender matches</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">{lenderMatches.length}</p>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+                {submissionReadiness.blockers.map((blocker) => (
+                  <p key={blocker} className="text-red-200">{blocker}</p>
+                ))}
+                {submissionReadiness.warnings.map((warning) => (
+                  <p key={warning} className="text-amber-100">{warning}</p>
+                ))}
+                {submissionReadiness.blockers.length === 0 && submissionReadiness.warnings.length === 0 ? (
+                  <p className="text-emerald-100">Package is ready for founder-approved lender submission.</p>
+                ) : null}
               </div>
             </CardContent>
           </Card>
