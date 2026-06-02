@@ -63,8 +63,9 @@ export async function persistDistributionPlan(plan: DistributionPlan): Promise<{
 
   try {
     const supabase = await getSupabaseAdmin();
+    const selectedLenderIds = new Set(plan.selectedLenderIds);
     const rows = plan.decisions
-      .filter((decision) => decision.distribute)
+      .filter((decision) => decision.distribute && selectedLenderIds.has(decision.lenderId))
       .map((decision) => ({
         lead_id: plan.merchant.leadId as string,
         lender_id: decision.lenderId,

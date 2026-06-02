@@ -46,6 +46,8 @@ export async function loadActiveLenders(): Promise<{ lenders: LenderProfile[]; e
       .from('lenders')
       .select('*')
       .eq('active', true)
+      .eq('approval_status', 'approved')
+      .eq('lender_status', 'active')
       .order('company_name');
 
     if (error) {

@@ -9,10 +9,11 @@ export const lendersRepository = {
       .from("lenders")
       .select("*")
       .neq("approval_status", "archived")
+      .neq("lender_status", "suspended")
       .order("created_at", { ascending: false });
 
     if (activeOnly) {
-      query = query.eq("active", true);
+      query = query.eq("active", true).eq("approval_status", "approved").eq("lender_status", "active");
     } else {
       query = query.neq("active", false);
     }

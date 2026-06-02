@@ -83,6 +83,7 @@ export const lenderCreateSchema = z.object({
     "Inactive"
   ]).optional(),
   approval_status: z.enum(["pending_review", "approved", "rejected", "archived"]).optional(),
+  lender_status: z.enum(["pending_review", "approved", "active", "suspended"]).optional(),
   outreach_history: z.any().optional(),
   outreach_drafts: z.any().optional(),
   min_monthly_revenue: z.number().nonnegative().optional().nullable(),

@@ -223,6 +223,7 @@ export type Lender = {
     | "Partnered"
     | "Inactive";
   approval_status?: "pending_review" | "approved" | "rejected" | "archived";
+  lender_status?: "pending_review" | "approved" | "active" | "suspended";
   first_discovered_at?: string | null;
   last_intelligence_update_at?: string | null;
   outreach_history?: Json;
