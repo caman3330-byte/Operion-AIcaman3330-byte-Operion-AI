@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition, type RefObject } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, FileText, LockKeyhole, UploadCloud, X } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { ArrowLeft, ArrowRight, CheckCircle2, LockKeyhole, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,35 +12,20 @@ import { cn } from "@/lib/utils";
 const steps = [
   { title: "Business", description: "Company profile" },
   { title: "Capital", description: "Amount and revenue" },
-  { title: "Owner", description: "Contact details" },
-  { title: "Statements", description: "Required upload" }
+  { title: "Owner", description: "Contact details" }
 ];
 
 export function ApplicationForm() {
   const [step, setStep] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [secureUploadUrl, setSecureUploadUrl] = useState<string | null>(null);
-  const [bankStatementFiles, setBankStatementFiles] = useState<File[]>([]);
-  const [processingStatementFiles, setProcessingStatementFiles] = useState<File[]>([]);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "needs_link">("idle");
-  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const bankInputRef = useRef<HTMLInputElement | null>(null);
-  const processingInputRef = useRef<HTMLInputElement | null>(null);
   const progress = useMemo(() => Math.round(((step + 1) / steps.length) * 100), [step]);
   const currentStep = steps[step] ?? steps[0]!;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
-    setUploadMessage(null);
-
-    if (bankStatementFiles.length === 0) {
-      setStep(3);
-      setMessage("Latest business bank statements are required before submitting.");
-      return;
-    }
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -86,32 +71,7 @@ export function ApplicationForm() {
           return;
         }
 
-        const applicationId = result.data?.application?.id as string | undefined;
-        const uploadUrl = typeof result.data?.secure_upload_url === "string" ? result.data.secure_upload_url : null;
-        setSecureUploadUrl(uploadUrl);
-
-        if (applicationId && uploadUrl) {
-          const token = new URL(uploadUrl).searchParams.get("token");
-          if (token) {
-            setUploadStatus("uploading");
-            await uploadSelectedDocuments(applicationId, token, "bank_statements", bankStatementFiles);
-            if (processingStatementFiles.length > 0) {
-              await uploadSelectedDocuments(applicationId, token, "processing_statements", processingStatementFiles);
-            }
-            setUploadStatus("complete");
-            setUploadMessage("Your application and statements were received. Operion Capital will continue private funding review by email.");
-          } else {
-            setUploadStatus("needs_link");
-            setUploadMessage("Your application was received. Use the secure upload link sent by email to finish document submission.");
-          }
-        } else {
-          setUploadStatus("needs_link");
-          setUploadMessage("Your application was received. A funding specialist will request documents by secure upload link if needed.");
-        }
-
         form.reset();
-        setBankStatementFiles([]);
-        setProcessingStatementFiles([]);
         setSubmitted(true);
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Unable to submit application.");
@@ -128,20 +88,10 @@ export function ApplicationForm() {
           Operion Capital has your funding request. Updates are handled by secure email and direct funding-team follow-up. No
           merchant dashboard or portal login is required.
         </p>
-        {uploadStatus === "complete" ? (
-          <p className="mx-auto mt-4 max-w-md rounded-md border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-primary">
-            Bank statements received for private capital review.
-          </p>
-        ) : null}
-        {uploadMessage ? <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-muted-foreground">{uploadMessage}</p> : null}
-        {secureUploadUrl && uploadStatus !== "complete" ? (
-          <Button asChild className="mt-5">
-            <a href={secureUploadUrl}>
-              Upload secure documents
-              <ArrowRight className="h-4 w-4" />
-            </a>
-          </Button>
-        ) : null}
+        <div className="mx-auto mt-5 flex max-w-md items-start gap-3 rounded-md border border-primary/20 bg-primary/10 px-4 py-3 text-left text-sm text-primary">
+          <Mail className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>Check your email for the secure upload link. Documents are uploaded only through the signed document portal.</p>
+        </div>
       </div>
     );
   }
@@ -162,7 +112,7 @@ export function ApplicationForm() {
         <div className="mt-5 h-1.5 rounded-full bg-white/10">
           <div className="h-1.5 rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
           {steps.map((item, index) => (
             <button
               key={item.title}
@@ -222,27 +172,6 @@ export function ApplicationForm() {
         <Field label="Phone number" name="contact_phone" required />
       </div>
 
-      <div className={cn("grid gap-5", step !== 3 && "hidden")}>
-        <DocumentPicker
-          title="Latest business bank statements"
-          description="Required. Upload recent business bank statements so the file can move into private capital review."
-          files={bankStatementFiles}
-          required
-          inputRef={bankInputRef}
-          onChange={setBankStatementFiles}
-        />
-        <DocumentPicker
-          title="Processing statements"
-          description="Optional. Upload processing statements if card or processor volume is part of the funding profile."
-          files={processingStatementFiles}
-          inputRef={processingInputRef}
-          onChange={setProcessingStatementFiles}
-        />
-        {uploadStatus === "uploading" ? (
-          <div className="rounded-lg border border-primary/20 bg-primary/10 p-4 text-sm text-primary">Uploading statements securely...</div>
-        ) : null}
-      </div>
-
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-primary/15 pt-5">
         <Button type="button" variant="outline" disabled={step === 0 || isPending} onClick={() => setStep((value) => Math.max(0, value - 1))}>
           <ArrowLeft className="h-4 w-4" />
@@ -272,84 +201,4 @@ function Field({ label, name, type = "text", ...props }: { label: string; name: 
       <Input id={name} name={name} type={type} {...props} />
     </div>
   );
-}
-
-function DocumentPicker({
-  title,
-  description,
-  files,
-  inputRef,
-  onChange,
-  required = false
-}: {
-  title: string;
-  description: string;
-  files: File[];
-  inputRef: RefObject<HTMLInputElement | null>;
-  onChange: (files: File[]) => void;
-  required?: boolean;
-}) {
-  return (
-    <div className="rounded-lg border border-primary/15 bg-white/[0.025] p-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-white">
-            {title} {required ? <span className="text-primary">*</span> : null}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
-          <UploadCloud className="h-4 w-4" />
-          Choose files
-        </Button>
-      </div>
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        className="hidden"
-        required={required}
-        onChange={(event) => onChange(Array.from(event.target.files ?? []))}
-        accept="application/pdf,image/png,image/jpeg,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      />
-      {files.length > 0 ? (
-        <div className="mt-4 space-y-2">
-          {files.map((file) => (
-            <div key={`${file.name}-${file.size}`} className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-black/25 px-3 py-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <FileText className="h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate text-sm text-white">{file.name}</span>
-              </div>
-              <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${file.name}`} onClick={() => onChange(files.filter((item) => item !== file))}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-4 rounded-md border border-white/10 bg-black/25 px-3 py-2 text-xs text-muted-foreground">
-          PDF, PNG, JPG, XLS, or XLSX up to 50MB each.
-        </p>
-      )}
-    </div>
-  );
-}
-
-async function uploadSelectedDocuments(applicationId: string, token: string, documentType: "bank_statements" | "processing_statements", files: File[]) {
-  for (const file of files) {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("document_type", documentType);
-    formData.append("business_application_id", applicationId);
-    formData.append("merchant_token", token);
-
-    const response = await fetch("/api/documents/upload", {
-      method: "POST",
-      body: formData
-    });
-    const result = await response.json().catch(() => null);
-    if (!response.ok) {
-      throw new Error(result?.error?.message ?? "Document upload failed.");
-    }
-  }
 }

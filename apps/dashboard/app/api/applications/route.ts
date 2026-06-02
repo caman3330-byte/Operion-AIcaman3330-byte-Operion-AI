@@ -230,8 +230,7 @@ export async function POST(request: NextRequest) {
         data: {
           application,
           lead: linkedLead,
-          ai_task: aiTask,
-          secure_upload_url: secureUploadLink?.created ? secureUploadLink.url : null
+          ai_task: aiTask
         }
       },
       { status: 201 }
