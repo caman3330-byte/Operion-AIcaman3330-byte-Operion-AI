@@ -16,8 +16,8 @@ export default function ApplyPage() {
               Apply for private business funding without portal friction.
             </h1>
             <p className="mt-5 text-base leading-8 text-muted-foreground">
-              Submit core business details and recent bank statements once. Operion Capital prepares a structured file for MCA,
-              business funding analysis, and lender matching review.
+              Submit core business details first. Operion Capital emails a secure upload link for bank statements and prepares a
+              structured file for MCA, business funding analysis, and lender matching review.
             </p>
             <div className="mt-8 grid gap-3">
               {[
