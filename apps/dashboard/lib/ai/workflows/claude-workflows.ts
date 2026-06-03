@@ -47,6 +47,7 @@ const lenderReasoningSchema = z.object({
 export async function analyzeFundingFit(input: Json): Promise<AiWorkflowResult<z.infer<typeof fundingFitSchema>>> {
   const result = await runClaudeJson({
     operation: "funding_fit_analysis",
+    modelTier: "premium",
     system: `${claudeReasoningSystemPrompt} Analyze business funding fit, underwriting risk, and approval needs. Return one flat JSON object with exactly these keys: score, decision, tier, funding_fit, industry_risk, underwriting_summary, internal_notes, missing_information, approval_required, revenue_trend, nsf_alerts, mca_stacking_risk, estimated_approval_probability, statement_insights.`,
     user: input,
     zodSchema: looseClaudeObjectSchema
@@ -59,6 +60,7 @@ export async function analyzeFundingFit(input: Json): Promise<AiWorkflowResult<z
 export async function reasonAboutLenderMatching(input: Json): Promise<AiWorkflowResult<z.infer<typeof lenderReasoningSchema>>> {
   const result = await runClaudeJson({
     operation: "lender_matching_reasoning",
+    modelTier: "premium",
     system: `${claudeReasoningSystemPrompt} Reason about lender fit using only provided lead and lender criteria.`,
     user: input,
     zodSchema: lenderReasoningSchema
@@ -70,6 +72,7 @@ export async function reasonAboutLenderMatching(input: Json): Promise<AiWorkflow
 export async function generateExecutiveSummary(input: Json): Promise<AiWorkflowResult<z.infer<typeof executiveSummarySchema>>> {
   const result = await runClaudeJson({
     operation: "executive_summary",
+    modelTier: "default",
     system: `${claudeReasoningSystemPrompt} Produce founder-facing operational summaries, alerts, KPIs, approvals, and next actions.`,
     user: input,
     zodSchema: executiveSummarySchema

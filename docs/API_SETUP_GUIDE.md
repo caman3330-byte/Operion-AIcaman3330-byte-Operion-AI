@@ -24,7 +24,9 @@ Apply Supabase migrations `0001` through `0009` in order.
 
 ```env
 ANTHROPIC_API_KEY=
-ANTHROPIC_MODEL=claude-3-5-sonnet-latest
+ANTHROPIC_MODEL=claude-sonnet-4-6
+ANTHROPIC_MODEL_DEFAULT=claude-3-5-haiku
+ANTHROPIC_MODEL_PREMIUM=claude-sonnet-4-6
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_COST_PER_1K_INPUT_TOKENS=0

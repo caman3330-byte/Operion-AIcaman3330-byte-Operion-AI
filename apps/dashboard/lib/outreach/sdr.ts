@@ -1,5 +1,6 @@
 import type { BusinessContact, Lead, OutreachCampaign, OutreachSequence } from "@operion/shared";
 import { estimateAnthropicCost, recordApiUsage } from "@/lib/api-usage";
+import { selectAnthropicModel } from "@/lib/ai/anthropic-models";
 import { readServerEnv } from "@/lib/env";
 import { ConfigurationError, ValidationError } from "@/lib/errors";
 import { renderMerchantOutreachEmail } from "@/lib/email/outreach-templates";
@@ -35,6 +36,7 @@ export async function generateOutreachEmail(input: GenerateOutreachEmailInput): 
   }
 
   const startedAt = Date.now();
+  const model = selectAnthropicModel(env, "default");
   const leadContext = JSON.stringify({
     business_name: input.lead.business_name,
     contact_name: input.contact?.full_name ?? input.lead.contact_name,
@@ -63,7 +65,7 @@ export async function generateOutreachEmail(input: GenerateOutreachEmailInput): 
             "anthropic-version": "2023-06-01"
           },
           body: JSON.stringify({
-            model: env.ANTHROPIC_MODEL,
+            model,
             max_tokens: 900,
             temperature: 0.2,
             system:

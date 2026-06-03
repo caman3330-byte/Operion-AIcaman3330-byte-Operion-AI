@@ -3,6 +3,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { normalizeBusinessLead, type RawBusinessLead } from "@/lib/acquisition/normalization";
 import { scoreLeadQuality } from "@/lib/acquisition/scoring";
 import { applyValidationToQuality, validateAcquisitionLead } from "@/lib/acquisition/validation";
+import { selectAnthropicModel } from "@/lib/ai/anthropic-models";
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { readServerEnv } from "@/lib/env";
@@ -305,7 +306,7 @@ Return ONLY a valid JSON array (no markdown, no explanation):
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: model || "claude-sonnet-4-6",
+        model,
         max_tokens: 2500,
         temperature: 0,
         messages: [{ role: "user", content: prompt }]
@@ -451,7 +452,7 @@ export async function runLeadAcquisitionAgent(
     const needed = Math.min(limit - rawLeads.length, 20);
     const seedLeads = await discoverViaClaudeSeed(
       env.ANTHROPIC_API_KEY as string,
-      env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
+      selectAnthropicModel(env, "default"),
       targetIndustries,
       targetStates,
       needed

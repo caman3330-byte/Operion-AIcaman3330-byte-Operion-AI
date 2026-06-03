@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Json } from "@operion/shared";
 import { estimateAnthropicCost } from "@/lib/api-usage";
+import { selectAnthropicModel, type AnthropicModelTier } from "@/lib/ai/anthropic-models";
 import { readServerEnv } from "@/lib/env";
 import { ConfigurationError, ValidationError } from "@/lib/errors";
 import { withRetry } from "@/lib/retry";
@@ -20,6 +21,7 @@ export interface ClaudeJsonRequest<TSchema extends z.ZodTypeAny> {
   user: Json;
   zodSchema: TSchema;
   model?: string;
+  modelTier?: AnthropicModelTier;
   maxTokens?: number;
 }
 
@@ -29,7 +31,7 @@ export async function runClaudeJson<TSchema extends z.ZodTypeAny>(request: Claud
     throw new ConfigurationError("ANTHROPIC_API_KEY is required for Claude AI workflows");
   }
 
-  const model = request.model ?? env.ANTHROPIC_MODEL;
+  const model = request.model ?? selectAnthropicModel(env, request.modelTier ?? "default");
   const startedAt = Date.now();
   const response = await withRetry(
     async () => {

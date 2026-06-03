@@ -1,6 +1,7 @@
 import type { AgentDefinition, Json, ManagerAgentPriority } from "@operion/shared";
 import { z } from "zod";
 import { estimateAnthropicCost, recordApiUsage } from "@/lib/api-usage";
+import { selectAnthropicModel } from "@/lib/ai/anthropic-models";
 import { ConfigurationError, ValidationError } from "@/lib/errors";
 import { readServerEnv } from "@/lib/env";
 import { orchestrationRepository } from "@/lib/repositories/orchestration";
@@ -79,6 +80,7 @@ export async function createManagerBrainPlan(input: ManagerBrainInput): Promise<
     escalation_triggers: jsonStringArray(agent.escalation_triggers)
   }));
   const startedAt = Date.now();
+  const model = selectAnthropicModel(env, "premium");
 
   const system = [
     "You are the Operion AI Executive Manager Brain.",
@@ -131,7 +133,7 @@ export async function createManagerBrainPlan(input: ManagerBrainInput): Promise<
             "anthropic-version": "2023-06-01"
           },
           body: JSON.stringify({
-            model: env.ANTHROPIC_MODEL,
+            model,
             max_tokens: 3200,
             temperature: 0,
             system,
@@ -149,7 +151,7 @@ export async function createManagerBrainPlan(input: ManagerBrainInput): Promise<
           }
 
           if (anthropicResponse.status === 400 || anthropicResponse.status === 404) {
-            throw new ConfigurationError("Anthropic manager brain request was rejected. Check ANTHROPIC_MODEL and request settings.", {
+            throw new ConfigurationError("Anthropic manager brain request was rejected. Check ANTHROPIC_MODEL_PREMIUM and request settings.", {
               status: anthropicResponse.status,
               providerError
             });

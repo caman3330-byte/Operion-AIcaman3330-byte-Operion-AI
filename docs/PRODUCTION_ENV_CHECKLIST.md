@@ -7,7 +7,8 @@
 
 ## AI (required for AI workflows)
 - ANTHROPIC_API_KEY : present (preferred for Claude workflows)
-- ANTHROPIC_MODEL : present (default provided)
+- ANTHROPIC_MODEL_DEFAULT : present (default Haiku provided)
+- ANTHROPIC_MODEL_PREMIUM : present (premium Sonnet provided)
 - OPENAI_API_KEY : MISSING (optional unless using OpenAI provider)
 - OPENAI_MODEL : defaulted
 

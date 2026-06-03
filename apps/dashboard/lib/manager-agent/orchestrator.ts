@@ -1,4 +1,5 @@
 import type { Json } from "@operion/shared";
+import { selectAnthropicModel } from "@/lib/ai/anthropic-models";
 import { createManagerBrainPlan } from "@/lib/ai/manager-brain";
 import { writeAuditLog } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -16,7 +17,7 @@ export async function createManagerAgentRun(input: CreateManagerRunInput) {
     objective: input.objective,
     context: input.context ?? null,
     status: "running",
-    manager_model: process.env.ANTHROPIC_MODEL ?? "claude-3-5-sonnet-latest",
+    manager_model: selectAnthropicModel(process.env, "premium"),
     requested_by: input.requestedBy
   });
 

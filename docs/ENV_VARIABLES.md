@@ -11,7 +11,9 @@ Use `.env.example` as the source of truth. For local development, place values i
 ## AI
 
 - `ANTHROPIC_API_KEY`: Claude API key for lead qualification, manager planning, and AI SDR email generation.
-- `ANTHROPIC_MODEL`: Claude model name. Defaults to `claude-3-5-sonnet-latest`.
+- `ANTHROPIC_MODEL`: Legacy Claude model fallback for compatibility. Defaults to `claude-sonnet-4-6`.
+- `ANTHROPIC_MODEL_DEFAULT`: Default Claude model for lightweight discovery, summaries, and draft generation. Defaults to `claude-3-5-haiku`.
+- `ANTHROPIC_MODEL_PREMIUM`: Premium Claude model for underwriting summaries, complex lender matching, and founder review generation. Defaults to `claude-sonnet-4-6`.
 - `OPENAI_API_KEY`: OpenAI key for production funding qualification and underwriting summary generation.
 - `OPENAI_MODEL`: OpenAI model name for qualification workflows. Defaults to `gpt-4.1-mini`.
 

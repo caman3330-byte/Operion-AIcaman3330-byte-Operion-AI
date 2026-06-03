@@ -1,4 +1,5 @@
 import type { AiTask, BusinessApplication, BusinessApplicationStatus, Json, Lead, LeadStatus } from "@operion/shared";
+import { selectAnthropicModel } from "@/lib/ai/anthropic-models";
 import { analyzeFundingFit } from "@/lib/ai/workflows/claude-workflows";
 import { calculateFallbackQualification } from "@/lib/underwriting/fallback";
 import { ConfigurationError } from "@/lib/errors";
@@ -22,6 +23,7 @@ export async function runLeadQualificationWorkflow({
   task: AiTask;
 }): Promise<QualificationWorkflowResult> {
   const startedAt = new Date().toISOString();
+  const qualificationModel = selectAnthropicModel(process.env, "premium");
 
   await productionRepository.updateBusinessApplication(application.id, {
     status: "ai_review",
@@ -39,7 +41,7 @@ export async function runLeadQualificationWorkflow({
     status: "running",
     message: "Claude funding-fit qualification workflow started",
     provider: "claude",
-    model: process.env.ANTHROPIC_MODEL ?? "claude-3-5-sonnet-latest",
+    model: qualificationModel,
     metadata: {
       lead_id: lead.id,
       business_application_id: application.id
@@ -344,7 +346,7 @@ export async function runLeadQualificationWorkflow({
       status: taskStatus,
       message,
       provider: "claude",
-      model: process.env.ANTHROPIC_MODEL ?? "claude-3-5-sonnet-latest",
+      model: qualificationModel,
       metadata: {
         lead_id: lead.id,
         business_application_id: application.id

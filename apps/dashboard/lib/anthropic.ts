@@ -2,6 +2,7 @@ import type { Lead, LeadTier, QualificationResult } from "@operion/shared";
 import { ConfigurationError, ValidationError } from "@/lib/errors";
 import { readServerEnv } from "@/lib/env";
 import { estimateAnthropicCost, recordApiUsage } from "@/lib/api-usage";
+import { selectAnthropicModel } from "@/lib/ai/anthropic-models";
 import { logger } from "@/lib/logger";
 import { promptVersionsRepository } from "@/lib/repositories/prompt-versions";
 import { withRetry } from "@/lib/retry";
@@ -33,6 +34,7 @@ export async function qualifyLead(lead: Lead, options: QualifyLeadOptions = {}):
   }
 
   const startedAt = Date.now();
+  const model = selectAnthropicModel(env, "default");
   const leadJson = JSON.stringify({
     business_name: lead.business_name,
     industry: lead.industry,
@@ -53,7 +55,7 @@ export async function qualifyLead(lead: Lead, options: QualifyLeadOptions = {}):
             "anthropic-version": "2023-06-01"
           },
           body: JSON.stringify({
-            model: env.ANTHROPIC_MODEL,
+            model,
             max_tokens: 500,
             temperature: 0,
             system: promptVersion.system_prompt,

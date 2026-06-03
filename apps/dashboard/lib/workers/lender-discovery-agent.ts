@@ -1,6 +1,7 @@
 import type { Json } from "@operion/shared";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/lib/audit";
+import { selectAnthropicModel } from "@/lib/ai/anthropic-models";
 import { logger } from "@/lib/logger";
 import { readServerEnv } from "@/lib/env";
 
@@ -307,6 +308,7 @@ async function callClaudeForEnrichment(seed: LenderSeed): Promise<AiEnrichment |
     return null;
   }
 
+  const model = selectAnthropicModel(env, "default");
   const systemPrompt = `You are a senior analyst at a business funding brokerage with deep expertise in the US MCA (Merchant Cash Advance), working capital, and business lending industry. You have comprehensive knowledge of lender profiles, underwriting criteria, funding products, and market positioning across hundreds of funding companies.`;
 
   const userPrompt = `Analyze this business funding company and provide structured lender intelligence for our discovery system.
@@ -338,7 +340,7 @@ Return ONLY a valid JSON object matching this exact schema (no markdown, no expl
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
+        model,
         max_tokens: 900,
         temperature: 0,
         system: systemPrompt,
@@ -453,7 +455,7 @@ export async function runLenderDiscoveryAgent(limit = 10): Promise<LenderDiscove
             key_differentiators: enrichment.key_differentiators,
             category: seed.category,
             enrichment_method: usedAi ? "claude_ai" : "rule_based_fallback",
-            ai_model: usedAi ? (process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6") : null,
+            ai_model: usedAi ? selectAnthropicModel(readServerEnv(), "default") : null,
             discovered_at: new Date().toISOString(),
             discovered_by: "lender_discovery_agent"
           } as Json
