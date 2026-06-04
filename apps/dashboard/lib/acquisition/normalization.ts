@@ -23,6 +23,7 @@ export interface NormalizedBusinessLead {
   phone: string | null;
   website_url: string | null;
   domain: string | null;
+  city: string | null;
   industry: string | null;
   state: string | null;
   annual_revenue_est: number | null;
@@ -43,6 +44,7 @@ export function normalizeBusinessLead(input: RawBusinessLead): NormalizedBusines
     phone: normalizePhone(input.phone ?? null),
     website_url: websiteUrl,
     domain: extractDomain(websiteUrl),
+    city: nullableCompact(input.city),
     industry: nullableCompact(input.industry),
     state: normalizeState(input.state ?? null),
     annual_revenue_est: normalizeMoney(input.annual_revenue_est),

@@ -61,7 +61,9 @@ export async function ingestLeadBatch(input: IngestLeadBatchInput) {
         websiteUrl: normalized.website_url,
         email: normalized.email,
         phone: normalized.phone,
-        source: rawRecord.source ?? input.sourceKey
+        businessCategory: normalized.industry,
+        source: rawRecord.source ?? input.sourceKey,
+        sourcePageUrl: readSourcePageUrl(rawRecord)
       });
       const quality = applyValidationToQuality(scoreLeadQuality(normalized), validation);
       const validationMetadata = {
@@ -83,7 +85,7 @@ export async function ingestLeadBatch(input: IngestLeadBatchInput) {
         state: normalized.state,
         annual_revenue_est: normalized.annual_revenue_est,
         time_in_business_years: normalized.time_in_business_years,
-        status: validation.status === "invalid" ? "rejected" : "enriched",
+        status: validation.status === "invalid" || quality.score < 80 ? "rejected" : "enriched",
         qualification_score: quality.score,
         tier: quality.tier,
         website_verified: validation.website_verified,
@@ -180,6 +182,12 @@ export async function ingestLeadBatch(input: IngestLeadBatchInput) {
   return { job, created, duplicates, failed };
 }
 
+function readSourcePageUrl(record: RawBusinessLead) {
+  if (!record.raw_payload || typeof record.raw_payload !== "object" || Array.isArray(record.raw_payload)) return null;
+  const value = (record.raw_payload as Record<string, unknown>).source_url;
+  return typeof value === "string" ? value : null;
+}
+
 export async function enrichExistingLead(leadId: string, requestedBy: string) {
   const lead = await leadsRepository.getById(leadId);
   const normalized = normalizeBusinessLead({
@@ -199,6 +207,7 @@ export async function enrichExistingLead(leadId: string, requestedBy: string) {
     websiteUrl: normalized.website_url,
     email: normalized.email,
     phone: normalized.phone,
+    businessCategory: normalized.industry,
     source
   });
   const quality = applyValidationToQuality(scoreLeadQuality(normalized), validation);

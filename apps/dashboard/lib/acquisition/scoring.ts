@@ -1,4 +1,5 @@
 import type { LeadTier } from "@operion/shared";
+import { isMcaPriorityIndustry } from "@/lib/acquisition/industry-profiles";
 import type { NormalizedBusinessLead } from "@/lib/acquisition/normalization";
 
 export interface LeadQualityScore {
@@ -7,42 +8,39 @@ export interface LeadQualityScore {
   reasons: string[];
 }
 
-export function scoreLeadQuality(lead: NormalizedBusinessLead, targetCategory?: string): LeadQualityScore {
-  let score = 20;
+export function scoreLeadQuality(
+  lead: NormalizedBusinessLead,
+  targetCategory?: string,
+  options: { uniqueDomain?: boolean } = {}
+): LeadQualityScore {
+  let score = 0;
   const reasons: string[] = [];
 
-  if (lead.email) {
-    score += 18;
-    reasons.push("email present");
+  if (lead.website_url && lead.domain) {
+    score += 30;
+    reasons.push("company website");
   }
   if (lead.phone) {
-    score += 12;
-    reasons.push("phone present");
+    score += 30;
+    reasons.push("phone number");
   }
-  if (lead.website_url) {
-    score += 10;
-    reasons.push("website present");
-  }
-  if (lead.industry) {
-    score += 8;
-    reasons.push("industry present");
-  }
-  if (lead.industry && targetCategory && categoryMatches(lead.industry, targetCategory)) {
-    score += 8;
-    reasons.push("business category match");
+  if (lead.city) {
+    score += 5;
+    reasons.push("city present");
   }
   if (lead.state) {
-    score += 6;
+    score += 5;
     reasons.push("state present");
   }
-  if (Number(lead.annual_revenue_est ?? 0) >= 250_000) {
-    score += 16;
-    reasons.push("revenue fit");
-  }
-  if (Number(lead.time_in_business_years ?? 0) >= 1) {
+  if (options.uniqueDomain !== false && lead.domain) {
     score += 10;
-    reasons.push("time in business fit");
+    reasons.push("unique domain");
   }
+  if (categoryMatchesMcaPriority(lead.industry, targetCategory)) {
+    score += 20;
+    reasons.push("business category match");
+  }
+  if (lead.email) reasons.push("business email available");
 
   const bounded = Math.max(0, Math.min(100, score));
   return {
@@ -52,9 +50,8 @@ export function scoreLeadQuality(lead: NormalizedBusinessLead, targetCategory?: 
   };
 }
 
-function categoryMatches(industry: string, targetCategory: string) {
-  const industryTokens = new Set(industry.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
-  return targetCategory.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).some((token) => industryTokens.has(token));
+function categoryMatchesMcaPriority(industry: string | null, targetCategory?: string) {
+  return isMcaPriorityIndustry(`${industry ?? ""} ${targetCategory ?? ""}`);
 }
 
 export function scoreToTier(score: number): LeadTier {

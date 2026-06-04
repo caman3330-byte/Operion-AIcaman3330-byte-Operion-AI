@@ -84,9 +84,11 @@ export async function runFreeFirstAcquisition(input: FreeFirstRunInput) {
         websiteUrl: normalized.website_url,
         email: normalized.email,
         phone: normalized.phone,
-        source: record.source
+        businessCategory: normalized.industry,
+        source: record.source,
+        sourcePageUrl: readSourcePageUrl(record)
       });
-      const quality = applyValidationToQuality(scoreLeadQuality(normalized, input.category), validation);
+      const quality = applyValidationToQuality(scoreLeadQuality(normalized, input.category, { uniqueDomain: true }), validation);
       previews.push({
         record,
         validation_status: validation.status,
@@ -97,7 +99,7 @@ export async function runFreeFirstAcquisition(input: FreeFirstRunInput) {
       });
     }
 
-    const importable = previews.filter((preview) => preview.validation_status === "verified");
+    const importable = previews.filter((preview) => preview.validation_status === "verified" && preview.quality_score >= 80);
     let imported = 0;
     let ingestionFailed = 0;
     if (!input.dryRun) {
@@ -166,6 +168,12 @@ export async function runFreeFirstAcquisition(input: FreeFirstRunInput) {
     });
     throw error;
   }
+}
+
+function readSourcePageUrl(record: RawBusinessLead) {
+  if (!record.raw_payload || typeof record.raw_payload !== "object" || Array.isArray(record.raw_payload)) return null;
+  const value = (record.raw_payload as Record<string, unknown>).source_url;
+  return typeof value === "string" ? value : null;
 }
 
 function countStatus(records: Array<{ validation_status: LeadValidationStatus }>, status: LeadValidationStatus) {

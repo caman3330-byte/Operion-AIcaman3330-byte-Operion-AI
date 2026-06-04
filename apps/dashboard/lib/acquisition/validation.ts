@@ -1,6 +1,7 @@
 import { lookup } from "node:dns/promises";
 import type { LeadTier } from "@operion/shared";
 import type { LeadQualityScore } from "@/lib/acquisition/scoring";
+import { isMcaPriorityIndustry } from "@/lib/acquisition/industry-profiles";
 
 export type LeadValidationStatus = "verified" | "unverified" | "invalid";
 
@@ -9,7 +10,9 @@ export interface LeadValidationInput {
   websiteUrl: string | null;
   email: string | null;
   phone: string | null;
+  businessCategory?: string | null | undefined;
   source?: string | null | undefined;
+  sourcePageUrl?: string | null | undefined;
 }
 
 export interface LeadValidationResult {
@@ -73,6 +76,20 @@ export async function validateAcquisitionLead(input: LeadValidationInput): Promi
   const source = (input.source ?? "").toLowerCase();
   const phoneVerified = isValidUsPhone(input.phone);
   const emailVerified = isValidEmail(input.email);
+  const genericName = isGenericBusinessName(input.businessName);
+
+  if (genericName) {
+    return buildResult({
+      status: "invalid",
+      timestamp,
+      phoneVerified,
+      emailVerified: false,
+      websiteVerified: false,
+      businessVerified: false,
+      score: 0,
+      reasons: ["Generic directory or landing-page title is not a business"]
+    });
+  }
 
   if (source === "ai_seed") {
     return buildResult({
@@ -115,6 +132,46 @@ export async function validateAcquisitionLead(input: LeadValidationInput): Promi
     });
   }
 
+  const sourceHostname = input.sourcePageUrl ? extractHostname(input.sourcePageUrl) : null;
+  if (sourceHostname && hostname === sourceHostname && isDirectorySource(source)) {
+    return buildResult({
+      status: "invalid",
+      timestamp,
+      phoneVerified,
+      emailVerified: false,
+      websiteVerified: false,
+      businessVerified: false,
+      score: 0,
+      reasons: ["Independent company website was not found"]
+    });
+  }
+
+  if (!phoneVerified) {
+    return buildResult({
+      status: "invalid",
+      timestamp,
+      phoneVerified,
+      emailVerified: false,
+      websiteVerified: false,
+      businessVerified: false,
+      score: 10,
+      reasons: ["Verified phone number is required for a valid MCA acquisition lead"]
+    });
+  }
+
+  if (!isMcaPriorityIndustry(input.businessCategory)) {
+    return buildResult({
+      status: "invalid",
+      timestamp,
+      phoneVerified,
+      emailVerified,
+      websiteVerified: false,
+      businessVerified: false,
+      score: 20,
+      reasons: ["MCA priority business category was not identified"]
+    });
+  }
+
   const dnsExists = await hasDnsRecord(hostname);
   if (!dnsExists) {
     return buildResult({
@@ -138,7 +195,6 @@ export async function validateAcquisitionLead(input: LeadValidationInput): Promi
   const comingSoon = /\b(?:coming soon|launching soon|site coming soon|website coming soon)\b/i.test(text);
   const placeholderSite = matchesAny(text, PLACEHOLDER_PATTERNS) || text.trim().length < 180;
   const websiteVerified = Boolean(http.status && http.status >= 200 && http.status < 400 && !parkedDomain && !domainForSale && !suspendedSite);
-  const businessNameMatch = businessNameAppears(input.businessName, text);
   const emailDomainMatch = emailVerified ? emailMatchesDomain(input.email, hostname) : false;
 
   const flags = {
@@ -187,7 +243,7 @@ export async function validateAcquisitionLead(input: LeadValidationInput): Promi
     });
   }
 
-  const businessVerified = websiteVerified && businessNameMatch && !comingSoon && !placeholderSite;
+  const businessVerified = websiteVerified && !comingSoon && !placeholderSite && phoneVerified && isMcaPriorityIndustry(input.businessCategory);
   const score =
     20 +
     (websiteVerified ? 25 : 0) +
@@ -205,7 +261,7 @@ export async function validateAcquisitionLead(input: LeadValidationInput): Promi
       websiteVerified,
       businessVerified,
       score,
-      reasons: [`Website verified at HTTP ${http.status}`, "Business name appears on website"],
+      reasons: [`Website verified at HTTP ${http.status}`, "Phone verified", "MCA priority category identified"],
       flags
     });
   }
@@ -221,10 +277,24 @@ export async function validateAcquisitionLead(input: LeadValidationInput): Promi
     reasons: [
       comingSoon ? "Coming-soon page detected" : null,
       placeholderSite ? "Placeholder or low-content website detected" : null,
-      !businessNameMatch ? "Business name was not found on website content" : null
     ].filter(Boolean) as string[],
     flags
   });
+}
+
+export function isGenericBusinessName(value: string) {
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  if (value.includes("${") || value.includes("@") || /^https?:\/\//i.test(value)) return true;
+  if ([
+    "member directory", "directory", "home", "listings", "categories", "search results",
+    "member search", "business directory", "membership directory", "roofing contractors",
+    "login", "log in", "sign in", "contact", "contact us", "learn more", "visit website", "member application", "full"
+  ].includes(normalized)) return true;
+  return /\b(?:sponsorship campaign|member login|directory search|view directory)\b/.test(normalized);
+}
+
+function isDirectorySource(source: string) {
+  return ["public_business_directories", "chamber_directories", "industry_associations", "public_local_listings"].includes(source);
 }
 
 export function applyValidationToQuality(quality: LeadQualityScore, validation: LeadValidationResult): LeadQualityScore {
@@ -357,19 +427,6 @@ function isLikelyParkedHost(hostname: string, text: string) {
     text.includes("namebright.com") ||
     text.includes("hugedomains.com")
   );
-}
-
-function businessNameAppears(businessName: string, text: string) {
-  const normalized = businessName
-    .toLowerCase()
-    .replace(/\b(llc|inc|corp|corporation|company|co|ltd|limited)\b\.?/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-  if (!normalized) return false;
-  const terms = normalized.split(" ").filter((term) => term.length >= 4);
-  if (terms.length === 0) return false;
-  const matches = terms.filter((term) => text.includes(term)).length;
-  return matches >= Math.min(2, terms.length);
 }
 
 function scoreToTierWithValidation(score: number): LeadTier {

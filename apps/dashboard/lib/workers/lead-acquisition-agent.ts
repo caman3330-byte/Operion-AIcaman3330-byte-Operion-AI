@@ -476,6 +476,7 @@ export async function runLeadAcquisitionAgent(
         websiteUrl: normalized.website_url,
         email: normalized.email,
         phone: normalized.phone,
+        businessCategory: normalized.industry,
         source: raw.source
       });
       const quality = applyValidationToQuality(scoreLeadQuality(normalized), validation);
