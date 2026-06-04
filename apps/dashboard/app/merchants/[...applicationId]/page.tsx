@@ -106,6 +106,45 @@ function getSubmissionReadiness(input: {
   };
 }
 
+function getLiveOperationsChecklist(input: {
+  application: any;
+  documents: Array<{ status: string }>;
+  underwritingReviews: Array<{ status: string }>;
+  lenderMatches: Array<{ status: string }>;
+  offers: Array<{ status: string }>;
+  packageReady: boolean;
+}) {
+  const uploadedDocuments = input.documents.some((document) => document.status === "uploaded" || document.status === "verified");
+  const underwritingComplete =
+    input.underwritingReviews.some((review) => review.status === "approved") ||
+    ["submitted_to_lender", "routed", "approved", "funded"].includes(input.application.status);
+  const lenderMatchComplete = input.lenderMatches.length > 0;
+  const lenderSubmitted =
+    input.lenderMatches.some((match) => ["submitted", "accepted", "funded"].includes(match.status)) ||
+    ["submitted_to_lender", "approved", "funded"].includes(input.application.status);
+  const offerReceived = input.offers.some((offer) => ["draft", "presented", "accepted"].includes(offer.status));
+  const fundingClosed =
+    input.application.status === "funded" ||
+    input.lenderMatches.some((match) => match.status === "funded");
+
+  const steps = [
+    { label: "Merchant Submitted", complete: Boolean(input.application.submitted_at), detail: "Application received" },
+    { label: "Documents Uploaded", complete: uploadedDocuments, detail: uploadedDocuments ? "Secure files received" : "Awaiting merchant upload" },
+    { label: "Underwriting Complete", complete: underwritingComplete, detail: underwritingComplete ? "Review complete" : "Founder review required" },
+    { label: "Lender Match Complete", complete: lenderMatchComplete, detail: lenderMatchComplete ? `${input.lenderMatches.length} match(es) available` : "No lender matches yet" },
+    { label: "Package Ready", complete: input.packageReady, detail: input.packageReady ? "Ready for founder-approved submission" : "Resolve package warnings and blockers" },
+    { label: "Lender Submitted", complete: lenderSubmitted, detail: lenderSubmitted ? "Submission recorded" : "No lender submission recorded" },
+    { label: "Offer Received", complete: offerReceived, detail: offerReceived ? "Lender offer recorded" : "No offer recorded" },
+    { label: "Funding Closed", complete: fundingClosed, detail: fundingClosed ? "Funding recorded as closed" : "Funding not closed" }
+  ];
+  const currentIndex = steps.findIndex((step) => !step.complete);
+
+  return steps.map((step, index) => ({
+    ...step,
+    state: step.complete ? "complete" : index === currentIndex ? "current" : "waiting"
+  }));
+}
+
 export default async function MerchantDetailsPage({ params }: { params: Promise<{ applicationId: string[] }> }) {
   const access = await getInternalPageAccess();
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
@@ -127,6 +166,14 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
   const operatorNotes = getOperatorNotes(metadata);
   const insights = typeof metadata.ai_summary === "string" ? metadata.ai_summary : typeof metadata.insights === "string" ? metadata.insights : null;
   const submissionReadiness = getSubmissionReadiness({ application, documents, lenderMatches, aiTasks });
+  const liveOperationsChecklist = getLiveOperationsChecklist({
+    application,
+    documents,
+    underwritingReviews,
+    lenderMatches,
+    offers,
+    packageReady: submissionReadiness.state === "Ready"
+  });
 
   return (
     <div className="space-y-6">
@@ -246,6 +293,47 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
                 {submissionReadiness.blockers.length === 0 && submissionReadiness.warnings.length === 0 ? (
                   <p className="text-emerald-100">Package is ready for founder-approved lender submission.</p>
                 ) : null}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle>Live operations checklist</CardTitle>
+                <Badge variant={liveOperationsChecklist.every((step) => step.complete) ? "success" : "warning"}>
+                  {liveOperationsChecklist.filter((step) => step.complete).length} of {liveOperationsChecklist.length} complete
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {liveOperationsChecklist.map((step) => (
+                  <div
+                    key={step.label}
+                    className={`flex min-h-20 items-start gap-3 rounded-lg border p-3 ${
+                      step.state === "complete"
+                        ? "border-emerald-500/30 bg-emerald-500/10"
+                        : step.state === "current"
+                          ? "border-primary/40 bg-primary/10"
+                          : "border-white/10 bg-white/5"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                        step.state === "complete" ? "bg-emerald-400" : step.state === "current" ? "bg-primary" : "bg-white/20"
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-white">{step.label}</p>
+                        {step.state === "current" ? <Badge variant="warning">Next</Badge> : null}
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.detail}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
