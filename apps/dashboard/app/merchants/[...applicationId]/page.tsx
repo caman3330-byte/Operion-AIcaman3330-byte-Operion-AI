@@ -145,6 +145,77 @@ function getLiveOperationsChecklist(input: {
   }));
 }
 
+function getFounderActionPanel(input: {
+  application: any;
+  documents: Array<{ document_type: string; status: string; processing_status?: string | null }>;
+  underwritingReviews: Array<{ status: string }>;
+  lenderMatches: Array<{ lender_id: string }>;
+  matchedLenders: Array<{
+    id: string;
+    company_name: string;
+    minimum_time_in_business_months?: number | null;
+    min_months_in_business?: number | null;
+    minimum_monthly_deposits?: number | null;
+    min_monthly_revenue?: number | null;
+    criteria_min_revenue?: number | null;
+    min_fico?: number | null;
+  }>;
+  submissionReadiness: ReturnType<typeof getSubmissionReadiness>;
+}) {
+  const metadata = typeof input.application.metadata === "object" && input.application.metadata
+    ? input.application.metadata as Record<string, unknown>
+    : {};
+  const timeInBusinessMonths = Number(metadata.time_in_business_months ?? 0);
+  const requestedDocuments = input.documents
+    .filter((document) => document.status === "requested")
+    .map((document) => document.document_type.replaceAll("_", " "));
+  const pendingStatements = input.documents.filter(
+    (document) => document.status === "uploaded" && document.processing_status === "pending"
+  ).length;
+  const missingItems = [
+    ...(input.application.credit_score_range === "unknown" ? ["Credit score confirmation"] : []),
+    ...(!input.application.website_url ? ["Website or manual business verification"] : []),
+    ...(!input.application.bank_name ? ["Bank name"] : []),
+    ...(!input.application.average_daily_balance ? ["Average daily balance"] : []),
+    ...(!input.application.ownership_percentage ? ["Ownership percentage"] : []),
+    ...requestedDocuments.map((document) => `${document} if required`),
+    ...(pendingStatements > 0 ? [`Founder verification of ${pendingStatements} uploaded statement(s)`] : [])
+  ];
+  const requiredDecisions = [
+    ...(timeInBusinessMonths < 6 ? [`Confirm whether ${timeInBusinessMonths} months in business qualifies for an exception`] : []),
+    ...(!input.application.website_url ? ["Approve manual business verification or obtain website"] : []),
+    ...(input.application.credit_score_range === "unknown" ? ["Confirm credit score range before lender selection"] : []),
+    ...(input.underwritingReviews.some((review) => review.status === "needs_information") ? ["Resolve underwriting needs-information review"] : []),
+    ...(requestedDocuments.length > 0 ? ["Decide whether processing statements are required"] : [])
+  ];
+  const lenderAssessments = input.lenderMatches.map((match) => {
+    const lender = input.matchedLenders.find((candidate) => candidate.id === match.lender_id);
+    if (!lender) return null;
+    const minimumMonths = Number(lender.minimum_time_in_business_months ?? lender.min_months_in_business ?? 0);
+    const minimumRevenue = Number(
+      lender.minimum_monthly_deposits ?? lender.min_monthly_revenue ?? lender.criteria_min_revenue ?? 0
+    );
+    const blockers = [
+      ...(timeInBusinessMonths < minimumMonths ? [`${minimumMonths} months minimum`] : []),
+      ...(lender.min_fico !== null && lender.min_fico !== undefined && input.application.credit_score_range === "unknown"
+        ? [`FICO ${lender.min_fico}+ confirmation`]
+        : []),
+      ...(Number(input.application.monthly_deposits) < minimumRevenue ? [`${formatCurrency(minimumRevenue)} monthly deposits`] : []),
+      ...(!input.application.website_url ? ["business verification"] : [])
+    ];
+
+    return { name: lender.company_name, eligible: blockers.length === 0, blockers };
+  }).filter((assessment): assessment is { name: string; eligible: boolean; blockers: string[] } => Boolean(assessment));
+
+  return {
+    missingItems,
+    requiredDecisions,
+    eligibleLenders: lenderAssessments.filter((lender) => lender.eligible),
+    conditionalLenders: lenderAssessments.filter((lender) => !lender.eligible),
+    readinessPercent: input.submissionReadiness.score
+  };
+}
+
 export default async function MerchantDetailsPage({ params }: { params: Promise<{ applicationId: string[] }> }) {
   const access = await getInternalPageAccess();
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
@@ -159,7 +230,7 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
     notFound();
   }
 
-  const { application, profile, documents, offers, activities, lenderMatches, underwritingReviews, aiTasks } = data;
+  const { application, profile, documents, offers, activities, lenderMatches, matchedLenders, underwritingReviews, aiTasks } = data;
   const missingDocuments = documents.filter((document) => document.status !== "verified").length;
   const fundingProbability = getFundingProbability(application);
   const metadata = typeof application.metadata === "object" && application.metadata ? (application.metadata as Record<string, unknown>) : {};
@@ -173,6 +244,14 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
     lenderMatches,
     offers,
     packageReady: submissionReadiness.state === "Ready"
+  });
+  const founderActionPanel = getFounderActionPanel({
+    application,
+    documents,
+    underwritingReviews,
+    lenderMatches,
+    matchedLenders,
+    submissionReadiness
   });
 
   return (
@@ -247,6 +326,58 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
               </div>
               <div className="mt-4">
                 <LifecycleControls applicationId={application.id} currentStatus={application.status} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle>Founder action panel</CardTitle>
+                <Badge variant={founderActionPanel.eligibleLenders.length > 0 ? "success" : "warning"}>
+                  Submit readiness {founderActionPanel.readinessPercent}%
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm font-semibold text-white">Missing Items</p>
+                  <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+                    {founderActionPanel.missingItems.map((item) => <p key={item}>{item}</p>)}
+                    {founderActionPanel.missingItems.length === 0 ? <p className="text-emerald-100">No missing items.</p> : null}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm font-semibold text-white">Required Decisions</p>
+                  <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+                    {founderActionPanel.requiredDecisions.map((decision) => <p key={decision}>{decision}</p>)}
+                    {founderActionPanel.requiredDecisions.length === 0 ? <p className="text-emerald-100">No founder decisions pending.</p> : null}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-white">Eligible Lenders</p>
+                  <Badge variant={founderActionPanel.eligibleLenders.length > 0 ? "success" : "destructive"}>
+                    {founderActionPanel.eligibleLenders.length} eligible today
+                  </Badge>
+                </div>
+                {founderActionPanel.eligibleLenders.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {founderActionPanel.eligibleLenders.map((lender) => <Badge key={lender.name} variant="success">{lender.name}</Badge>)}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-red-200">No matched lender is eligible under the currently recorded file criteria.</p>
+                )}
+                <div className="mt-4 space-y-2">
+                  {founderActionPanel.conditionalLenders.map((lender) => (
+                    <div key={lender.name} className="flex flex-col gap-1 border-t border-white/10 pt-2 text-sm sm:flex-row sm:justify-between">
+                      <span className="font-medium text-white">{lender.name}</span>
+                      <span className="text-muted-foreground">{lender.blockers.join(", ")}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>

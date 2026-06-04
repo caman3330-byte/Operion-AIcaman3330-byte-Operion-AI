@@ -4,10 +4,12 @@ import type {
   CrmActivity,
   DocumentRecord,
   FundingOffer,
+  Lender,
   LenderMatch,
   Profile,
   UnderwritingReview
 } from "@operion/shared";
+import { lendersRepository } from "@/lib/repositories/lenders";
 import { productionRepository } from "@/lib/repositories/production";
 
 export interface MerchantPipelineData {
@@ -22,6 +24,7 @@ export interface MerchantProfileData {
   offers: FundingOffer[];
   activities: CrmActivity[];
   lenderMatches: LenderMatch[];
+  matchedLenders: Lender[];
   underwritingReviews: UnderwritingReview[];
   aiTasks: AiTask[];
 }
@@ -47,6 +50,8 @@ export async function getMerchantProfileData(applicationId: string): Promise<Mer
     productionRepository.listUnderwritingReviewsForApplications([applicationId]),
     productionRepository.listAiTasksForApplications([applicationId])
   ]);
+  const lenderIds = new Set(lenderMatches.map((match) => match.lender_id));
+  const matchedLenders = (await lendersRepository.list(false)).filter((lender) => lenderIds.has(lender.id));
 
   return {
     application,
@@ -55,6 +60,7 @@ export async function getMerchantProfileData(applicationId: string): Promise<Mer
     offers,
     activities,
     lenderMatches,
+    matchedLenders,
     underwritingReviews,
     aiTasks
   };
