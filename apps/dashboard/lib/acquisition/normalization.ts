@@ -4,6 +4,7 @@ export interface RawBusinessLead {
   email?: string | null | undefined;
   phone?: string | null | undefined;
   website_url?: string | null | undefined;
+  city?: string | null | undefined;
   industry?: string | null | undefined;
   state?: string | null | undefined;
   annual_revenue_est?: number | null | undefined;

@@ -1,4 +1,5 @@
-import { Activity, AlertTriangle, BriefcaseBusiness, CheckCircle2, CircleDollarSign, Contact, Database, MapPin, Search, ShieldCheck, ShieldQuestion, Star, UsersRound, XCircle } from "lucide-react";
+import { Activity, AlertTriangle, BriefcaseBusiness, CheckCircle2, CircleDollarSign, Contact, CopyCheck, Database, MapPin, Search, ShieldCheck, ShieldQuestion, Star, UsersRound, XCircle } from "lucide-react";
+import type { AcquisitionJob, Json, LeadSource } from "@operion/shared";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { Badge } from "@/components/ui/badge";
@@ -18,10 +19,11 @@ export default async function AcquisitionPage() {
   try {
     const startOfToday = new Date();
     startOfToday.setUTCHours(0, 0, 0, 0);
-    const [summary, sources, jobs, enrichment, contacts, pendingLeadsResult, realLeadsTodayResult, totalRealLeadsResult] = await Promise.all([
+    const startOfMonth = new Date(Date.UTC(startOfToday.getUTCFullYear(), startOfToday.getUTCMonth(), 1));
+    const [summary, sources, jobs, enrichment, contacts, pendingLeadsResult, realLeadsTodayResult, realLeadsMonthResult, totalRealLeadsResult] = await Promise.all([
       acquisitionRepository.summary(),
       acquisitionRepository.listSources(),
-      acquisitionRepository.listJobs(8),
+      acquisitionRepository.listJobs(20),
       acquisitionRepository.listEnrichment(8),
       acquisitionRepository.listContacts(8),
       (getSupabaseAdmin() as any)
@@ -41,6 +43,11 @@ export default async function AcquisitionPage() {
         .from("leads")
         .select("id", { count: "exact", head: true })
         .eq("is_test_data", false)
+        .gte("created_at", startOfMonth.toISOString()),
+      (getSupabaseAdmin() as any)
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("is_test_data", false)
         .neq("status", "archived")
     ]);
 
@@ -54,7 +61,8 @@ export default async function AcquisitionPage() {
     }>;
     const acquisitionRuns = summary.jobs.queued + summary.jobs.running + summary.jobs.completed + summary.jobs.failed + summary.jobs.blocked;
     const googlePlacesConfigured = Boolean(process.env.GOOGLE_PLACES_API_KEY);
-    const estimatedCostPerLead = 0.02192;
+    const runMetrics = getRunMetrics(jobs);
+    const sourceBreakdown = getSourceBreakdown(jobs, sources);
 
     return (
       <div className="space-y-6">
@@ -72,26 +80,50 @@ export default async function AcquisitionPage() {
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle>Founder Acquisition Dashboard</CardTitle>
-              <Badge variant={googlePlacesConfigured ? "success" : "destructive"}>
-                Google Places {googlePlacesConfigured ? "configured" : "blocked"}
+              <Badge variant={googlePlacesConfigured ? "success" : "secondary"}>
+                Google Places {googlePlacesConfigured ? "configured" : "optional"}
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <MetricCard title="Real Leads Today" value={String(realLeadsTodayResult.count ?? 0)} detail="Non-test leads created today" icon={UsersRound} />
+              <MetricCard title="Real Leads This Month" value={String(realLeadsMonthResult.count ?? 0)} detail="Non-test leads created this month" icon={BriefcaseBusiness} />
               <MetricCard title="Verified Leads" value={String(summary.leads.verified)} detail="Business verification passed" icon={ShieldCheck} tone="success" />
               <MetricCard title="Invalid Leads" value={String(summary.leads.invalid)} detail="Rejected by validation" icon={XCircle} tone={summary.leads.invalid > 0 ? "danger" : "default"} />
               <MetricCard title="Acquisition Runs" value={String(acquisitionRuns)} detail={`${summary.jobs.completed} completed / ${summary.jobs.failed} failed`} icon={Activity} />
-              <MetricCard title="Cost Per Lead" value={`~$${estimatedCostPerLead.toFixed(2)}`} detail="Estimated Google cost after free usage caps" icon={CircleDollarSign} />
+              <MetricCard title="Cost Per Lead" value="$0" detail="Free-first public sources; infrastructure usage only" icon={CircleDollarSign} />
+              <MetricCard title="Qualified Leads" value={String(summary.leads.qualified)} detail="Passed current qualification threshold" icon={CheckCircle2} tone="success" />
+              <MetricCard title="Duplicates Prevented" value={String(runMetrics.duplicates)} detail="Across recent acquisition runs" icon={CopyCheck} />
+              <MetricCard title="Acquisition Success" value={`${runMetrics.successRate}%`} detail={`${runMetrics.qualified} qualified of ${runMetrics.discovered} discovered`} icon={Activity} tone={runMetrics.successRate >= 50 ? "success" : "default"} />
               <MetricCard title="Total Merchants Acquired" value={String(totalRealLeadsResult.count ?? 0)} detail="Non-test, non-archived leads" icon={BriefcaseBusiness} />
               <MetricCard
                 title="Google Places Status"
                 value={googlePlacesConfigured ? "Ready" : "Missing key"}
-                detail={googlePlacesConfigured ? "Up to 100 candidates per controlled run" : "GOOGLE_PLACES_API_KEY required"}
+                detail={googlePlacesConfigured ? "Optional paid adapter available" : "Optional only; free-first sources remain available"}
                 icon={MapPin}
-                tone={googlePlacesConfigured ? "success" : "danger"}
+                tone={googlePlacesConfigured ? "success" : "default"}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Acquisition Source Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {sourceBreakdown.map((source) => (
+                <div key={source.name} className="rounded-md border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{source.name}</p>
+                    <Badge variant={source.testRuns > 0 ? "secondary" : "outline"}>{source.runs} run(s)</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{source.discovered} discovered / {source.qualified} qualified</p>
+                </div>
+              ))}
+              {sourceBreakdown.length === 0 ? <p className="text-sm text-muted-foreground">No acquisition run history yet.</p> : null}
             </div>
           </CardContent>
         </Card>
@@ -130,29 +162,37 @@ export default async function AcquisitionPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Acquisition Jobs</CardTitle>
+              <CardTitle>Acquisition Run History</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Agent</TableHead>
+                    <TableHead>Source</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Updated</TableHead>
+                    <TableHead>Found</TableHead>
+                    <TableHead>Qualified</TableHead>
+                    <TableHead>Duplicates</TableHead>
+                    <TableHead>Errors</TableHead>
+                    <TableHead>Started</TableHead>
+                    <TableHead>Ended</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {jobs.map((job) => (
                     <TableRow key={job.id}>
-                      <TableCell className="font-medium">{job.job_type.replace(/_/g, " ")}</TableCell>
-                      <TableCell>{job.assigned_agent_key ?? "unassigned"}</TableCell>
+                      <TableCell className="font-medium">{getJobSource(job, sources)}</TableCell>
                       <TableCell>
                         <Badge variant={job.status === "failed" ? "destructive" : job.status === "completed" ? "success" : "secondary"}>
                           {job.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{formatDateTime(job.updated_at)}</TableCell>
+                      <TableCell>{readCount(job.counts, "discovered")}</TableCell>
+                      <TableCell>{readCount(job.counts, "qualified") || readCount(job.counts, "verified")}</TableCell>
+                      <TableCell>{readCount(job.counts, "duplicates")}</TableCell>
+                      <TableCell>{readCount(job.counts, "failed")}</TableCell>
+                      <TableCell>{formatDateTime(job.started_at ?? job.created_at)}</TableCell>
+                      <TableCell>{job.completed_at ? formatDateTime(job.completed_at) : "in progress"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -260,4 +300,67 @@ export default async function AcquisitionPage() {
 
     throw error;
   }
+}
+
+function getRunMetrics(jobs: AcquisitionJob[]) {
+  const discovered = jobs.reduce((sum, job) => sum + readCount(job.counts, "discovered"), 0);
+  const qualified = jobs.reduce(
+    (sum, job) => sum + Math.max(readCount(job.counts, "qualified"), readCount(job.counts, "verified"), readCount(job.counts, "created")),
+    0
+  );
+  const duplicates = jobs.reduce((sum, job) => sum + readCount(job.counts, "duplicates"), 0);
+  return {
+    discovered,
+    qualified,
+    duplicates,
+    successRate: discovered > 0 ? Math.min(100, Math.round((qualified / discovered) * 100)) : 0
+  };
+}
+
+function getSourceBreakdown(jobs: AcquisitionJob[], sources: LeadSource[]) {
+  const grouped = new Map<string, { name: string; runs: number; testRuns: number; discovered: number; qualified: number }>();
+  for (const job of jobs) {
+    const breakdown = asRecord(asRecord(job.counts).source_breakdown ?? {});
+    const rows = Object.keys(breakdown).length > 0
+      ? Object.entries(breakdown).map(([name, counts]) => ({
+          name: name.replace(/_/g, " "),
+          discovered: readCount(counts ?? {}, "discovered"),
+          qualified: readCount(counts ?? {}, "qualified")
+        }))
+      : [{
+          name: getJobSource(job, sources, false),
+          discovered: readCount(job.counts, "discovered"),
+          qualified: Math.max(readCount(job.counts, "qualified"), readCount(job.counts, "verified"), readCount(job.counts, "created"))
+        }];
+    for (const row of rows) {
+      const current = grouped.get(row.name) ?? { name: row.name, runs: 0, testRuns: 0, discovered: 0, qualified: 0 };
+      current.runs += 1;
+      current.testRuns += job.is_test_data ? 1 : 0;
+      current.discovered += row.discovered;
+      current.qualified += row.qualified;
+      grouped.set(row.name, current);
+    }
+  }
+  return [...grouped.values()].sort((left, right) => right.discovered - left.discovered).slice(0, 8);
+}
+
+function getJobSource(job: AcquisitionJob, sources: LeadSource[], includeMode = true) {
+  const mode = includeMode && job.is_test_data ? " (dry run)" : "";
+  const source = sources.find((candidate) => candidate.id === job.source_id);
+  if (source) return `${source.name}${mode}`;
+  const parameters = asRecord(job.parameters);
+  const sourceKeys = Array.isArray(parameters.source_keys)
+    ? parameters.source_keys.filter((value): value is string => typeof value === "string")
+    : [];
+  if (sourceKeys.length > 0) return `${sourceKeys.join(", ").replace(/_/g, " ")}${mode}`;
+  return `${job.job_type.replace(/_/g, " ")}${mode}`;
+}
+
+function readCount(value: Json, key: string) {
+  const count = asRecord(value)[key];
+  return typeof count === "number" && Number.isFinite(count) ? count : 0;
+}
+
+function asRecord(value: Json): Record<string, Json | undefined> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }

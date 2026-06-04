@@ -7,6 +7,7 @@ import type {
   ReplyClassification
 } from "@operion/shared";
 import { ConfigurationError, NotFoundError } from "@/lib/errors";
+import { normalizeBusinessName } from "@/lib/acquisition/normalization";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import type {
   AcquisitionJobInsert,
@@ -147,16 +148,45 @@ export const acquisitionRepository = {
     return data ?? [];
   },
 
-  async findLeadByEmailOrName(input: { email?: string | null; businessName: string; domain?: string | null }) {
+  async findLeadByEmailOrName(input: {
+    email?: string | null;
+    phone?: string | null;
+    businessName: string;
+    domain?: string | null;
+  }) {
     const supabase = getSupabaseAdmin();
     const filters = [`business_name.eq.${escapeSupabaseFilter(input.businessName)}`];
     if (input.email) {
       filters.push(`email.eq.${escapeSupabaseFilter(input.email)}`);
     }
+    if (input.phone) {
+      filters.push(`phone.eq.${escapeSupabaseFilter(input.phone)}`);
+    }
 
-    const { data, error } = await supabase.from("leads").select("*").or(filters.join(",")).limit(10);
+    const normalizedName = normalizeBusinessName(input.businessName);
+    const nameToken = normalizedName.split(" ").find((token) => token.length >= 4);
+    const [leadResult, domainResult, nameResult] = await Promise.all([
+      supabase.from("leads").select("*").or(filters.join(",")).limit(10),
+      input.domain
+        ? supabase.from("lead_enrichment").select("lead_id").ilike("domain", input.domain).limit(10)
+        : Promise.resolve({ data: [], error: null }),
+      nameToken
+        ? supabase.from("leads").select("*").ilike("business_name", `%${escapeLikePattern(nameToken)}%`).limit(25)
+        : Promise.resolve({ data: [], error: null })
+    ]);
+    const { data, error } = leadResult;
     if (error) throw error;
-    return data ?? [];
+    if (domainResult.error) throw domainResult.error;
+    if (nameResult.error) throw nameResult.error;
+
+    const domainLeadIds = (domainResult.data ?? []).map((row) => row.lead_id);
+    const domainLeads = domainLeadIds.length > 0
+      ? await supabase.from("leads").select("*").in("id", domainLeadIds).limit(10)
+      : { data: [], error: null };
+    if (domainLeads.error) throw domainLeads.error;
+    const similarNames = (nameResult.data ?? []).filter((lead) => similarBusinessName(normalizedName, normalizeBusinessName(lead.business_name)));
+    return [...(data ?? []), ...(domainLeads.data ?? []), ...similarNames]
+      .filter((lead, index, rows) => rows.findIndex((candidate) => candidate.id === lead.id) === index);
   },
 
   async findLeadByEmail(email: string) {
@@ -405,6 +435,19 @@ function countStatus<T extends { status?: AcquisitionJobStatus | OutreachEmailSt
 
 function escapeSupabaseFilter(value: string) {
   return value.replace(/,/g, "\\,");
+}
+
+function escapeLikePattern(value: string) {
+  return value.replace(/[%_]/g, "\\$&");
+}
+
+function similarBusinessName(left: string, right: string) {
+  if (!left || !right) return false;
+  if (left === right) return true;
+  const leftTokens = new Set(left.split(" "));
+  const rightTokens = new Set(right.split(" "));
+  const intersection = [...leftTokens].filter((token) => rightTokens.has(token)).length;
+  return intersection / new Set([...leftTokens, ...rightTokens]).size >= 0.8;
 }
 
 function throwAcquisitionDatabaseError(error: { code?: string; message?: string }): never {

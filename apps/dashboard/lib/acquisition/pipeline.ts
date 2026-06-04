@@ -43,6 +43,7 @@ export async function ingestLeadBatch(input: IngestLeadBatchInput) {
       const normalized = normalizeBusinessLead(rawRecord);
       const existing = await acquisitionRepository.findLeadByEmailOrName({
         email: normalized.email,
+        phone: normalized.phone,
         businessName: normalized.business_name,
         domain: normalized.domain
       });

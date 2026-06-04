@@ -7,7 +7,7 @@ export interface LeadQualityScore {
   reasons: string[];
 }
 
-export function scoreLeadQuality(lead: NormalizedBusinessLead): LeadQualityScore {
+export function scoreLeadQuality(lead: NormalizedBusinessLead, targetCategory?: string): LeadQualityScore {
   let score = 20;
   const reasons: string[] = [];
 
@@ -26,6 +26,10 @@ export function scoreLeadQuality(lead: NormalizedBusinessLead): LeadQualityScore
   if (lead.industry) {
     score += 8;
     reasons.push("industry present");
+  }
+  if (lead.industry && targetCategory && categoryMatches(lead.industry, targetCategory)) {
+    score += 8;
+    reasons.push("business category match");
   }
   if (lead.state) {
     score += 6;
@@ -46,6 +50,11 @@ export function scoreLeadQuality(lead: NormalizedBusinessLead): LeadQualityScore
     tier: scoreToTier(bounded),
     reasons
   };
+}
+
+function categoryMatches(industry: string, targetCategory: string) {
+  const industryTokens = new Set(industry.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
+  return targetCategory.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).some((token) => industryTokens.has(token));
 }
 
 export function scoreToTier(score: number): LeadTier {
