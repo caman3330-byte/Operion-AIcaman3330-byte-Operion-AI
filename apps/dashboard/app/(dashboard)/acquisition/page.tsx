@@ -1,4 +1,4 @@
-import { AlertTriangle, BriefcaseBusiness, CheckCircle2, Contact, Database, Search, ShieldCheck, ShieldQuestion, Star, XCircle } from "lucide-react";
+import { Activity, AlertTriangle, BriefcaseBusiness, CheckCircle2, CircleDollarSign, Contact, Database, MapPin, Search, ShieldCheck, ShieldQuestion, Star, UsersRound, XCircle } from "lucide-react";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,9 @@ export default async function AcquisitionPage() {
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
 
   try {
-    const [summary, sources, jobs, enrichment, contacts, pendingLeadsResult] = await Promise.all([
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    const [summary, sources, jobs, enrichment, contacts, pendingLeadsResult, realLeadsTodayResult, totalRealLeadsResult] = await Promise.all([
       acquisitionRepository.summary(),
       acquisitionRepository.listSources(),
       acquisitionRepository.listJobs(8),
@@ -29,7 +31,17 @@ export default async function AcquisitionPage() {
         .eq("is_test_data", false)
         .eq("business_verified", true)
         .order("created_at", { ascending: false })
-        .limit(50)
+        .limit(50),
+      (getSupabaseAdmin() as any)
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("is_test_data", false)
+        .gte("created_at", startOfToday.toISOString()),
+      (getSupabaseAdmin() as any)
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("is_test_data", false)
+        .neq("status", "archived")
     ]);
 
     const pendingLeads = (pendingLeadsResult?.data ?? []) as Array<{
@@ -40,6 +52,9 @@ export default async function AcquisitionPage() {
       email_verified?: boolean; phone_verified?: boolean; business_verified?: boolean;
       validation_score?: number; validation_reason?: string | null; validation_timestamp?: string | null; created_at: string;
     }>;
+    const acquisitionRuns = summary.jobs.queued + summary.jobs.running + summary.jobs.completed + summary.jobs.failed + summary.jobs.blocked;
+    const googlePlacesConfigured = Boolean(process.env.GOOGLE_PLACES_API_KEY);
+    const estimatedCostPerLead = 0.02192;
 
     return (
       <div className="space-y-6">
@@ -52,6 +67,34 @@ export default async function AcquisitionPage() {
           </div>
           <Badge variant="success">Supabase connected</Badge>
         </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>Founder Acquisition Dashboard</CardTitle>
+              <Badge variant={googlePlacesConfigured ? "success" : "destructive"}>
+                Google Places {googlePlacesConfigured ? "configured" : "blocked"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <MetricCard title="Real Leads Today" value={String(realLeadsTodayResult.count ?? 0)} detail="Non-test leads created today" icon={UsersRound} />
+              <MetricCard title="Verified Leads" value={String(summary.leads.verified)} detail="Business verification passed" icon={ShieldCheck} tone="success" />
+              <MetricCard title="Invalid Leads" value={String(summary.leads.invalid)} detail="Rejected by validation" icon={XCircle} tone={summary.leads.invalid > 0 ? "danger" : "default"} />
+              <MetricCard title="Acquisition Runs" value={String(acquisitionRuns)} detail={`${summary.jobs.completed} completed / ${summary.jobs.failed} failed`} icon={Activity} />
+              <MetricCard title="Cost Per Lead" value={`~$${estimatedCostPerLead.toFixed(2)}`} detail="Estimated Google cost after free usage caps" icon={CircleDollarSign} />
+              <MetricCard title="Total Merchants Acquired" value={String(totalRealLeadsResult.count ?? 0)} detail="Non-test, non-archived leads" icon={BriefcaseBusiness} />
+              <MetricCard
+                title="Google Places Status"
+                value={googlePlacesConfigured ? "Ready" : "Missing key"}
+                detail={googlePlacesConfigured ? "Up to 100 candidates per controlled run" : "GOOGLE_PLACES_API_KEY required"}
+                icon={MapPin}
+                tone={googlePlacesConfigured ? "success" : "danger"}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <MetricCard title="Active Sources" value={String(summary.active_sources)} detail={`${summary.sources} configured source(s)`} icon={Database} />
