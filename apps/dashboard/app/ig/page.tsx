@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { ArrowRight, CheckCircle2, LockKeyhole, ShieldCheck, UploadCloud } from "lucide-react";
 import { MerchantFunnelTracker } from "@/components/analytics/merchant-funnel-tracker";
 import { TrackedApplyLink } from "@/components/analytics/tracked-apply-link";
-import { OperionLogo } from "@/components/brand/operion-logo";
+import { MerchantLightHeader } from "@/components/marketing/merchant-light-shell";
 import { Button } from "@/components/ui/button";
 
 const points = [
@@ -20,18 +19,9 @@ const faqs = [
 
 export default function InstagramFundingPage() {
   return (
-    <main className="min-h-screen bg-[#f8f5ec] text-[#17130c]">
+    <main className="min-h-screen bg-[#fbfaf7] text-[#17130c]">
       <MerchantFunnelTracker event="ig_visit" source="instagram" path="/ig" />
-      <header className="border-b border-[#17130c]/10 bg-[#17130c] px-4 py-3 text-white">
-        <div className="mx-auto flex max-w-md items-center justify-between gap-3">
-          <Link href="/" aria-label="Operion Capital home">
-            <OperionLogo size="sm" showTagline={false} collapseWordmarkOnMobile />
-          </Link>
-          <TrackedApplyLink source="instagram" href="/apply?source=instagram-header" className="rounded-md bg-[#d7b76a] px-3 py-2 text-xs font-bold text-[#17130c]">
-            Apply
-          </TrackedApplyLink>
-        </div>
-      </header>
+      <MerchantLightHeader compact />
 
       <section className="px-4 pb-8 pt-6">
         <div className="mx-auto max-w-md">
@@ -77,9 +67,9 @@ export default function InstagramFundingPage() {
         </div>
       </section>
 
-      <section className="bg-[#17130c] px-4 py-8 text-white">
+      <section className="border-y border-[#d7b76a]/25 bg-white px-4 py-8">
         <div className="mx-auto max-w-md">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#d7b76a]">How it works</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#9b7624]">How it works</p>
           <div className="mt-4 grid gap-3">
             {[
               [LockKeyhole, "Apply securely", "Submit basic business and funding details."],
@@ -88,12 +78,12 @@ export default function InstagramFundingPage() {
             ].map(([Icon, title, text]) => {
               const ItemIcon = Icon as typeof LockKeyhole;
               return (
-                <div key={String(title)} className="rounded-md border border-white/10 bg-white/[0.04] p-4">
+                <div key={String(title)} className="rounded-md border border-[#d7b76a]/30 bg-[#fffaf0] p-4">
                   <div className="flex gap-3">
-                    <ItemIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#d7b76a]" />
+                    <ItemIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#9b7624]" />
                     <div>
-                      <h2 className="font-semibold text-white">{title as string}</h2>
-                      <p className="mt-1 text-sm leading-6 text-white/70">{text as string}</p>
+                      <h2 className="font-semibold text-[#17130c]">{title as string}</h2>
+                      <p className="mt-1 text-sm leading-6 text-[#5c5140]">{text as string}</p>
                     </div>
                   </div>
                 </div>

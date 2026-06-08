@@ -14,8 +14,7 @@ import {
 } from "lucide-react";
 import { MerchantFunnelTracker } from "@/components/analytics/merchant-funnel-tracker";
 import { TrackedApplyLink } from "@/components/analytics/tracked-apply-link";
-import { OperionLogo } from "@/components/brand/operion-logo";
-import { PublicShell } from "@/components/marketing/public-shell";
+import { MerchantLightShell } from "@/components/marketing/merchant-light-shell";
 import { Button } from "@/components/ui/button";
 
 const benefits = [
@@ -53,10 +52,10 @@ const faqs = [
 
 export default function BusinessFundingPage() {
   return (
-    <PublicShell className="bg-[#f8f5ec] text-[#17130c]">
+    <MerchantLightShell className="bg-[#fbfaf7] text-[#17130c]">
       <MerchantFunnelTracker event="business_funding_visit" source="business-funding" path="/business-funding" />
-      <main className="bg-[#f8f5ec] text-[#17130c]">
-        <section className="relative overflow-hidden border-b border-[#d7b76a]/25 bg-[#f8f5ec] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+      <main className="bg-[#fbfaf7] text-[#17130c]">
+        <section className="relative overflow-hidden border-b border-[#d7b76a]/25 bg-[#fbfaf7] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
           <div className="absolute inset-x-0 top-0 h-2 bg-[#d7b76a]" />
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
             <div>
@@ -98,10 +97,11 @@ export default function BusinessFundingPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#d7b76a]/35 bg-[#17130c] p-5 text-white shadow-2xl shadow-[#17130c]/20">
-              <div className="rounded-md border border-[#d7b76a]/25 bg-white/[0.04] p-5">
-                <OperionLogo size="md" showTagline={false} />
-                <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[#d7b76a]">Funding snapshot</p>
+            <div className="rounded-lg border border-[#d7b76a]/40 bg-white p-5 text-[#17130c] shadow-2xl shadow-[#17130c]/10">
+              <div className="rounded-md border border-[#d7b76a]/30 bg-[#fffaf0] p-5">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9b7624]">Funding snapshot</p>
+                <h2 className="mt-3 font-serif text-3xl font-semibold tracking-normal text-[#17130c]">$10k-$500k</h2>
+                <p className="mt-2 text-sm leading-6 text-[#5c5140]">A clean application-first path for merchants who need fast working capital review.</p>
                 <div className="mt-5 grid gap-3">
                   {[
                     ["Funding range", "$10,000-$500,000"],
@@ -109,9 +109,9 @@ export default function BusinessFundingPage() {
                     ["Document flow", "Secure upload link"],
                     ["Review model", "Human-reviewed"]
                   ].map(([label, value]) => (
-                    <div key={label} className="flex items-center justify-between gap-4 rounded-md border border-white/10 bg-white/[0.04] px-4 py-3">
-                      <span className="text-sm text-white/65">{label}</span>
-                      <span className="text-sm font-semibold text-white">{value}</span>
+                    <div key={label} className="flex items-center justify-between gap-4 rounded-md border border-[#17130c]/10 bg-white px-4 py-3">
+                      <span className="text-sm text-[#635847]">{label}</span>
+                      <span className="text-sm font-semibold text-[#17130c]">{value}</span>
                     </div>
                   ))}
                 </div>
@@ -166,15 +166,15 @@ export default function BusinessFundingPage() {
           </div>
         </section>
 
-        <section className="bg-[#17130c] px-4 py-14 text-white sm:px-6 lg:px-8">
+        <section className="border-y border-[#d7b76a]/25 bg-white px-4 py-14 text-[#17130c] sm:px-6 lg:px-8">
           <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#d7b76a]">Ready when you are</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9b7624]">Ready when you are</p>
               <h2 className="mt-3 max-w-3xl font-serif text-3xl font-semibold tracking-normal sm:text-4xl">
                 Start with a secure application and get your funding file moving.
               </h2>
             </div>
-            <Button asChild size="lg">
+            <Button asChild size="lg" className="bg-[#17130c] text-[#f8f5ec] hover:bg-[#2a2113]">
               <TrackedApplyLink source="business-funding" href="/apply?source=business-funding-midpage">
                 Apply now
                 <ArrowRight className="h-4 w-4" />
@@ -219,7 +219,7 @@ export default function BusinessFundingPage() {
           </div>
         </section>
       </main>
-    </PublicShell>
+    </MerchantLightShell>
   );
 }
 

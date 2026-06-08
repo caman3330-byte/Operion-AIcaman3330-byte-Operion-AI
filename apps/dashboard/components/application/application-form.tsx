@@ -103,14 +103,14 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
 
   if (submitted) {
     return (
-      <div className="rounded-lg border border-primary/20 bg-black/35 p-9 text-center shadow-2xl shadow-black/20">
-        <CheckCircle2 className="mx-auto h-10 w-10 text-primary" />
-        <h2 className="mt-4 font-serif text-2xl font-medium tracking-normal text-white">Application received</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+      <div className="rounded-lg border border-[#d7b76a]/35 bg-white p-8 text-center shadow-2xl shadow-[#17130c]/10">
+        <CheckCircle2 className="mx-auto h-10 w-10 text-[#9b7624]" />
+        <h2 className="mt-4 font-serif text-2xl font-semibold tracking-normal text-[#17130c]">Application received</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#5c5140]">
           Operion Capital has your funding request. Updates are handled by secure email and direct funding-team follow-up. No
           merchant dashboard or portal login is required.
         </p>
-        <div className="mx-auto mt-5 flex max-w-md items-start gap-3 rounded-md border border-primary/20 bg-primary/10 px-4 py-3 text-left text-sm text-primary">
+        <div className="mx-auto mt-5 flex max-w-md items-start gap-3 rounded-md border border-[#d7b76a]/35 bg-[#fffaf0] px-4 py-3 text-left text-sm text-[#7a5a16]">
           <Mail className="mt-0.5 h-4 w-4 shrink-0" />
           <p>Check your email for the secure upload link. Documents are uploaded only through the signed document portal.</p>
         </div>
@@ -120,7 +120,7 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
 
   return (
     <form
-      className="rounded-lg border border-primary/15 bg-black/35 p-6 shadow-2xl shadow-black/20 backdrop-blur"
+      className="rounded-lg border border-[#d7b76a]/35 bg-white p-5 text-[#17130c] shadow-2xl shadow-[#17130c]/10 sm:p-6"
       onFocusCapture={() => {
         if (started) return;
         setStarted(true);
@@ -140,16 +140,16 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
       <div className="mb-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-primary">Secure application</p>
-            <h2 className="mt-1 font-serif text-2xl font-medium tracking-normal text-white">{currentStep.title}</h2>
+            <p className="text-sm font-bold text-[#9b7624]">Secure application</p>
+            <h2 className="mt-1 font-serif text-2xl font-semibold tracking-normal text-[#17130c]">{currentStep.title}</h2>
           </div>
-          <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-muted-foreground">
-            <LockKeyhole className="h-3.5 w-3.5 text-primary" />
+          <div className="flex items-center gap-2 rounded-md border border-[#d7b76a]/35 bg-[#fffaf0] px-3 py-2 text-xs font-semibold text-[#7a5a16]">
+            <LockKeyhole className="h-3.5 w-3.5 text-[#9b7624]" />
             Encrypted
           </div>
         </div>
-        <div className="mt-5 h-1.5 rounded-full bg-white/10">
-          <div className="h-1.5 rounded-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
+        <div className="mt-5 h-1.5 rounded-full bg-[#efe6cf]">
+          <div className="h-1.5 rounded-full bg-[#c9a84c] transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
           {steps.map((item, index) => (
@@ -158,8 +158,10 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
               type="button"
               onClick={() => setStep(index)}
               className={cn(
-                "rounded-md border border-primary/15 px-3 py-2 text-left transition",
-                index === step ? "bg-primary/12 text-primary" : "bg-white/[0.02] text-muted-foreground hover:bg-primary/[0.06]"
+                "rounded-md border px-3 py-2 text-left transition",
+                index === step
+                  ? "border-[#c9a84c] bg-[#fff7e4] text-[#7a5a16]"
+                  : "border-[#17130c]/10 bg-white text-[#6d6251] hover:bg-[#fffaf0]"
               )}
             >
               <span className="block text-xs font-semibold">{item.title}</span>
@@ -172,8 +174,8 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
       <div className={cn("grid gap-5 md:grid-cols-2", step !== 0 && "hidden")}>
         <Field label="Business name" name="business_name" required />
         <div className="space-y-2">
-          <Label htmlFor="industry">Industry</Label>
-          <Select id="industry" name="industry" required defaultValue="">
+          <Label htmlFor="industry" className="text-[#2a2113]">Industry</Label>
+          <Select id="industry" name="industry" required defaultValue="" className="border-[#17130c]/15 bg-white text-[#17130c] placeholder:text-[#7a6f5f]">
             <option value="" disabled>
               Select industry
             </option>
@@ -191,8 +193,8 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
         <Field label="EIN" name="ein" placeholder="XX-XXXXXXX" required />
         <Field label="Time in business (months)" name="time_in_business_months" type="number" min="0" required />
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="business_address">Business address</Label>
-          <Textarea id="business_address" name="business_address" placeholder="Street, city, state, ZIP" required />
+          <Label htmlFor="business_address" className="text-[#2a2113]">Business address</Label>
+          <Textarea id="business_address" name="business_address" placeholder="Street, city, state, ZIP" required className="border-[#17130c]/15 bg-white text-[#17130c] placeholder:text-[#7a6f5f]" />
         </div>
       </div>
 
@@ -200,8 +202,8 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
         <Field label="Requested amount" name="requested_amount" type="number" min="1" required />
         <Field label="Estimated monthly revenue" name="monthly_revenue" type="number" min="0" required />
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="funding_purpose">Funding purpose</Label>
-          <Textarea id="funding_purpose" name="funding_purpose" placeholder="Inventory, payroll, expansion, equipment, cash flow..." />
+          <Label htmlFor="funding_purpose" className="text-[#2a2113]">Funding purpose</Label>
+          <Textarea id="funding_purpose" name="funding_purpose" placeholder="Inventory, payroll, expansion, equipment, cash flow..." className="border-[#17130c]/15 bg-white text-[#17130c] placeholder:text-[#7a6f5f]" />
         </div>
       </div>
 
@@ -211,24 +213,24 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
         <Field label="Phone number" name="contact_phone" required />
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-primary/15 pt-5">
-        <Button type="button" variant="outline" disabled={step === 0 || isPending} onClick={() => setStep((value) => Math.max(0, value - 1))}>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#17130c]/10 pt-5">
+        <Button type="button" variant="outline" className="border-[#17130c]/20 bg-white text-[#17130c] hover:bg-[#fffaf0] hover:text-[#17130c]" disabled={step === 0 || isPending} onClick={() => setStep((value) => Math.max(0, value - 1))}>
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
         {step < steps.length - 1 ? (
-          <Button type="button" disabled={isPending} onClick={() => setStep((value) => Math.min(steps.length - 1, value + 1))}>
+          <Button type="button" className="bg-[#17130c] text-[#f8f5ec] hover:bg-[#2a2113]" disabled={isPending} onClick={() => setStep((value) => Math.min(steps.length - 1, value + 1))}>
             Continue
             <ArrowRight className="h-4 w-4" />
           </Button>
         ) : (
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" className="bg-[#17130c] text-[#f8f5ec] hover:bg-[#2a2113]" disabled={isPending}>
             {isPending ? "Submitting" : "Submit securely"}
             <ArrowRight className="h-4 w-4" />
           </Button>
         )}
       </div>
-      {message ? <p className="mt-4 text-sm text-destructive">{message}</p> : null}
+      {message ? <p className="mt-4 text-sm text-red-700">{message}</p> : null}
     </form>
   );
 }
@@ -263,8 +265,8 @@ function normalizeSource(source: string | null) {
 function Field({ label, name, type = "text", ...props }: { label: string; name: string; type?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={name}>{label}</Label>
-      <Input id={name} name={name} type={type} {...props} />
+      <Label htmlFor={name} className="text-[#2a2113]">{label}</Label>
+      <Input id={name} name={name} type={type} className="border-[#17130c]/15 bg-white text-[#17130c] placeholder:text-[#7a6f5f]" {...props} />
     </div>
   );
 }
