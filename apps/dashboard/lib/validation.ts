@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
+const attributionValueSchema = z.preprocess(emptyToUndefined, z.string().max(120).optional().nullable());
 
 export const uuidSchema = z.string().uuid();
 
@@ -328,5 +329,14 @@ export const fundingApplicationSchema = z.object({
   average_daily_balance: z.coerce.number().nonnegative().optional().nullable(),
   funding_purpose: z.preprocess(emptyToUndefined, z.string().max(1000).optional().nullable()),
   product_type: z.enum(["mca", "business_loan", "line_of_credit", "equipment_financing", "unknown"]).optional().default("mca"),
-  consent_to_contact: z.boolean().optional().default(true)
+  consent_to_contact: z.boolean().optional().default(true),
+  attribution: z
+    .object({
+      source: z.enum(["instagram", "business-funding", "direct", "organic", "referral"]).optional().default("direct"),
+      raw_source: attributionValueSchema,
+      utm_source: attributionValueSchema,
+      utm_medium: attributionValueSchema,
+      utm_campaign: attributionValueSchema
+    })
+    .optional()
 });

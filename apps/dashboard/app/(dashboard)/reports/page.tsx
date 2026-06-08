@@ -1,8 +1,9 @@
-import { DollarSign, FileText, Landmark } from "lucide-react";
+import { DollarSign, FileText, Landmark, MousePointerClick } from "lucide-react";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { defaultAnalyticsWindow, getSubmissionAnalytics } from "@/lib/analytics/service";
 import { getProductionSupervisorSummary } from "@/lib/data/supervisor-command";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,11 @@ export default async function ReportsPage() {
   const access = await getInternalPageAccess();
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
 
-  const summary = await getProductionSupervisorSummary();
+  const [summary, submissions] = await Promise.all([
+    getProductionSupervisorSummary(),
+    getSubmissionAnalytics(defaultAnalyticsWindow())
+  ]);
+  const sourceRows = buildSourceRows(submissions.bySource);
   const reports = [
     {
       date: "Current",
@@ -34,6 +39,34 @@ export default async function ReportsPage() {
         <MetricCard title="AI/API Cost" value={formatCurrency(summary.estimatedAiCostUsd)} detail="api_usage_logs total" icon={DollarSign} />
         <MetricCard title="Lender Matches" value={String(summary.lenderMatches)} detail="Stored routing outcomes" icon={Landmark} />
       </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MousePointerClick className="h-4 w-4 text-muted-foreground" />
+            Application Source Attribution
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Source</TableHead>
+                <TableHead>Applications</TableHead>
+                <TableHead>Share</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sourceRows.map((row) => (
+                <TableRow key={row.source}>
+                  <TableCell className="font-medium">{formatSource(row.source)}</TableCell>
+                  <TableCell>{row.count}</TableCell>
+                  <TableCell>{row.share}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Report Archive</CardTitle>
@@ -67,6 +100,24 @@ export default async function ReportsPage() {
       </Card>
     </div>
   );
+}
+
+function buildSourceRows(bySource: Record<string, number>) {
+  const allowed = ["instagram", "business-funding", "direct", "organic", "referral"];
+  const total = allowed.reduce((sum, source) => sum + (bySource[source] ?? 0), 0);
+  return allowed.map((source) => {
+    const count = bySource[source] ?? 0;
+    return {
+      source,
+      count,
+      share: total > 0 ? Math.round((count / total) * 100) : 0
+    };
+  });
+}
+
+function formatSource(source: string) {
+  if (source === "business-funding") return "Business Funding";
+  return source.charAt(0).toUpperCase() + source.slice(1);
 }
 
 function formatCurrency(value: number) {

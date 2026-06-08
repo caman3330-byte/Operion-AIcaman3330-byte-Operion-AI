@@ -6,6 +6,7 @@ export interface OperationsAnalyticsWindow {
 export interface SubmissionAnalytics {
   totalSubmissions: number;
   byStatus: Record<string, number>;
+  bySource: Record<string, number>;
   approvalRatio: number;
   staleLeadCount: number;
 }

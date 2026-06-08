@@ -15,7 +15,14 @@ const steps = [
   { title: "Owner", description: "Contact details" }
 ];
 
-export function ApplicationForm() {
+type ApplicationAttribution = {
+  source?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+};
+
+export function ApplicationForm({ initialAttribution }: { initialAttribution?: ApplicationAttribution }) {
   const [step, setStep] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -55,7 +62,8 @@ export function ApplicationForm() {
       average_daily_balance: null,
       funding_purpose: String(formData.get("funding_purpose") ?? ""),
       product_type: "mca",
-      consent_to_contact: true
+      consent_to_contact: true,
+      attribution: normalizeAttribution(initialAttribution)
     };
 
     startTransition(async () => {
@@ -192,6 +200,33 @@ export function ApplicationForm() {
       {message ? <p className="mt-4 text-sm text-destructive">{message}</p> : null}
     </form>
   );
+}
+
+function normalizeAttribution(attribution?: ApplicationAttribution) {
+  const rawSource = cleanAttributionValue(attribution?.source);
+  const source = normalizeSource(rawSource);
+
+  return {
+    source,
+    raw_source: rawSource,
+    utm_source: cleanAttributionValue(attribution?.utm_source),
+    utm_medium: cleanAttributionValue(attribution?.utm_medium),
+    utm_campaign: cleanAttributionValue(attribution?.utm_campaign)
+  };
+}
+
+function cleanAttributionValue(value?: string | null) {
+  const trimmed = String(value ?? "").trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed.slice(0, 120) : null;
+}
+
+function normalizeSource(source: string | null) {
+  if (!source) return "direct";
+  if (source.startsWith("instagram")) return "instagram";
+  if (source.startsWith("business-funding")) return "business-funding";
+  if (source === "organic" || source.startsWith("seo")) return "organic";
+  if (source === "referral" || source.startsWith("partner")) return "referral";
+  return "direct";
 }
 
 function Field({ label, name, type = "text", ...props }: { label: string; name: string; type?: string } & React.InputHTMLAttributes<HTMLInputElement>) {

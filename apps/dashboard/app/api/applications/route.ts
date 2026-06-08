@@ -21,6 +21,15 @@ export async function POST(request: NextRequest) {
       windowMs: 60_000
     });
     const payload = fundingApplicationSchema.parse(await readJsonBody(request));
+    const attribution = {
+      source: payload.attribution?.source ?? "direct",
+      raw_source: payload.attribution?.raw_source ?? null,
+      utm_source: payload.attribution?.utm_source ?? null,
+      utm_medium: payload.attribution?.utm_medium ?? null,
+      utm_campaign: payload.attribution?.utm_campaign ?? null,
+      landing_path: request.nextUrl.pathname,
+      captured_at: new Date().toISOString()
+    };
     await productionRepository.ensureProductionSchema();
     const actor = await getOptionalActor(request);
     if (actor) {
@@ -41,7 +50,10 @@ export async function POST(request: NextRequest) {
       requested_amount: payload.requested_amount,
       monthly_deposits: payload.monthly_deposits,
       funding_purpose: payload.funding_purpose ?? null,
-      status: "raw"
+      status: "raw",
+      internal_notes: JSON.stringify({
+        acquisition_attribution: attribution
+      })
     });
 
     const application = await productionRepository.createBusinessApplication({
@@ -69,7 +81,8 @@ export async function POST(request: NextRequest) {
       consent_to_contact: payload.consent_to_contact,
       progress_step: 4,
       metadata: {
-        source: "public_application",
+        source: attribution.source,
+        attribution,
         ai_qualification_ready: true,
         ai_qualification_requested_at: new Date().toISOString(),
         schema_version: "0008",
@@ -128,7 +141,8 @@ export async function POST(request: NextRequest) {
         body: "A signed document upload link was generated for the merchant confirmation email.",
         metadata: {
           expires_at: secureUploadLink.expiresAt,
-          delivery: "application_confirmation_email"
+          delivery: "application_confirmation_email",
+          attribution
         } as Json
       });
       await productionRepository.createAuditLog({
@@ -153,6 +167,7 @@ export async function POST(request: NextRequest) {
       contactEmail: payload.contact_email ?? null,
       requestedAmount: payload.requested_amount,
       fundingPurpose: payload.funding_purpose ?? null,
+      attribution,
       sendDocumentReminder: false
     });
 
@@ -194,7 +209,8 @@ export async function POST(request: NextRequest) {
       model: null,
       metadata: {
         lead_id: lead.id,
-        business_application_id: application.id
+        business_application_id: application.id,
+        attribution
       } as Json
     });
 
@@ -208,7 +224,8 @@ export async function POST(request: NextRequest) {
       metadata: {
         lead_id: lead.id,
         ai_task_id: aiTask.id,
-        requested_amount: payload.requested_amount
+        requested_amount: payload.requested_amount,
+        attribution
       } as Json
     });
 
@@ -221,7 +238,8 @@ export async function POST(request: NextRequest) {
       metadata: {
         application_id: application.id,
         business_application_id: application.id,
-        requested_amount: payload.requested_amount
+        requested_amount: payload.requested_amount,
+        attribution
       } as Json
     });
 

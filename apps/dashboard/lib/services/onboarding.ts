@@ -10,6 +10,7 @@ export async function recordMerchantOnboarding(input: {
   contactEmail?: string | null;
   requestedAmount: number;
   fundingPurpose?: string | null;
+  attribution?: Json;
   sendDocumentReminder?: boolean;
 }) {
   await productionRepository.createCrmActivity({
@@ -23,7 +24,8 @@ export async function recordMerchantOnboarding(input: {
     metadata: {
       requested_amount: input.requestedAmount,
       owner_name: input.ownerName ?? null,
-      funding_purpose: input.fundingPurpose ?? null
+      funding_purpose: input.fundingPurpose ?? null,
+      attribution: input.attribution ?? null
     } as Json
   });
 

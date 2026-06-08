@@ -2,7 +2,20 @@ import { ShieldCheck, Sparkles, Timer } from "lucide-react";
 import { ApplicationForm } from "@/components/application/application-form";
 import { PublicShell } from "@/components/marketing/public-shell";
 
-export default function ApplyPage() {
+type ApplySearchParams = {
+  source?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+};
+
+export default async function ApplyPage({
+  searchParams
+}: {
+  searchParams?: Promise<ApplySearchParams>;
+}) {
+  const params = await searchParams;
+
   return (
     <PublicShell>
       <main className="capital-cinematic px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
@@ -40,7 +53,14 @@ export default function ApplyPage() {
               })}
             </div>
           </div>
-          <ApplicationForm />
+          <ApplicationForm
+            initialAttribution={{
+              source: params?.source ?? null,
+              utm_source: params?.utm_source ?? null,
+              utm_medium: params?.utm_medium ?? null,
+              utm_campaign: params?.utm_campaign ?? null
+            }}
+          />
         </section>
       </main>
     </PublicShell>

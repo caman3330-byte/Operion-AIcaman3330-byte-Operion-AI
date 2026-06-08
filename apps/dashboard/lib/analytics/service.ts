@@ -98,12 +98,13 @@ export async function getSubmissionAnalytics(window: OperationsAnalyticsWindow):
   const supabase = await getSupabaseAdmin();
   const { data } = await supabase
     .from("business_applications")
-    .select("status,updated_at")
+    .select("status,updated_at,metadata")
     .gte("created_at", window.from)
     .lte("created_at", window.to);
 
   const rows = data ?? [];
   const byStatus = countBy(rows, (row) => row.status);
+  const bySource = countBy(rows, (row) => readAttributionSource(row.metadata));
   const approved = rows.filter((row) => ["approved", "funded"].includes(row.status)).length;
   const staleCutoff = Date.now() - 72 * 60 * 60 * 1000;
   const staleLeadCount = rows.filter((row) => !["funded", "rejected", "withdrawn", "inactive"].includes(row.status) && new Date(row.updated_at).getTime() < staleCutoff).length;
@@ -111,6 +112,7 @@ export async function getSubmissionAnalytics(window: OperationsAnalyticsWindow):
   return {
     totalSubmissions: rows.length,
     byStatus,
+    bySource,
     approvalRatio: rows.length > 0 ? Number((approved / rows.length).toFixed(2)) : 0,
     staleLeadCount
   };
@@ -196,6 +198,25 @@ function countBy<T>(items: T[], keyFn: (item: T) => string): Record<string, numb
 
 function increment(target: Record<string, number>, key: string) {
   target[key] = (target[key] ?? 0) + 1;
+}
+
+function readAttributionSource(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "direct";
+  const record = metadata as Record<string, unknown>;
+  const attribution = record.attribution;
+  if (attribution && typeof attribution === "object" && !Array.isArray(attribution)) {
+    return normalizeSource((attribution as Record<string, unknown>).source);
+  }
+  return normalizeSource(record.source);
+}
+
+function normalizeSource(value: unknown) {
+  const source = String(value ?? "").trim().toLowerCase();
+  if (source === "instagram") return "instagram";
+  if (source === "business-funding") return "business-funding";
+  if (source === "organic") return "organic";
+  if (source === "referral") return "referral";
+  return "direct";
 }
 
 function categorizeFailure(message: string) {
