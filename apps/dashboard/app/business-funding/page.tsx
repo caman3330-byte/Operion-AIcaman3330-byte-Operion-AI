@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   UploadCloud
 } from "lucide-react";
+import { MerchantFunnelTracker } from "@/components/analytics/merchant-funnel-tracker";
+import { TrackedApplyLink } from "@/components/analytics/tracked-apply-link";
 import { OperionLogo } from "@/components/brand/operion-logo";
 import { PublicShell } from "@/components/marketing/public-shell";
 import { Button } from "@/components/ui/button";
@@ -52,6 +54,7 @@ const faqs = [
 export default function BusinessFundingPage() {
   return (
     <PublicShell className="bg-[#f8f5ec] text-[#17130c]">
+      <MerchantFunnelTracker event="business_funding_visit" source="business-funding" path="/business-funding" />
       <main className="bg-[#f8f5ec] text-[#17130c]">
         <section className="relative overflow-hidden border-b border-[#d7b76a]/25 bg-[#f8f5ec] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <div className="absolute inset-x-0 top-0 h-2 bg-[#d7b76a]" />
@@ -69,10 +72,10 @@ export default function BusinessFundingPage() {
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button asChild size="lg" className="bg-[#17130c] text-[#f8f5ec] hover:bg-[#2a2113]">
-                  <Link href="/apply?source=business-funding">
+                  <TrackedApplyLink source="business-funding" href="/apply?source=business-funding">
                     Apply in minutes
                     <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  </TrackedApplyLink>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="border-[#17130c]/20 bg-white text-[#17130c] hover:bg-[#fff8df] hover:text-[#17130c]">
                   <Link href="#process">See the process</Link>
@@ -172,10 +175,10 @@ export default function BusinessFundingPage() {
               </h2>
             </div>
             <Button asChild size="lg">
-              <Link href="/apply?source=business-funding-midpage">
+              <TrackedApplyLink source="business-funding" href="/apply?source=business-funding-midpage">
                 Apply now
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </TrackedApplyLink>
             </Button>
           </div>
         </section>
@@ -207,10 +210,10 @@ export default function BusinessFundingPage() {
                 <p className="mt-2 text-sm leading-6 text-[#635847]">Submit core details now. Upload statements only after the secure email link arrives.</p>
               </div>
               <Button asChild size="lg" className="bg-[#17130c] text-[#f8f5ec] hover:bg-[#2a2113]">
-                <Link href="/apply?source=business-funding-bottom">
+                <TrackedApplyLink source="business-funding" href="/apply?source=business-funding-bottom">
                   Start application
                   <ArrowRight className="h-4 w-4" />
-                </Link>
+                </TrackedApplyLink>
               </Button>
             </div>
           </div>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, LockKeyhole, Mail } from "lucide-react";
+import { trackMerchantFunnelEvent } from "@/components/analytics/merchant-funnel-tracker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
   const [step, setStep] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [started, setStarted] = useState(false);
   const [isPending, startTransition] = useTransition();
   const progress = useMemo(() => Math.round(((step + 1) / steps.length) * 100), [step]);
   const currentStep = steps[step] ?? steps[0]!;
@@ -66,6 +68,18 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
       attribution: normalizeAttribution(initialAttribution)
     };
 
+    if (!started) {
+      setStarted(true);
+      trackMerchantFunnelEvent({
+        event: "application_started",
+        source: payload.attribution.source,
+        path: "/apply",
+        utm_source: payload.attribution.utm_source,
+        utm_medium: payload.attribution.utm_medium,
+        utm_campaign: payload.attribution.utm_campaign
+      });
+    }
+
     startTransition(async () => {
       try {
         const response = await fetch("/api/applications", {
@@ -105,7 +119,24 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
   }
 
   return (
-    <form className="rounded-lg border border-primary/15 bg-black/35 p-6 shadow-2xl shadow-black/20 backdrop-blur" onSubmit={handleSubmit} noValidate>
+    <form
+      className="rounded-lg border border-primary/15 bg-black/35 p-6 shadow-2xl shadow-black/20 backdrop-blur"
+      onFocusCapture={() => {
+        if (started) return;
+        setStarted(true);
+        const attribution = normalizeAttribution(initialAttribution);
+        trackMerchantFunnelEvent({
+          event: "application_started",
+          source: attribution.source,
+          path: "/apply",
+          utm_source: attribution.utm_source,
+          utm_medium: attribution.utm_medium,
+          utm_campaign: attribution.utm_campaign
+        });
+      }}
+      onSubmit={handleSubmit}
+      noValidate
+    >
       <div className="mb-6">
         <div className="flex items-center justify-between gap-4">
           <div>

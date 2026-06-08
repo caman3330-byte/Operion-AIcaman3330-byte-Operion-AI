@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, LockKeyhole, ShieldCheck, UploadCloud } from "lucide-react";
+import { MerchantFunnelTracker } from "@/components/analytics/merchant-funnel-tracker";
+import { TrackedApplyLink } from "@/components/analytics/tracked-apply-link";
 import { OperionLogo } from "@/components/brand/operion-logo";
 import { Button } from "@/components/ui/button";
 
@@ -19,14 +21,15 @@ const faqs = [
 export default function InstagramFundingPage() {
   return (
     <main className="min-h-screen bg-[#f8f5ec] text-[#17130c]">
+      <MerchantFunnelTracker event="ig_visit" source="instagram" path="/ig" />
       <header className="border-b border-[#17130c]/10 bg-[#17130c] px-4 py-3 text-white">
         <div className="mx-auto flex max-w-md items-center justify-between gap-3">
           <Link href="/" aria-label="Operion Capital home">
             <OperionLogo size="sm" showTagline={false} collapseWordmarkOnMobile />
           </Link>
-          <Link href="/apply?source=instagram-header" className="rounded-md bg-[#d7b76a] px-3 py-2 text-xs font-bold text-[#17130c]">
+          <TrackedApplyLink source="instagram" href="/apply?source=instagram-header" className="rounded-md bg-[#d7b76a] px-3 py-2 text-xs font-bold text-[#17130c]">
             Apply
-          </Link>
+          </TrackedApplyLink>
         </div>
       </header>
 
@@ -49,10 +52,10 @@ export default function InstagramFundingPage() {
               ))}
             </div>
             <Button asChild size="lg" className="mt-6 w-full bg-[#17130c] text-[#f8f5ec] hover:bg-[#2a2113]">
-              <Link href="/apply?source=instagram-hero">
+              <TrackedApplyLink source="instagram" href="/apply?source=instagram-hero">
                 Check funding options
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </TrackedApplyLink>
             </Button>
             <p className="mt-3 text-center text-xs leading-5 text-[#6d6251]">
               No merchant dashboard. No document upload until after application submission.
@@ -112,10 +115,10 @@ export default function InstagramFundingPage() {
             ))}
           </div>
           <Button asChild size="lg" className="mt-5 w-full bg-[#17130c] text-[#f8f5ec] hover:bg-[#2a2113]">
-            <Link href="/apply?source=instagram-bottom">
+            <TrackedApplyLink source="instagram" href="/apply?source=instagram-bottom">
               Apply in minutes
               <ArrowRight className="h-4 w-4" />
-            </Link>
+            </TrackedApplyLink>
           </Button>
         </div>
       </section>
