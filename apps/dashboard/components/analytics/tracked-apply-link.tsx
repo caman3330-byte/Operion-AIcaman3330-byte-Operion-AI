@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Route } from "next";
-import type { ComponentProps } from "react";
+import type { ComponentProps, MouseEvent } from "react";
 import { trackMerchantFunnelEvent } from "./merchant-funnel-tracker";
 
 type TrackedApplyLinkProps = ComponentProps<typeof Link> & {
@@ -17,7 +17,7 @@ export function TrackedApplyLink({ source, utmSource, utmMedium, utmCampaign, on
     <Link
       {...props}
       href={href as Route}
-      onClick={(event) => {
+      onClick={(event: MouseEvent<HTMLAnchorElement>) => {
         trackMerchantFunnelEvent({
           event: "apply_cta_click",
           source,
