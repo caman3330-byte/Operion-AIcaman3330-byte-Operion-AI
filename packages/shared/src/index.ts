@@ -64,6 +64,8 @@ export type AgentMemoryScope = "global" | "department" | "agent" | "workflow" | 
 export type AgentApprovalStatus = "pending" | "approved" | "rejected" | "expired";
 export type ExecutiveReportType = "daily" | "weekly" | "incident" | "manual";
 export type LeadSourceType = "apollo" | "google_maps" | "directory" | "website" | "manual_upload" | "n8n" | "api";
+export type MerchantSourceType = "chamber" | "association" | "directory" | "contractor_listing" | "company_seed";
+export type MerchantSourceHealthStatus = "active" | "degraded" | "blocked" | "disabled";
 export type AcquisitionJobType =
   | "business_discovery"
   | "lead_ingestion"
@@ -550,6 +552,42 @@ export type LeadSource = {
   active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type MerchantAcquisitionSource = {
+  id: string;
+  source_url: string;
+  source_name: string;
+  source_type: MerchantSourceType;
+  industry: string;
+  state: string | null;
+  active: boolean;
+  health_status: MerchantSourceHealthStatus;
+  last_scanned_at: string | null;
+  success_rate: number;
+  scan_success_count: number;
+  scan_failure_count: number;
+  robots_blocked_count: number;
+  extracted_business_count: number;
+  last_error: string | null;
+  metadata: Json;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MerchantAcquisitionSourceScan = {
+  id: string;
+  source_id: string;
+  status: AcquisitionJobStatus;
+  started_at: string;
+  completed_at: string | null;
+  extracted_businesses: number;
+  verified_businesses: number;
+  rejected_businesses: number;
+  duplicate_businesses: number;
+  robots_blocked: boolean;
+  error_message: string | null;
+  metadata: Json;
 };
 
 export type BusinessContact = {

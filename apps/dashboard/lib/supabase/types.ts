@@ -54,6 +54,10 @@ import type {
   LeadSourceType,
   LeadStatus,
   LeadTier,
+  MerchantAcquisitionSource,
+  MerchantAcquisitionSourceScan,
+  MerchantSourceHealthStatus,
+  MerchantSourceType,
   Lender,
   LenderMatch,
   LenderMatchStatus,
@@ -150,6 +154,12 @@ export type ExecutiveReportInsert = LoosePartial<Omit<ExecutiveReport, "id" | "c
 export type LeadSourceInsert = LoosePartial<Omit<LeadSource, "id" | "created_at" | "updated_at">> &
   Pick<LeadSource, "source_key" | "name" | "source_type">;
 export type LeadSourceUpdate = LoosePartial<Omit<LeadSource, "id" | "created_at" | "source_key">>;
+export type MerchantAcquisitionSourceInsert = LoosePartial<Omit<MerchantAcquisitionSource, "id" | "created_at" | "updated_at">> &
+  Pick<MerchantAcquisitionSource, "source_url" | "source_name" | "source_type" | "industry">;
+export type MerchantAcquisitionSourceUpdate = LoosePartial<Omit<MerchantAcquisitionSource, "id" | "created_at" | "source_url">>;
+export type MerchantAcquisitionSourceScanInsert = LoosePartial<Omit<MerchantAcquisitionSourceScan, "id">> &
+  Pick<MerchantAcquisitionSourceScan, "source_id">;
+export type MerchantAcquisitionSourceScanUpdate = LoosePartial<Omit<MerchantAcquisitionSourceScan, "id" | "source_id">>;
 export type BusinessContactInsert = LoosePartial<Omit<BusinessContact, "id" | "created_at" | "updated_at">>;
 export type BusinessContactUpdate = LoosePartial<Omit<BusinessContact, "id" | "created_at">>;
 export type LeadEnrichmentInsert = LoosePartial<Omit<LeadEnrichmentRecord, "id" | "created_at" | "updated_at">> &
@@ -415,6 +425,18 @@ export interface Database {
         Update: LeadSourceUpdate;
         Relationships: [];
       };
+      merchant_acquisition_sources: {
+        Row: MerchantAcquisitionSource;
+        Insert: MerchantAcquisitionSourceInsert;
+        Update: MerchantAcquisitionSourceUpdate;
+        Relationships: [];
+      };
+      merchant_acquisition_source_scans: {
+        Row: MerchantAcquisitionSourceScan;
+        Insert: MerchantAcquisitionSourceScanInsert;
+        Update: MerchantAcquisitionSourceScanUpdate;
+        Relationships: [];
+      };
       business_contacts: {
         Row: BusinessContact;
         Insert: BusinessContactInsert;
@@ -660,6 +682,8 @@ export interface Database {
       suppression_type: "email" | "domain" | "business_name" | "apollo_id" | "phone";
       added_by: "system" | "founder";
       lead_source_type: LeadSourceType;
+      merchant_source_type: MerchantSourceType;
+      merchant_source_health_status: MerchantSourceHealthStatus;
       acquisition_job_type: AcquisitionJobType;
       acquisition_job_status: AcquisitionJobStatus;
       enrichment_status: EnrichmentStatus;

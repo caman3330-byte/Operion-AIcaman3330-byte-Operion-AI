@@ -16,6 +16,9 @@ import type {
   LeadEnrichmentInsert,
   LeadEnrichmentUpdate,
   LeadSourceInsert,
+  MerchantAcquisitionSourceScanInsert,
+  MerchantAcquisitionSourceScanUpdate,
+  MerchantAcquisitionSourceUpdate,
   OutreachCampaignInsert,
   OutreachCampaignUpdate,
   OutreachEmailQueueInsert,
@@ -51,6 +54,53 @@ export const acquisitionRepository = {
     const { data, error } = await supabase.from("lead_sources").select("*").eq("source_key", sourceKey).maybeSingle();
     if (error) throwAcquisitionDatabaseError(error);
     return data;
+  },
+
+  async listMerchantSources(options: { activeOnly?: boolean; limit?: number } = {}) {
+    const supabase = getSupabaseAdmin();
+    let query = supabase
+      .from("merchant_acquisition_sources")
+      .select("*")
+      .order("active", { ascending: false })
+      .order("health_status", { ascending: true })
+      .order("last_scanned_at", { ascending: true, nullsFirst: true })
+      .limit(options.limit ?? 200);
+    if (options.activeOnly) query = query.eq("active", true).neq("health_status", "disabled");
+    const { data, error } = await query;
+    if (error) throwAcquisitionDatabaseError(error);
+    return data ?? [];
+  },
+
+  async createMerchantSourceScan(payload: MerchantAcquisitionSourceScanInsert) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from("merchant_acquisition_source_scans").insert(payload).select("*").single();
+    if (error) throwAcquisitionDatabaseError(error);
+    return data;
+  },
+
+  async updateMerchantSourceScan(id: string, payload: MerchantAcquisitionSourceScanUpdate) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from("merchant_acquisition_source_scans").update(payload).eq("id", id).select("*").single();
+    if (error || !data) throwAcquisitionDatabaseError(error ?? { message: "Merchant acquisition source scan not found" });
+    return data;
+  },
+
+  async updateMerchantSource(id: string, payload: MerchantAcquisitionSourceUpdate) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from("merchant_acquisition_sources").update(payload).eq("id", id).select("*").single();
+    if (error || !data) throwAcquisitionDatabaseError(error ?? { message: "Merchant acquisition source not found" });
+    return data;
+  },
+
+  async listMerchantSourceScans(limit = 50) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("merchant_acquisition_source_scans")
+      .select("*")
+      .order("started_at", { ascending: false })
+      .limit(limit);
+    if (error) throwAcquisitionDatabaseError(error);
+    return data ?? [];
   },
 
   async listJobs(limit = 100) {
@@ -457,6 +507,8 @@ function throwAcquisitionDatabaseError(error: { code?: string; message?: string 
     error.code === "PGRST205" ||
     [
       "lead_sources",
+      "merchant_acquisition_sources",
+      "merchant_acquisition_source_scans",
       "business_contacts",
       "lead_enrichment",
       "acquisition_jobs",

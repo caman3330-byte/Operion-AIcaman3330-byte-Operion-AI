@@ -5,6 +5,7 @@ import {
   BrainCircuit,
   Building2,
   ClipboardList,
+  DatabaseZap,
   FileBarChart,
   Gauge,
   type LucideIcon,
@@ -39,6 +40,7 @@ export const departmentNavGroups: DepartmentNavGroup[] = [
     items: [
       { href: "/acquisition", label: "Acquisition", icon: Search },
       { href: "/merchant-acquisition", label: "Funnel", icon: Activity },
+      { href: "/merchant-sources", label: "Sources", icon: DatabaseZap },
       { href: "/leads", label: "Leads", icon: ClipboardList },
       { href: "/merchants", label: "Merchants", icon: BadgeDollarSign },
       { href: "/outreach", label: "Outreach", icon: Mail }
