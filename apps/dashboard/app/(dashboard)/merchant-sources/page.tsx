@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, DatabaseZap, Globe2, ShieldCheck } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Clock3, DatabaseZap, Globe2, ShieldCheck } from "lucide-react";
 import { MetricCard } from "@/components/metrics/metric-card";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { Badge } from "@/components/ui/badge";
@@ -13,11 +13,14 @@ export default async function MerchantSourcesPage() {
   const access = await getInternalPageAccess();
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
 
-  const [sources, scans] = await Promise.all([
+  const [sources, scans, importQueue, metrics] = await Promise.all([
     acquisitionRepository.listMerchantSources({ limit: 200 }),
-    acquisitionRepository.listMerchantSourceScans(25)
+    acquisitionRepository.listMerchantSourceScans(25),
+    acquisitionRepository.listMerchantImportQueue(25),
+    acquisitionRepository.merchantAcquisitionDepartmentMetrics()
   ]);
   const activeSources = sources.filter((source) => source.active && source.health_status !== "disabled");
+  const pendingSourceApprovals = sources.filter((source) => source.approval_status === "pending_review");
   const blockedSources = sources.filter((source) => source.health_status === "blocked");
   const degradedSources = sources.filter((source) => source.health_status === "degraded");
   const extractedBusinesses = sources.reduce((sum, source) => sum + Number(source.extracted_business_count ?? 0), 0);
@@ -32,10 +35,13 @@ export default async function MerchantSourcesPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Merchant Pipeline</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-normal">Merchant Acquisition Sources</h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Registry and scan health for real merchant lead sources. Scans remain approval-gated and imports require verified score 80+.
+            Registry, scan health, and founder import review for real merchant acquisition. Scans remain approval-gated and imports require verified score 80+.
           </p>
         </div>
-        <Badge variant="secondary">Scheduler ready, not automatic</Badge>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="secondary">Scheduler disabled by default</Badge>
+          <Badge variant="outline">No automatic CRM imports</Badge>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -44,6 +50,57 @@ export default async function MerchantSourcesPage() {
         <MetricCard title="Extracted Businesses" value={String(extractedBusinesses)} detail="Across tracked scans" icon={Globe2} />
         <MetricCard title="Blocked / Degraded" value={`${blockedSources.length}/${degradedSources.length}`} detail="Robots blocked / scan degraded" icon={AlertTriangle} tone={blockedSources.length + degradedSources.length > 0 ? "warning" : "success"} />
       </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title="Sources Scanned" value={String(metrics.sources_scanned)} detail="Historical scan records" icon={Activity} />
+        <MetricCard title="Candidates Enriched" value={String(metrics.candidates_enriched)} detail={`${metrics.candidates_discovered} discovered`} icon={Globe2} />
+        <MetricCard title="Verified Merchants" value={String(metrics.verified_merchants)} detail="Website + phone + identity" icon={CheckCircle2} tone="success" />
+        <MetricCard title="Pending Imports" value={String(metrics.pending_imports)} detail={`${metrics.candidate_sources_pending_review} sources need approval`} icon={Clock3} tone={metrics.pending_imports > 0 ? "warning" : "default"} />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Verified Merchant Import Queue</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Merchant</TableHead>
+                <TableHead>Industry</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="text-right">Score</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {importQueue.map((candidate) => (
+                <TableRow key={candidate.id}>
+                  <TableCell>
+                    <div className="max-w-md">
+                      <p className="font-medium">{candidate.business_name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{candidate.website_url}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="capitalize">{candidate.industry.replace(/_/g, " ")}</TableCell>
+                  <TableCell>{candidate.business_phone ?? "Missing"}</TableCell>
+                  <TableCell>{candidate.business_email ?? "Not found"}</TableCell>
+                  <TableCell className="text-right">{candidate.quality_score}</TableCell>
+                  <TableCell><Badge variant="warning">Founder review</Badge></TableCell>
+                </TableRow>
+              ))}
+              {importQueue.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    No verified merchants are waiting for founder import review yet.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -56,6 +113,7 @@ export default async function MerchantSourcesPage() {
                 <TableHead>Source</TableHead>
                 <TableHead>Industry</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Approval</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Success</TableHead>
                 <TableHead className="text-right">Extracted</TableHead>
@@ -79,6 +137,11 @@ export default async function MerchantSourcesPage() {
                   </TableCell>
                   <TableCell className="capitalize">{source.source_type.replace(/_/g, " ")}</TableCell>
                   <TableCell>
+                    <Badge variant={source.approval_status === "approved" ? "success" : source.approval_status === "rejected" ? "destructive" : "warning"}>
+                      {source.approval_status.replace(/_/g, " ")}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={healthVariant(source.health_status)}>
                       {source.health_status}
                     </Badge>
@@ -90,8 +153,50 @@ export default async function MerchantSourcesPage() {
               ))}
               {sources.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
                     No merchant acquisition sources are registered yet. Apply migration 0020 to seed starter sources.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Candidate Sources Awaiting Approval</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Source</TableHead>
+                <TableHead>Industry</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pendingSourceApprovals.map((source) => (
+                <TableRow key={source.id}>
+                  <TableCell>
+                    <div className="max-w-md">
+                      <p className="font-medium">{source.source_name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{source.source_url}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="capitalize">{source.industry.replace(/_/g, " ")}</TableCell>
+                  <TableCell className="capitalize">{source.source_type.replace(/_/g, " ")}</TableCell>
+                  <TableCell>{source.state ?? "National"}</TableCell>
+                  <TableCell><Badge variant="warning">Needs founder approval</Badge></TableCell>
+                </TableRow>
+              ))}
+              {pendingSourceApprovals.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                    No newly discovered source candidates are waiting for approval.
                   </TableCell>
                 </TableRow>
               ) : null}

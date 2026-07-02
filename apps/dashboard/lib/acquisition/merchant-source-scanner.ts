@@ -18,7 +18,11 @@ export interface MerchantSourceScanOptions {
 
 export async function scanMerchantAcquisitionSources(options: MerchantSourceScanOptions) {
   const sources = (await acquisitionRepository.listMerchantSources({ activeOnly: true, limit: options.sourceLimit ?? 10 }))
-    .filter((source) => source.health_status !== "blocked" && source.health_status !== "disabled");
+    .filter((source) =>
+      source.approval_status === "approved" &&
+      source.health_status !== "blocked" &&
+      source.health_status !== "disabled"
+    );
   const results = [];
 
   for (const source of sources) {
@@ -99,17 +103,18 @@ async function scanMerchantSource(source: MerchantAcquisitionSource, options: Me
     const rejected = previews.length - verified;
     const duplicateCount = deduped.duplicates.length + databaseDuplicates;
     const status = discovery.errors.length > 0 && discovery.records.length === 0 ? "failed" : "completed";
+    const sourceTotals = calculateSourceTotals(source, {
+      success: status === "completed",
+      robotsBlocked,
+      extracted: discovery.records.length
+    });
     const healthStatus = nextHealthStatus({
       previous: source.health_status,
       status,
       robotsBlocked,
       extracted: discovery.records.length,
-      errors: discovery.errors.length
-    });
-    const sourceTotals = calculateSourceTotals(source, {
-      success: status === "completed",
-      robotsBlocked,
-      extracted: discovery.records.length
+      errors: discovery.errors.length,
+      failureStreak: sourceTotals.failureStreak
     });
 
     await acquisitionRepository.updateMerchantSourceScan(scan.id, {
@@ -135,7 +140,10 @@ async function scanMerchantSource(source: MerchantAcquisitionSource, options: Me
       scan_failure_count: sourceTotals.failureCount,
       robots_blocked_count: sourceTotals.robotsBlockedCount,
       extracted_business_count: sourceTotals.extractedBusinessCount,
-      last_error: discovery.errors.join("; ") || null
+      last_error: discovery.errors.join("; ") || null,
+      failure_streak: sourceTotals.failureStreak,
+      active: healthStatus !== "disabled",
+      disabled_reason: healthStatus === "disabled" ? sourceTotals.disabledReason : null
     });
 
     return {
@@ -159,10 +167,20 @@ async function scanMerchantSource(source: MerchantAcquisitionSource, options: Me
       error_message: message
     });
     await acquisitionRepository.updateMerchantSource(source.id, {
-      health_status: nextHealthStatus({ previous: source.health_status, status: "failed", robotsBlocked: false, extracted: 0, errors: 1 }),
+      health_status: nextHealthStatus({
+        previous: source.health_status,
+        status: "failed",
+        robotsBlocked: false,
+        extracted: 0,
+        errors: 1,
+        failureStreak: sourceTotals.failureStreak
+      }),
+      active: sourceTotals.failureStreak < 3,
       last_scanned_at: new Date().toISOString(),
       success_rate: sourceTotals.successRate,
       scan_failure_count: sourceTotals.failureCount,
+      failure_streak: sourceTotals.failureStreak,
+      disabled_reason: sourceTotals.failureStreak >= 3 ? "Auto-disabled after 3 consecutive scan failures" : null,
       last_error: message
     });
     logger.warn("merchant_source_scan_failed", { source_id: source.id, source_url: source.source_url, error: message });
@@ -194,8 +212,10 @@ function nextHealthStatus(input: {
   robotsBlocked: boolean;
   extracted: number;
   errors: number;
+  failureStreak: number;
 }): MerchantSourceHealthStatus {
   if (input.previous === "disabled") return "disabled";
+  if (input.failureStreak >= 3) return "disabled";
   if (input.robotsBlocked) return "blocked";
   if (input.status === "failed" || (input.errors > 0 && input.extracted === 0)) return "degraded";
   return "active";
@@ -213,6 +233,8 @@ function calculateSourceTotals(
     failureCount,
     robotsBlockedCount: source.robots_blocked_count + (result.robotsBlocked ? 1 : 0),
     extractedBusinessCount: source.extracted_business_count + result.extracted,
+    failureStreak: result.success ? 0 : source.failure_streak + 1,
+    disabledReason: result.success ? null : "Auto-disabled after 3 consecutive scan failures",
     successRate: totalScans === 0 ? 0 : Math.round((successCount / totalScans) * 10000) / 100
   };
 }

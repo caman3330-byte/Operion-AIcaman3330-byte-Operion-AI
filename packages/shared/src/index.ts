@@ -66,6 +66,9 @@ export type ExecutiveReportType = "daily" | "weekly" | "incident" | "manual";
 export type LeadSourceType = "apollo" | "google_maps" | "directory" | "website" | "manual_upload" | "n8n" | "api";
 export type MerchantSourceType = "chamber" | "association" | "directory" | "contractor_listing" | "company_seed";
 export type MerchantSourceHealthStatus = "active" | "degraded" | "blocked" | "disabled";
+export type MerchantSourceApprovalStatus = "pending_review" | "approved" | "rejected";
+export type MerchantCandidateEnrichmentStatus = "queued" | "running" | "completed" | "failed" | "rejected";
+export type MerchantCandidateImportReviewStatus = "pending_review" | "approved" | "rejected" | "imported";
 export type AcquisitionJobType =
   | "business_discovery"
   | "lead_ingestion"
@@ -562,6 +565,9 @@ export type MerchantAcquisitionSource = {
   industry: string;
   state: string | null;
   active: boolean;
+  approval_status: MerchantSourceApprovalStatus;
+  approved_at: string | null;
+  approved_by: string | null;
   health_status: MerchantSourceHealthStatus;
   last_scanned_at: string | null;
   success_rate: number;
@@ -570,6 +576,8 @@ export type MerchantAcquisitionSource = {
   robots_blocked_count: number;
   extracted_business_count: number;
   last_error: string | null;
+  disabled_reason: string | null;
+  failure_streak: number;
   metadata: Json;
   created_at: string;
   updated_at: string;
@@ -588,6 +596,36 @@ export type MerchantAcquisitionSourceScan = {
   robots_blocked: boolean;
   error_message: string | null;
   metadata: Json;
+};
+
+export type MerchantAcquisitionCandidate = {
+  id: string;
+  source_id: string;
+  business_name: string;
+  website_url: string;
+  domain: string;
+  industry: string;
+  state: string | null;
+  source_phone: string | null;
+  business_phone: string | null;
+  business_email: string | null;
+  contact_page_url: string | null;
+  company_description: string | null;
+  website_verified: boolean;
+  phone_verified: boolean;
+  email_found: boolean;
+  identity_match: boolean;
+  enrichment_status: MerchantCandidateEnrichmentStatus;
+  import_review_status: MerchantCandidateImportReviewStatus;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  review_notes: string | null;
+  quality_score: number;
+  rejection_reason: string | null;
+  last_enriched_at: string | null;
+  raw_payload: Json;
+  created_at: string;
+  updated_at: string;
 };
 
 export type BusinessContact = {

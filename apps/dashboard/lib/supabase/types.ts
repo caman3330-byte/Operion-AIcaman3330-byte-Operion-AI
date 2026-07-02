@@ -55,7 +55,11 @@ import type {
   LeadStatus,
   LeadTier,
   MerchantAcquisitionSource,
+  MerchantAcquisitionCandidate,
   MerchantAcquisitionSourceScan,
+  MerchantCandidateImportReviewStatus,
+  MerchantCandidateEnrichmentStatus,
+  MerchantSourceApprovalStatus,
   MerchantSourceHealthStatus,
   MerchantSourceType,
   Lender,
@@ -160,6 +164,9 @@ export type MerchantAcquisitionSourceUpdate = LoosePartial<Omit<MerchantAcquisit
 export type MerchantAcquisitionSourceScanInsert = LoosePartial<Omit<MerchantAcquisitionSourceScan, "id">> &
   Pick<MerchantAcquisitionSourceScan, "source_id">;
 export type MerchantAcquisitionSourceScanUpdate = LoosePartial<Omit<MerchantAcquisitionSourceScan, "id" | "source_id">>;
+export type MerchantAcquisitionCandidateInsert = LoosePartial<Omit<MerchantAcquisitionCandidate, "id" | "created_at" | "updated_at">> &
+  Pick<MerchantAcquisitionCandidate, "source_id" | "business_name" | "website_url" | "domain" | "industry">;
+export type MerchantAcquisitionCandidateUpdate = LoosePartial<Omit<MerchantAcquisitionCandidate, "id" | "created_at" | "source_id" | "domain">>;
 export type BusinessContactInsert = LoosePartial<Omit<BusinessContact, "id" | "created_at" | "updated_at">>;
 export type BusinessContactUpdate = LoosePartial<Omit<BusinessContact, "id" | "created_at">>;
 export type LeadEnrichmentInsert = LoosePartial<Omit<LeadEnrichmentRecord, "id" | "created_at" | "updated_at">> &
@@ -437,6 +444,12 @@ export interface Database {
         Update: MerchantAcquisitionSourceScanUpdate;
         Relationships: [];
       };
+      merchant_acquisition_candidates: {
+        Row: MerchantAcquisitionCandidate;
+        Insert: MerchantAcquisitionCandidateInsert;
+        Update: MerchantAcquisitionCandidateUpdate;
+        Relationships: [];
+      };
       business_contacts: {
         Row: BusinessContact;
         Insert: BusinessContactInsert;
@@ -684,6 +697,9 @@ export interface Database {
       lead_source_type: LeadSourceType;
       merchant_source_type: MerchantSourceType;
       merchant_source_health_status: MerchantSourceHealthStatus;
+      merchant_source_approval_status: MerchantSourceApprovalStatus;
+      merchant_candidate_enrichment_status: MerchantCandidateEnrichmentStatus;
+      merchant_candidate_import_review_status: MerchantCandidateImportReviewStatus;
       acquisition_job_type: AcquisitionJobType;
       acquisition_job_status: AcquisitionJobStatus;
       enrichment_status: EnrichmentStatus;

@@ -1,0 +1,2 @@
+create unique index if not exists idx_merchant_candidates_source_domain_exact_unique
+on merchant_acquisition_candidates(source_id, domain);

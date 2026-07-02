@@ -3,6 +3,7 @@ import type {
   AcquisitionSummary,
   Lead,
   LeadStatus,
+  MerchantCandidateEnrichmentStatus,
   OutreachEmailStatus,
   ReplyClassification
 } from "@operion/shared";
@@ -16,6 +17,9 @@ import type {
   LeadEnrichmentInsert,
   LeadEnrichmentUpdate,
   LeadSourceInsert,
+  MerchantAcquisitionCandidateInsert,
+  MerchantAcquisitionCandidateUpdate,
+  MerchantAcquisitionSourceInsert,
   MerchantAcquisitionSourceScanInsert,
   MerchantAcquisitionSourceScanUpdate,
   MerchantAcquisitionSourceUpdate,
@@ -71,6 +75,17 @@ export const acquisitionRepository = {
     return data ?? [];
   },
 
+  async upsertMerchantSource(payload: MerchantAcquisitionSourceInsert) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("merchant_acquisition_sources")
+      .upsert(payload, { onConflict: "source_url" })
+      .select("*")
+      .single();
+    if (error) throwAcquisitionDatabaseError(error);
+    return data;
+  },
+
   async createMerchantSourceScan(payload: MerchantAcquisitionSourceScanInsert) {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.from("merchant_acquisition_source_scans").insert(payload).select("*").single();
@@ -101,6 +116,99 @@ export const acquisitionRepository = {
       .limit(limit);
     if (error) throwAcquisitionDatabaseError(error);
     return data ?? [];
+  },
+
+  async upsertMerchantCandidate(payload: MerchantAcquisitionCandidateInsert) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("merchant_acquisition_candidates")
+      .upsert(payload, { onConflict: "source_id,domain" })
+      .select("*")
+      .single();
+    if (error) throwAcquisitionDatabaseError(error);
+    return data;
+  },
+
+  async listMerchantCandidates(options: { sourceId?: string; status?: MerchantCandidateEnrichmentStatus; limit?: number } = {}) {
+    const supabase = getSupabaseAdmin();
+    let query = supabase
+      .from("merchant_acquisition_candidates")
+      .select("*")
+      .order("quality_score", { ascending: false })
+      .order("updated_at", { ascending: false })
+      .limit(options.limit ?? 100);
+    if (options.sourceId) query = query.eq("source_id", options.sourceId);
+    if (options.status) query = query.eq("enrichment_status", options.status);
+    const { data, error } = await query;
+    if (error) throwAcquisitionDatabaseError(error);
+    return data ?? [];
+  },
+
+  async listMerchantImportQueue(limit = 100) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("merchant_acquisition_candidates")
+      .select("*")
+      .eq("enrichment_status", "completed")
+      .eq("website_verified", true)
+      .eq("phone_verified", true)
+      .eq("identity_match", true)
+      .eq("import_review_status", "pending_review")
+      .gte("quality_score", 80)
+      .order("quality_score", { ascending: false })
+      .order("last_enriched_at", { ascending: false, nullsFirst: false })
+      .limit(Math.max(limit * 2, 100));
+    if (error) throwAcquisitionDatabaseError(error);
+    return (data ?? []).filter(isUsableMerchantImportCandidate).slice(0, limit);
+  },
+
+  async merchantAcquisitionDepartmentMetrics() {
+    const supabase = getSupabaseAdmin();
+    const [sources, scans, candidates, pendingImports] = await Promise.all([
+      supabase.from("merchant_acquisition_sources").select("active,approval_status,health_status"),
+      supabase.from("merchant_acquisition_source_scans").select("id"),
+      supabase
+        .from("merchant_acquisition_candidates")
+        .select("business_name,domain,business_email,enrichment_status,import_review_status,quality_score,website_verified,phone_verified,identity_match"),
+      supabase
+        .from("merchant_acquisition_candidates")
+        .select("*")
+        .eq("enrichment_status", "completed")
+        .eq("website_verified", true)
+        .eq("phone_verified", true)
+        .eq("identity_match", true)
+        .eq("import_review_status", "pending_review")
+        .gte("quality_score", 80)
+    ]);
+    if (sources.error) throwAcquisitionDatabaseError(sources.error);
+    if (scans.error) throwAcquisitionDatabaseError(scans.error);
+    if (candidates.error) throwAcquisitionDatabaseError(candidates.error);
+    if (pendingImports.error) throwAcquisitionDatabaseError(pendingImports.error);
+    const sourceRows = sources.data ?? [];
+    const candidateRows = candidates.data ?? [];
+    return {
+      sources_scanned: scans.data?.length ?? 0,
+      candidate_sources_pending_review: sourceRows.filter((source) => source.approval_status === "pending_review").length,
+      active_sources: sourceRows.filter((source) => source.active && source.health_status !== "disabled").length,
+      candidates_discovered: candidateRows.length,
+      candidates_enriched: candidateRows.filter((candidate) => ["completed", "rejected", "failed"].includes(candidate.enrichment_status)).length,
+      verified_merchants: candidateRows.filter((candidate) =>
+        candidate.enrichment_status === "completed" &&
+        candidate.website_verified &&
+        candidate.phone_verified &&
+        candidate.identity_match &&
+        Number(candidate.quality_score ?? 0) >= 80 &&
+        isUsableMerchantImportCandidate(candidate)
+      ).length,
+      pending_imports: (pendingImports.data ?? []).filter(isUsableMerchantImportCandidate).length
+    };
+  },
+
+  async updateMerchantCandidate(id: string, payload: MerchantAcquisitionCandidateUpdate) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from("merchant_acquisition_candidates").update(payload).eq("id", id).select("*").single();
+    if (error || !data) throwAcquisitionDatabaseError(error ?? { message: "Merchant acquisition candidate not found" });
+    return data;
   },
 
   async listJobs(limit = 100) {
@@ -500,6 +608,20 @@ function similarBusinessName(left: string, right: string) {
   return intersection / new Set([...leftTokens, ...rightTokens]).size >= 0.8;
 }
 
+function isUsableMerchantImportCandidate(candidate: {
+  business_name?: string | null;
+  domain?: string | null;
+  business_email?: string | null;
+}) {
+  const name = candidate.business_name ?? "";
+  const domain = candidate.domain ?? "";
+  const email = candidate.business_email ?? "";
+  const sourceOrPlatformName = /\b(my courses|benefits|catalog|subscribe|roofing alliance|professional roofing|everybody needs a roof|careers in roofing|tiktok|chat with us|donate|search our national database|privacy policy|member login|join acca|marketplace|website by|powered by|membership directory|yourmembership|upgrade your browser|photos|sunbelt builders show|foundation|product depot|find an iec chapter|tdlr renew)\b/i;
+  const sourceOrPlatformDomain = /\b(nrca|mycrowdwisdom|blob\.core\.windows|confirmsubscription|roofingalliance|professionalroofing|everybodyneedsaroof|careersinroofing|tiktok|livechat|givelively|phccweb|webpolicyportal|wearecis|b2clogin|hubs\.li|hvacindustrymarketplace|aimg|higherlogic|emflipbooks|yourmembership|browsehappy|flickr|sunbeltbuildersshow|texasbuildersfoundation|tabproductdepot|growthzonecms|ieci|tdlr\.texas)\b/i;
+  const placeholderEmail = /(@company\.com|@companyname\.com|latinotype\.com)$/i;
+  return !sourceOrPlatformName.test(name) && !sourceOrPlatformDomain.test(domain) && !placeholderEmail.test(email);
+}
+
 function throwAcquisitionDatabaseError(error: { code?: string; message?: string }): never {
   const message = error.message ?? "";
   if (
@@ -509,6 +631,7 @@ function throwAcquisitionDatabaseError(error: { code?: string; message?: string 
       "lead_sources",
       "merchant_acquisition_sources",
       "merchant_acquisition_source_scans",
+      "merchant_acquisition_candidates",
       "business_contacts",
       "lead_enrichment",
       "acquisition_jobs",
