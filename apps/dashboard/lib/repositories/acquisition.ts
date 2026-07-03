@@ -23,6 +23,8 @@ import type {
   MerchantAcquisitionSourceScanInsert,
   MerchantAcquisitionSourceScanUpdate,
   MerchantAcquisitionSourceUpdate,
+  MerchantSourceDiscoveryRunInsert,
+  MerchantSourceDiscoveryRunUpdate,
   OutreachCampaignInsert,
   OutreachCampaignUpdate,
   OutreachEmailQueueInsert,
@@ -105,6 +107,31 @@ export const acquisitionRepository = {
     const { data, error } = await supabase.from("merchant_acquisition_sources").update(payload).eq("id", id).select("*").single();
     if (error || !data) throwAcquisitionDatabaseError(error ?? { message: "Merchant acquisition source not found" });
     return data;
+  },
+
+  async createMerchantSourceDiscoveryRun(payload: MerchantSourceDiscoveryRunInsert) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from("merchant_source_discovery_runs").insert(payload).select("*").single();
+    if (error) throwAcquisitionDatabaseError(error);
+    return data;
+  },
+
+  async updateMerchantSourceDiscoveryRun(id: string, payload: MerchantSourceDiscoveryRunUpdate) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from("merchant_source_discovery_runs").update(payload).eq("id", id).select("*").single();
+    if (error || !data) throwAcquisitionDatabaseError(error ?? { message: "Merchant source discovery run not found" });
+    return data;
+  },
+
+  async listMerchantSourceDiscoveryRuns(limit = 20) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("merchant_source_discovery_runs")
+      .select("*")
+      .order("started_at", { ascending: false })
+      .limit(limit);
+    if (error) throwAcquisitionDatabaseError(error);
+    return data ?? [];
   },
 
   async listMerchantSourceScans(limit = 50) {
@@ -201,6 +228,47 @@ export const acquisitionRepository = {
         isUsableMerchantImportCandidate(candidate)
       ).length,
       pending_imports: (pendingImports.data ?? []).filter(isUsableMerchantImportCandidate).length
+    };
+  },
+
+  async merchantIntelligenceMetrics() {
+    const supabase = getSupabaseAdmin();
+    const [sources, candidates, scans] = await Promise.all([
+      supabase
+        .from("merchant_acquisition_sources")
+        .select("industry,state,active,approval_status,health_status,success_rate,source_quality_score,acquisition_yield_score,recommendation,robots_accessible,test_businesses_validated,estimated_merchant_count"),
+      supabase
+        .from("merchant_acquisition_candidates")
+        .select("source_id,enrichment_status,quality_score,website_verified,phone_verified,identity_match"),
+      supabase.from("merchant_acquisition_source_scans").select("id,status,robots_blocked")
+    ]);
+    if (sources.error) throwAcquisitionDatabaseError(sources.error);
+    if (candidates.error) throwAcquisitionDatabaseError(candidates.error);
+    if (scans.error) throwAcquisitionDatabaseError(scans.error);
+
+    const sourceRows = sources.data ?? [];
+    const candidateRows = candidates.data ?? [];
+    const activeRows = sourceRows.filter((source) => source.active && source.approval_status === "approved" && source.health_status === "active");
+    const verifiedMerchants = candidateRows.filter((candidate) =>
+      candidate.enrichment_status === "completed" &&
+      candidate.website_verified &&
+      candidate.phone_verified &&
+      candidate.identity_match &&
+      Number(candidate.quality_score ?? 0) >= 80
+    ).length;
+    return {
+      candidate_sources: sourceRows.filter((source) => source.approval_status === "pending_review").length,
+      active_sources: activeRows.length,
+      failed_sources: sourceRows.filter((source) => source.health_status === "degraded" || source.health_status === "disabled").length,
+      robots_blocked: sourceRows.filter((source) => source.robots_accessible === false || source.health_status === "blocked").length,
+      verified_merchants_discovered: verifiedMerchants,
+      estimated_acquisition_capacity: sourceRows.reduce((sum, source) => sum + Number(source.estimated_merchant_count ?? 0), 0),
+      average_yield_score: average(sourceRows.map((source) => Number(source.acquisition_yield_score ?? 0))),
+      promote_recommendations: sourceRows.filter((source) => source.recommendation === "promote").length,
+      retire_recommendations: sourceRows.filter((source) => source.recommendation === "retire").length,
+      top_industries: summarizeDimension(sourceRows, "industry"),
+      top_states: summarizeDimension(sourceRows, "state"),
+      scans_completed: scans.data?.filter((scan) => scan.status === "completed").length ?? 0
     };
   },
 
@@ -591,6 +659,23 @@ function countStatus<T extends { status?: AcquisitionJobStatus | OutreachEmailSt
   return rows.filter((row) => row.status === status || row.classification === status).length;
 }
 
+function average(values: number[]) {
+  const usable = values.filter((value) => Number.isFinite(value) && value > 0);
+  return usable.length === 0 ? 0 : Math.round(usable.reduce((sum, value) => sum + value, 0) / usable.length);
+}
+
+function summarizeDimension<T extends Record<string, unknown>>(rows: T[], key: keyof T) {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const value = String(row[key] ?? "Unknown").trim() || "Unknown";
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((left, right) => right.count - left.count)
+    .slice(0, 5);
+}
+
 function escapeSupabaseFilter(value: string) {
   return value.replace(/,/g, "\\,");
 }
@@ -632,6 +717,7 @@ function throwAcquisitionDatabaseError(error: { code?: string; message?: string 
       "merchant_acquisition_sources",
       "merchant_acquisition_source_scans",
       "merchant_acquisition_candidates",
+      "merchant_source_discovery_runs",
       "business_contacts",
       "lead_enrichment",
       "acquisition_jobs",

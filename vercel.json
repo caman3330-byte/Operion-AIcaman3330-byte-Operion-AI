@@ -25,6 +25,10 @@
     {
       "path": "/api/acquisition/merchant-sources/scheduler?limit=25&source_limit=5",
       "schedule": "45 10 * * *"
+    },
+    {
+      "path": "/api/acquisition/merchant-intelligence/scheduler?limit=10",
+      "schedule": "15 11 * * *"
     }
   ],
   "routes": [

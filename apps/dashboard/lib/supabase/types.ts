@@ -57,6 +57,7 @@ import type {
   MerchantAcquisitionSource,
   MerchantAcquisitionCandidate,
   MerchantAcquisitionSourceScan,
+  MerchantSourceDiscoveryRun,
   MerchantCandidateImportReviewStatus,
   MerchantCandidateEnrichmentStatus,
   MerchantSourceApprovalStatus,
@@ -164,6 +165,8 @@ export type MerchantAcquisitionSourceUpdate = LoosePartial<Omit<MerchantAcquisit
 export type MerchantAcquisitionSourceScanInsert = LoosePartial<Omit<MerchantAcquisitionSourceScan, "id">> &
   Pick<MerchantAcquisitionSourceScan, "source_id">;
 export type MerchantAcquisitionSourceScanUpdate = LoosePartial<Omit<MerchantAcquisitionSourceScan, "id" | "source_id">>;
+export type MerchantSourceDiscoveryRunInsert = LoosePartial<Omit<MerchantSourceDiscoveryRun, "id">>;
+export type MerchantSourceDiscoveryRunUpdate = LoosePartial<Omit<MerchantSourceDiscoveryRun, "id" | "started_at">>;
 export type MerchantAcquisitionCandidateInsert = LoosePartial<Omit<MerchantAcquisitionCandidate, "id" | "created_at" | "updated_at">> &
   Pick<MerchantAcquisitionCandidate, "source_id" | "business_name" | "website_url" | "domain" | "industry">;
 export type MerchantAcquisitionCandidateUpdate = LoosePartial<Omit<MerchantAcquisitionCandidate, "id" | "created_at" | "source_id" | "domain">>;
@@ -444,6 +447,12 @@ export interface Database {
         Update: MerchantAcquisitionSourceScanUpdate;
         Relationships: [];
       };
+      merchant_source_discovery_runs: {
+        Row: MerchantSourceDiscoveryRun;
+        Insert: MerchantSourceDiscoveryRunInsert;
+        Update: MerchantSourceDiscoveryRunUpdate;
+        Relationships: [];
+      };
       merchant_acquisition_candidates: {
         Row: MerchantAcquisitionCandidate;
         Insert: MerchantAcquisitionCandidateInsert;
@@ -698,6 +707,7 @@ export interface Database {
       merchant_source_type: MerchantSourceType;
       merchant_source_health_status: MerchantSourceHealthStatus;
       merchant_source_approval_status: MerchantSourceApprovalStatus;
+      merchant_source_recommendation: import("@operion/shared").MerchantSourceRecommendation;
       merchant_candidate_enrichment_status: MerchantCandidateEnrichmentStatus;
       merchant_candidate_import_review_status: MerchantCandidateImportReviewStatus;
       acquisition_job_type: AcquisitionJobType;

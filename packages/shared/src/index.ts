@@ -67,6 +67,7 @@ export type LeadSourceType = "apollo" | "google_maps" | "directory" | "website" 
 export type MerchantSourceType = "chamber" | "association" | "directory" | "contractor_listing" | "company_seed";
 export type MerchantSourceHealthStatus = "active" | "degraded" | "blocked" | "disabled";
 export type MerchantSourceApprovalStatus = "pending_review" | "approved" | "rejected";
+export type MerchantSourceRecommendation = "promote" | "monitor" | "degrade" | "retire" | "needs_review";
 export type MerchantCandidateEnrichmentStatus = "queued" | "running" | "completed" | "failed" | "rejected";
 export type MerchantCandidateImportReviewStatus = "pending_review" | "approved" | "rejected" | "imported";
 export type AcquisitionJobType =
@@ -571,6 +572,17 @@ export type MerchantAcquisitionSource = {
   health_status: MerchantSourceHealthStatus;
   last_scanned_at: string | null;
   success_rate: number;
+  source_quality_score: number;
+  estimated_merchant_count: number | null;
+  robots_accessible: boolean | null;
+  extraction_compatibility_score: number;
+  confidence_score: number;
+  acquisition_yield_score: number;
+  recommendation: MerchantSourceRecommendation;
+  last_tested_at: string | null;
+  test_businesses_discovered: number;
+  test_businesses_validated: number;
+  test_duplicate_rate: number;
   scan_success_count: number;
   scan_failure_count: number;
   robots_blocked_count: number;
@@ -595,6 +607,20 @@ export type MerchantAcquisitionSourceScan = {
   duplicate_businesses: number;
   robots_blocked: boolean;
   error_message: string | null;
+  metadata: Json;
+};
+
+export type MerchantSourceDiscoveryRun = {
+  id: string;
+  status: AcquisitionJobStatus;
+  started_at: string;
+  completed_at: string | null;
+  target_industries: string[];
+  candidate_sources_found: number;
+  candidate_sources_stored: number;
+  duplicates: number;
+  blocked_or_unreachable: number;
+  errors: string[];
   metadata: Json;
 };
 

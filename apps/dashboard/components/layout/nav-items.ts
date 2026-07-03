@@ -39,6 +39,7 @@ export const departmentNavGroups: DepartmentNavGroup[] = [
     purpose: "Lead acquisition, qualification, merchant applications, and outreach campaigns.",
     items: [
       { href: "/acquisition", label: "Acquisition", icon: Search },
+      { href: "/merchant-intelligence", label: "Intelligence", icon: BrainCircuit },
       { href: "/merchant-acquisition", label: "Funnel", icon: Activity },
       { href: "/merchant-sources", label: "Sources", icon: DatabaseZap },
       { href: "/leads", label: "Leads", icon: ClipboardList },
