@@ -1,6 +1,7 @@
 import type { Json, Lead, OutreachCampaign, OutreachEmailQueueItem, OutreachSequence, ReplyClassification } from "@operion/shared";
 import { writeAuditLog } from "@/lib/audit";
 import { routeWorkflow } from "@/lib/agent-orchestration/orchestrator";
+import type { OperionEmailPurpose } from "@/lib/email/senders";
 import { dispatchN8nWorkflow } from "@/lib/n8n";
 import { notifyFounder } from "@/lib/notifications";
 import { classifyOutreachReply } from "@/lib/outreach/reply-classifier";
@@ -237,7 +238,8 @@ async function sendQueuedEmail(item: OutreachEmailQueueItem, workerId: string) {
       to: sending.to_email,
       subject: sending.subject,
       html: sending.html_body,
-      emailNumber: clampEmailNumber(resolveSequenceStep(sending))
+      emailNumber: clampEmailNumber(resolveSequenceStep(sending)),
+      purpose: inferQueuedEmailPurpose(sending)
     });
 
     if (!result?.ok) {
@@ -468,6 +470,23 @@ function resolveSequenceStep(item: OutreachEmailQueueItem) {
   }
 
   return 1;
+}
+
+function inferQueuedEmailPurpose(item: OutreachEmailQueueItem): OperionEmailPurpose {
+  if (item.created_by_agent_key !== "email_automation" || item.ai_generated) {
+    return "merchant_outreach";
+  }
+
+  const text = `${item.subject} ${item.text_body}`.toLowerCase();
+  if (text.includes("upload") || text.includes("document")) {
+    return "document_upload_request";
+  }
+
+  if (text.includes("received") || text.includes("status") || text.includes("review")) {
+    return "application_status_update";
+  }
+
+  return "merchant_outreach";
 }
 
 function clampEmailNumber(value: number): 1 | 2 | 3 {
