@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { productionRepository } from "@/lib/repositories/production";
 import { writeAuditLog } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { recordWorkerHeartbeat } from "@/lib/operations/worker-observability";
 
 export interface LeadQualificationResult {
   processed: number;
@@ -86,6 +87,7 @@ function scoreApplication(app: {
 }
 
 export async function runLeadQualificationWorker(limit = 10): Promise<LeadQualificationResult> {
+  const workerStartedAt = Date.now();
   const result: LeadQualificationResult = { processed: 0, skipped: 0, failed: 0, items: [] };
 
   // Fetch queued lead_qualification tasks
@@ -100,11 +102,30 @@ export async function runLeadQualificationWorker(limit = 10): Promise<LeadQualif
 
   if (error) {
     logger.error("lead_qualification_worker_fetch_failed", { error: error.message });
+    await recordWorkerHeartbeat({
+      workerName: "lead_qualification_worker",
+      department: "underwriting",
+      status: "failed",
+      queueName: "ai_tasks:lead_qualification",
+      queueSize: 0,
+      lastStartedAt: new Date(workerStartedAt).toISOString(),
+      lastDurationMs: Date.now() - workerStartedAt,
+      errorMessage: error.message
+    });
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
   const candidates = tasks ?? [];
   logger.info("lead_qualification_worker_started", { candidates: candidates.length });
+  await recordWorkerHeartbeat({
+    workerName: "lead_qualification_worker",
+    department: "underwriting",
+    status: candidates.length > 0 ? "running" : "idle",
+    queueName: "ai_tasks:lead_qualification",
+    queueSize: candidates.length,
+    currentTask: candidates[0]?.id ?? null,
+    lastStartedAt: new Date(workerStartedAt).toISOString()
+  });
 
   for (const task of candidates) {
     const appId = task.business_application_id;
@@ -219,5 +240,23 @@ export async function runLeadQualificationWorker(limit = 10): Promise<LeadQualif
   }
 
   logger.info("lead_qualification_worker_done", { processed: result.processed, skipped: result.skipped, failed: result.failed });
+  const durationMs = Date.now() - workerStartedAt;
+  await recordWorkerHeartbeat({
+    workerName: "lead_qualification_worker",
+    department: "underwriting",
+    status: result.failed > 0 ? "failed" : "idle",
+    queueName: "ai_tasks:lead_qualification",
+    queueSize: Math.max(0, candidates.length - result.processed - result.skipped - result.failed),
+    lastCompletedTask: result.items.find((item) => item.status === "completed")?.task_id ?? null,
+    lastCompletedAt: new Date().toISOString(),
+    averageExecutionMs: result.processed > 0 ? Math.round(durationMs / result.processed) : durationMs,
+    lastDurationMs: durationMs,
+    errorMessage: result.failed > 0 ? `${result.failed} lead qualification task(s) failed.` : null,
+    metadata: {
+      processed: result.processed,
+      skipped: result.skipped,
+      failed: result.failed
+    } as Json
+  });
   return result;
 }

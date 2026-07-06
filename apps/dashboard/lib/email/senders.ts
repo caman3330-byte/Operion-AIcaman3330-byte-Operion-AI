@@ -112,18 +112,19 @@ export function resolveOperionSender(purpose: OperionEmailPurpose, fallbackEmail
   const config = senderCatalog[purpose];
   const domain = process.env.OPERION_EMAIL_DOMAIN?.trim() || "operioncapital.com";
   const envEmail = process.env[`OPERION_EMAIL_${config.envKey}`]?.trim();
-  const email = envEmail || `${config.localPart}@${domain}` || fallbackEmail || "funding@operioncapital.com";
+  const email = envEmail || fallbackEmail || `${config.localPart}@${domain}` || "funding@operioncapital.com";
+  const name = process.env.SENDGRID_FROM_NAME?.trim() || config.name;
   const replyTo = config.replyToLocalPart ? `${config.replyToLocalPart}@${domain}` : undefined;
 
   return replyTo
     ? {
         email,
-        name: config.name,
+        name,
         replyTo
       }
     : {
         email,
-        name: config.name
+        name
       };
 }
 

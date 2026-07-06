@@ -13,6 +13,7 @@ import { sendOutreachEmail } from "@/lib/sendgrid";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { recordWorkerHeartbeat } from "@/lib/operations/worker-observability";
 
 export interface PrepareSdrOutreachInput {
   leadId: string;
@@ -145,6 +146,7 @@ export async function prepareSdrOutreach(input: PrepareSdrOutreachInput): Promis
 }
 
 export async function runOutreachWorkerTick(input: OutreachWorkerTickInput): Promise<OutreachWorkerTickResult> {
+  const workerStartedAt = Date.now();
   const limit = Math.min(Math.max(input.limit ?? 10, 1), 50);
   const queued = await acquisitionRepository.listEmailQueue(input.lifecycleOnly ? limit * 5 : limit, "queued");
   const now = Date.now();
@@ -156,10 +158,36 @@ export async function runOutreachWorkerTick(input: OutreachWorkerTickInput): Pro
     })
     .slice(0, limit);
   const processed: OutreachWorkerTickResult["processed"] = [];
+  await recordWorkerHeartbeat({
+    workerName: input.workerId,
+    department: input.lifecycleOnly ? "support" : "marketing",
+    status: due.length > 0 ? "running" : "idle",
+    queueName: "outreach_email_queue",
+    queueSize: due.length,
+    currentTask: due[0]?.id ?? null,
+    lastStartedAt: new Date(workerStartedAt).toISOString(),
+    metadata: { lifecycle_only: input.lifecycleOnly === true } as Json
+  });
 
   for (const item of due) {
     processed.push(await sendQueuedEmail(item, input.workerId));
   }
+
+  const failed = processed.filter((item) => item.status === "failed").length;
+  const durationMs = Date.now() - workerStartedAt;
+  await recordWorkerHeartbeat({
+    workerName: input.workerId,
+    department: input.lifecycleOnly ? "support" : "marketing",
+    status: failed > 0 ? "failed" : "idle",
+    queueName: "outreach_email_queue",
+    queueSize: Math.max(0, due.length - processed.length),
+    lastCompletedTask: processed.find((item) => item.status === "sent")?.queue_item_id ?? null,
+    lastCompletedAt: new Date().toISOString(),
+    averageExecutionMs: processed.length > 0 ? Math.round(durationMs / processed.length) : durationMs,
+    lastDurationMs: durationMs,
+    errorMessage: failed > 0 ? `${failed} outreach email task(s) failed.` : null,
+    metadata: { lifecycle_only: input.lifecycleOnly === true, processed: processed.length } as Json
+  });
 
   return {
     worker_id: input.workerId,

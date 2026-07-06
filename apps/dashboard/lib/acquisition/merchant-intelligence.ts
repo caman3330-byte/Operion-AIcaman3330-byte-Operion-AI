@@ -8,7 +8,22 @@ import { applyValidationToQuality, validateAcquisitionLead } from "@/lib/acquisi
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
 
 const USER_AGENT = "OperionCapital-MerchantIntelligence/1.0";
-const TARGET_INDUSTRIES = ["roofing", "hvac", "plumbing", "electrical", "construction", "landscaping", "trucking", "auto_repair"];
+const TARGET_INDUSTRIES = [
+  "roofing",
+  "hvac",
+  "plumbing",
+  "electrical",
+  "construction",
+  "landscaping",
+  "trucking",
+  "auto_repair",
+  "restaurants",
+  "medical",
+  "dental",
+  "manufacturing",
+  "wholesale",
+  "commercial_services"
+];
 
 type IntelligenceSourceCandidate = {
   source_url: string;
@@ -24,6 +39,8 @@ const SOURCE_CANDIDATE_LIBRARY: IntelligenceSourceCandidate[] = [
   { source_url: "https://www.necanet.org/about-neca/directories", source_name: "NECA Member Directories", source_type: "association", industry: "electrical", state: null, estimated_merchant_count: 300 },
   { source_url: "https://www.iec-dallas.com/member-directory", source_name: "IEC Dallas Member Directory", source_type: "association", industry: "electrical", state: "TX", estimated_merchant_count: 80 },
   { source_url: "https://www.ieci.org/chapters", source_name: "IEC Chapter Directory", source_type: "association", industry: "electrical", state: null, estimated_merchant_count: 100 },
+  { source_url: "https://iecpennsylvania.org/about/member-directory/", source_name: "IEC Pennsylvania Member Directory", source_type: "association", industry: "electrical", state: "PA", estimated_merchant_count: 70 },
+  { source_url: "https://members.centexiec.com/contractormemberdirectory/FindStartsWith?term=A", source_name: "CenTex IEC Contractor Directory", source_type: "association", industry: "electrical", state: "TX", estimated_merchant_count: 120 },
   { source_url: "https://www.phccweb.org/find-a-contractor", source_name: "PHCC National Find a Contractor", source_type: "association", industry: "plumbing", state: null, estimated_merchant_count: 200 },
   { source_url: "https://www.phccga.org/find-a-contractor", source_name: "PHCC Georgia Contractor Directory", source_type: "association", industry: "plumbing", state: "GA", estimated_merchant_count: 60 },
   { source_url: "https://www.phccma.org/find-a-contractor", source_name: "PHCC Massachusetts Contractor Directory", source_type: "association", industry: "plumbing", state: "MA", estimated_merchant_count: 75 },
@@ -31,15 +48,25 @@ const SOURCE_CANDIDATE_LIBRARY: IntelligenceSourceCandidate[] = [
   { source_url: "https://www.nahb.org/nahb-community/find-a-member", source_name: "NAHB Find a Member", source_type: "association", industry: "construction", state: null, estimated_merchant_count: 800 },
   { source_url: "https://members.texasbuilders.org/associate-directory", source_name: "Texas Builders Associate Directory", source_type: "association", industry: "construction", state: "TX", estimated_merchant_count: 150 },
   { source_url: "https://asahouston.org/membership/member-directory/", source_name: "ASA Houston Member Directory", source_type: "association", industry: "construction", state: "TX", estimated_merchant_count: 80 },
+  { source_url: "https://www.mcaepa.org/list/searchalpha/a", source_name: "MCA Eastern PA Member Directory", source_type: "association", industry: "construction", state: "PA", estimated_merchant_count: 100 },
+  { source_url: "https://memberships.cwhba.org/directory", source_name: "Central Washington Builders Directory", source_type: "association", industry: "construction", state: "WA", estimated_merchant_count: 200 },
+  { source_url: "https://members.cmbaonline.org/member-directory", source_name: "Central Minnesota Builders Directory", source_type: "association", industry: "construction", state: "MN", estimated_merchant_count: 150 },
   { source_url: "https://www.metalroofing.com/find-a-contractor/", source_name: "Metal Roofing Alliance Contractor Finder", source_type: "contractor_listing", industry: "roofing", state: null, estimated_merchant_count: 250 },
   { source_url: "https://www.nationalroofingdirectory.org/", source_name: "National Roofing Directory", source_type: "directory", industry: "roofing", state: null, estimated_merchant_count: 150 },
   { source_url: "https://www.tilecontractors.org/find-a-contractor", source_name: "Tile Roofing Industry Alliance Contractor Finder", source_type: "contractor_listing", industry: "roofing", state: null, estimated_merchant_count: 120 },
+  { source_url: "https://www.azroofing.org/find-a-contractor", source_name: "Arizona Roofing Contractors Finder", source_type: "association", industry: "roofing", state: "AZ", estimated_merchant_count: 90 },
+  { source_url: "https://www.rcat.net/consumers.html", source_name: "RCAT Licensed Roofer Finder", source_type: "association", industry: "roofing", state: "TX", estimated_merchant_count: 120 },
   { source_url: "https://hvac-contractors.acca.org/acca-at-home", source_name: "ACCA Contractor Locator", source_type: "association", industry: "hvac", state: null, estimated_merchant_count: 250 },
+  { source_url: "https://www.acca.org/directories/", source_name: "ACCA Directory Hub", source_type: "association", industry: "hvac", state: null, estimated_merchant_count: 250 },
   { source_url: "https://www.tacca.org/page/MemberDirectory", source_name: "TACCA Member Directory", source_type: "association", industry: "hvac", state: "TX", estimated_merchant_count: 100 },
+  { source_url: "https://taccagreatersanantonio.org/contractor-directory/", source_name: "TACCA Greater San Antonio Contractor Directory", source_type: "association", industry: "hvac", state: "TX", estimated_merchant_count: 80 },
   { source_url: "https://www.miacca.org/Contractor-Directory", source_name: "MIACCA Contractor Directory", source_type: "association", industry: "hvac", state: "MI", estimated_merchant_count: 75 },
   { source_url: "https://www.landscapeprofessionals.org/LP/Connect/Find_a_Landscape_Professional/LP/Connect/Find_A_Landscape_Professional.aspx", source_name: "NALP Landscape Professional Finder", source_type: "association", industry: "landscaping", state: null, estimated_merchant_count: 450 },
   { source_url: "https://www.txdmv.gov/motor-carriers", source_name: "Texas Motor Carrier Public Resources", source_type: "directory", industry: "trucking", state: "TX", estimated_merchant_count: 200 },
-  { source_url: "https://ai.fmcsa.dot.gov/SMS/CarrierSearch", source_name: "FMCSA Carrier Search", source_type: "directory", industry: "trucking", state: null, estimated_merchant_count: 1000 }
+  { source_url: "https://ai.fmcsa.dot.gov/SMS/CarrierSearch", source_name: "FMCSA Carrier Search", source_type: "directory", industry: "trucking", state: null, estimated_merchant_count: 1000 },
+  { source_url: "https://members.asashop.org/find-a-shop", source_name: "Automotive Service Association Shop Finder", source_type: "association", industry: "auto_repair", state: null, estimated_merchant_count: 250 },
+  { source_url: "https://manufacturingutah.com/member-directory/", source_name: "Utah Manufacturers Association Directory", source_type: "association", industry: "manufacturing", state: "UT", estimated_merchant_count: 200 },
+  { source_url: "https://trma.org/about-us/member-directory/", source_name: "TRMA Member Directory", source_type: "association", industry: "manufacturing", state: null, estimated_merchant_count: 120 }
 ];
 
 export async function runMerchantSourceDiscovery(input: { limit?: number; industries?: string[] } = {}) {

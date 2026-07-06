@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { productionRepository } from "@/lib/repositories/production";
 import { writeAuditLog } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { recordWorkerHeartbeat } from "@/lib/operations/worker-observability";
 
 export interface DocumentProcessingResult {
   processed: number;
@@ -22,6 +23,7 @@ export interface DocumentProcessingResult {
 const AWAITING_STATUSES = new Set(["awaiting_documents", "documents_pending", "documents_uploaded"]);
 
 export async function runDocumentProcessingWorker(limit = 15): Promise<DocumentProcessingResult> {
+  const workerStartedAt = Date.now();
   const result: DocumentProcessingResult = { processed: 0, transitioned: 0, skipped: 0, failed: 0, items: [] };
 
   // Fetch blocked document_processing tasks — these are documents uploaded
@@ -36,11 +38,30 @@ export async function runDocumentProcessingWorker(limit = 15): Promise<DocumentP
 
   if (error) {
     logger.error("document_processing_worker_fetch_failed", { error: error.message });
+    await recordWorkerHeartbeat({
+      workerName: "document_processing_worker",
+      department: "underwriting",
+      status: "failed",
+      queueName: "ai_tasks:document_processing",
+      queueSize: 0,
+      lastStartedAt: new Date(workerStartedAt).toISOString(),
+      lastDurationMs: Date.now() - workerStartedAt,
+      errorMessage: error.message
+    });
     throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
   const candidates = tasks ?? [];
   logger.info("document_processing_worker_started", { candidates: candidates.length });
+  await recordWorkerHeartbeat({
+    workerName: "document_processing_worker",
+    department: "underwriting",
+    status: candidates.length > 0 ? "running" : "idle",
+    queueName: "ai_tasks:document_processing",
+    queueSize: candidates.length,
+    currentTask: candidates[0]?.id ?? null,
+    lastStartedAt: new Date(workerStartedAt).toISOString()
+  });
 
   for (const task of candidates) {
     const appId = task.business_application_id;
@@ -179,6 +200,25 @@ export async function runDocumentProcessingWorker(limit = 15): Promise<DocumentP
     transitioned: result.transitioned,
     skipped: result.skipped,
     failed: result.failed
+  });
+  const durationMs = Date.now() - workerStartedAt;
+  await recordWorkerHeartbeat({
+    workerName: "document_processing_worker",
+    department: "underwriting",
+    status: result.failed > 0 ? "failed" : "idle",
+    queueName: "ai_tasks:document_processing",
+    queueSize: Math.max(0, candidates.length - result.processed - result.skipped - result.failed),
+    lastCompletedTask: result.items.find((item) => item.status === "completed")?.task_id ?? null,
+    lastCompletedAt: new Date().toISOString(),
+    averageExecutionMs: result.processed > 0 ? Math.round(durationMs / result.processed) : durationMs,
+    lastDurationMs: durationMs,
+    errorMessage: result.failed > 0 ? `${result.failed} document processing task(s) failed.` : null,
+    metadata: {
+      processed: result.processed,
+      transitioned: result.transitioned,
+      skipped: result.skipped,
+      failed: result.failed
+    } as Json
   });
   return result;
 }

@@ -20,11 +20,13 @@ import { getLaunchMonitoringSnapshot } from "@/lib/operations/monitoring";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { MetricCard } from "@/components/metrics/metric-card";
+import { AiCommandCenter } from "@/components/operations/ai-command-center";
 import { OperationalHealthReliabilityCenter } from "@/components/operations/operational-health-reliability-center";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkflowActionButtons } from "@/components/supervisor/workflow-action-buttons";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buildAiCommandCenterModel } from "@/lib/operations/ai-command-center";
 import { buildReliabilityCenterModel } from "@/lib/operations/reliability-center";
 import { cn, formatDateTime } from "@/lib/utils";
 
@@ -44,12 +46,13 @@ export default async function SupervisorPage({
   const params = await searchParams;
   const approvalFilter = normalizeApprovalFilter(params?.approvalFilter);
 
-  const [summary, production, operator, monitoring, timelines, discoveryResult] = await Promise.all([
+  const [summary, production, operator, monitoring, timelines, commandCenter, discoveryResult] = await Promise.all([
     getSupervisorSummary(),
     getProductionSupervisorSummary(),
     getOperatorDashboardSummary({ limit: 8 }),
     getLaunchMonitoringSnapshot({ limit: 60 }),
     getApplicationWorkflowTimelines(4),
+    buildAiCommandCenterModel(),
     (getSupabaseAdmin() as any).from("lender_discovery_queue").select("status").then(({ data }: { data: Array<{ status: string }> | null }) => {
       const rows = data ?? [];
       return {
@@ -307,6 +310,8 @@ export default async function SupervisorPage({
           </div>
         </CardContent>
       </Card>
+
+      <AiCommandCenter model={commandCenter} />
 
       {summary.migration_required ? (
         <Card className="border-warning bg-warning/10">

@@ -189,6 +189,24 @@ export const acquisitionRepository = {
     return (data ?? []).filter(isUsableMerchantImportCandidate).slice(0, limit);
   },
 
+  async listApprovedMerchantImportQueue(limit = 100) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("merchant_acquisition_candidates")
+      .select("*")
+      .eq("enrichment_status", "completed")
+      .eq("website_verified", true)
+      .eq("phone_verified", true)
+      .eq("identity_match", true)
+      .eq("import_review_status", "approved")
+      .gte("quality_score", 80)
+      .order("quality_score", { ascending: false })
+      .order("reviewed_at", { ascending: false, nullsFirst: false })
+      .limit(Math.max(limit * 2, 100));
+    if (error) throwAcquisitionDatabaseError(error);
+    return (data ?? []).filter(isUsableMerchantImportCandidate).slice(0, limit);
+  },
+
   async merchantAcquisitionDepartmentMetrics() {
     const supabase = getSupabaseAdmin();
     const [sources, scans, candidates, pendingImports] = await Promise.all([

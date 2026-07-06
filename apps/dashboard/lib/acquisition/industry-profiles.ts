@@ -7,7 +7,12 @@ export const mcaIndustryProfiles = [
   { key: "landscaping", label: "Landscaping", keywords: ["landscaping", "landscape", "lawn care"] },
   { key: "trucking", label: "Trucking", keywords: ["trucking", "transportation", "freight", "logistics"] },
   { key: "auto_repair", label: "Auto Repair", keywords: ["auto repair", "automotive repair", "collision repair", "mechanic"] },
-  { key: "restaurants", label: "Restaurants", keywords: ["restaurant", "bar and grill", "cafe", "pizzeria"] }
+  { key: "restaurants", label: "Restaurants", keywords: ["restaurant", "bar and grill", "cafe", "pizzeria"] },
+  { key: "medical", label: "Medical Practices", keywords: ["medical practice", "clinic", "urgent care", "physician", "healthcare"] },
+  { key: "dental", label: "Dental Practices", keywords: ["dental", "dentist", "orthodontic", "oral surgery"] },
+  { key: "manufacturing", label: "Manufacturing", keywords: ["manufacturing", "manufacturer", "fabrication", "industrial"] },
+  { key: "wholesale", label: "Wholesale", keywords: ["wholesale", "distributor", "distribution"] },
+  { key: "commercial_services", label: "Commercial Services", keywords: ["commercial service", "janitorial", "facility services", "maintenance"] }
 ] as const;
 
 export type McaIndustryProfileKey = (typeof mcaIndustryProfiles)[number]["key"];

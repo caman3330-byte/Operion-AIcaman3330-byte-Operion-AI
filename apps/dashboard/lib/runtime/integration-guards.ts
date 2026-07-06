@@ -3,11 +3,22 @@ import { logger } from "@/lib/logger";
 export function isIntegrationEnabled(name: string) {
   switch (name) {
     case "sendgrid":
-      return Boolean(process.env.SENDGRID_API_KEY) && Boolean(process.env.SENDGRID_FROM_EMAIL || process.env.OPERION_EMAIL_DOMAIN || process.env.OPERION_EMAIL_FUNDING);
+      return Boolean(process.env.SENDGRID_API_KEY) && Boolean(process.env.SENDGRID_FROM_EMAIL);
     case "stripe":
       return Boolean(process.env.STRIPE_SECRET_KEY);
     case "apollo":
       return Boolean(process.env.APOLLO_API_KEY);
+    case "google":
+    case "google_places":
+      return Boolean(process.env.GOOGLE_PLACES_API_KEY);
+    case "cloudflare":
+      return Boolean(process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CLOUDFLARE_ZONE_ID);
+    case "zoho":
+      return Boolean(process.env.ZOHO_CLIENT_ID && process.env.ZOHO_CLIENT_SECRET);
+    case "acquisition_scheduler":
+      return process.env.ACQUISITION_SCHEDULER_ENABLED === "true";
+    case "merchant_intelligence_scheduler":
+      return process.env.MERCHANT_INTELLIGENCE_SCHEDULER_ENABLED === "true";
     case "anthropic":
       return Boolean(process.env.ANTHROPIC_API_KEY);
     case "openai":

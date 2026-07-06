@@ -54,6 +54,8 @@ Apollo integration methods live in `apps/dashboard/lib/integrations/apollo.ts`:
 ```env
 SENDGRID_API_KEY=
 SENDGRID_FROM_EMAIL=
+SENDGRID_FROM_NAME=Operion Capital
+SENDGRID_WEBHOOK_PUBLIC_KEY=
 OPERION_EMAIL_DOMAIN=operioncapital.com
 OPERION_EMAIL_FUNDING=funding@operioncapital.com
 OPERION_EMAIL_SUPPORT=support@operioncapital.com
@@ -66,7 +68,7 @@ OPERION_EMAIL_SYSTEM=system@operioncapital.com
 OPERION_EMAIL_OPERATIONS=operations@operioncapital.com
 ```
 
-The platform routes merchant outreach and document requests through `funding@`, support through `support@`, lender communications through `lenders@` or `submissions@`, and internal automation through `alerts@` or `system@`.
+The core SendGrid integration requires `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME`, and `SENDGRID_WEBHOOK_PUBLIC_KEY`. Role mailbox overrides remain supported for authenticated domains: merchant outreach and document requests through `funding@`, support through `support@`, lender communications through `lenders@` or `submissions@`, and internal automation through `alerts@` or `system@`.
 
 ## Server-To-Server Automation
 

@@ -1,4 +1,5 @@
 import type { Json } from "@operion/shared";
+import { ValidationError } from "@/lib/errors";
 
 export const MERCHANT_DOCUMENT_BUCKET = "merchant-documents";
 export const UNDERWRITING_DOCUMENT_BUCKET = "underwriting-documents";
@@ -33,20 +34,20 @@ export interface DocumentProcessingMetadata {
 
 export function validateDocumentUpload(file: Blob, documentType: string, businessApplicationId: string) {
   if (!ALLOWED_DOCUMENT_MIME_TYPES.includes(file.type as typeof ALLOWED_DOCUMENT_MIME_TYPES[number])) {
-    throw new Error("Unsupported file type. Only PDF, PNG, JPEG, XLS, and XLSX files are allowed.");
+    throw new ValidationError("Unsupported file type. Only PDF, PNG, JPEG, XLS, and XLSX files are allowed.");
   }
 
   const size = file.size;
   if (size === 0 || size > MAX_DOCUMENT_UPLOAD_BYTES) {
-    throw new Error("Uploaded document must be between 1 byte and 50MB.");
+    throw new ValidationError("Uploaded document must be between 1 byte and 50MB.");
   }
 
   if (!businessApplicationId || !documentType) {
-    throw new Error("Business application ID and document type are required.");
+    throw new ValidationError("Business application ID and document type are required.");
   }
 
   if (!DOCUMENT_TYPE_OPTIONS.some((option) => option.value === documentType)) {
-    throw new Error("Unsupported document type.");
+    throw new ValidationError("Unsupported document type.");
   }
 }
 

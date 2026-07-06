@@ -7,8 +7,12 @@ export interface LenderProfile {
   fundingLimitMin: number;
   fundingLimitMax: number;
   minFicoScore: number;
+  minMonthlyRevenue: number;
+  minMonthlyDeposits: number;
+  minMonthsInBusiness: number;
   statesServed: string[];
   industriesServed: string[];
+  fundingProducts: string[];
   positionTypes: string[];
   termRange: [number, number];
   rateRange: [number, number];
@@ -25,6 +29,8 @@ export interface RoutingMatch {
   industryMatch: boolean;
   fundingLimitMatch: boolean;
   ficoMinimumMatch: boolean;
+  monthlyRevenueMatch: boolean;
+  timeInBusinessMatch: boolean;
   positionMatch: boolean;
   estimatedApprovalRate: number;
   estimatedTerms: {
@@ -58,11 +64,15 @@ export async function loadActiveLenders(): Promise<{ lenders: LenderProfile[]; e
     const lenders: LenderProfile[] = (data || []).map((row: any) => ({
       id: row.id,
       companyName: row.company_name,
-      fundingLimitMin: row.min_funding_limit || 2500,
-      fundingLimitMax: row.max_funding_limit || 250000,
-      minFicoScore: row.min_fico_score || 500,
+      fundingLimitMin: Number(row.funding_range_min ?? row.min_funding_limit ?? 2500),
+      fundingLimitMax: Number(row.max_funding ?? row.funding_range_max ?? row.max_funding_limit ?? 250000),
+      minFicoScore: Number(row.min_fico ?? row.min_fico_score ?? 0),
+      minMonthlyRevenue: Number(row.min_monthly_revenue ?? 0),
+      minMonthlyDeposits: Number(row.minimum_monthly_deposits ?? 0),
+      minMonthsInBusiness: Number(row.minimum_time_in_business_months ?? row.min_months_in_business ?? 0),
       statesServed: row.states_served || [],
       industriesServed: row.industries_served || [],
+      fundingProducts: row.funding_products || [],
       positionTypes: row.position_types || [],
       termRange: [row.min_term || 3, row.max_term || 60],
       rateRange: [row.min_rate || 1.2, row.max_rate || 3.0],
@@ -109,8 +119,21 @@ function checkFundingLimit(lender: LenderProfile, requestedAmount: number): bool
  * Check FICO minimum
  */
 function checkFicoRequirement(lender: LenderProfile, merchantCredit?: number): boolean {
-  if (!merchantCredit) return true; // Assume acceptable if not provided
+  if (!lender.minFicoScore) return true;
+  if (!merchantCredit) return true; // Founder confirmation may still be required.
   return merchantCredit >= lender.minFicoScore;
+}
+
+function checkMonthlyRevenueRequirement(lender: LenderProfile, merchantMonthlyRevenue?: number, merchantMonthlyDeposits?: number): boolean {
+  const minimum = Math.max(lender.minMonthlyRevenue, lender.minMonthlyDeposits);
+  if (!minimum) return true;
+  const observed = Math.max(merchantMonthlyRevenue ?? 0, merchantMonthlyDeposits ?? 0);
+  return observed >= minimum;
+}
+
+function checkTimeInBusinessRequirement(lender: LenderProfile, merchantMonths?: number): boolean {
+  if (!lender.minMonthsInBusiness) return true;
+  return (merchantMonths ?? 0) >= lender.minMonthsInBusiness;
 }
 
 /**
@@ -124,23 +147,30 @@ export function calculateRoutingMatch(
     requestedAmount: number;
     creditScore?: number;
     riskScore?: number;
+    monthlyRevenue?: number;
+    monthlyDeposits?: number;
+    timeInBusinessMonths?: number;
   }
 ): RoutingMatch {
   const stateMatch = checkStateRestriction(lender, merchant.state);
   const industryMatch = checkIndustryRestriction(lender, merchant.industry);
   const fundingLimitMatch = checkFundingLimit(lender, merchant.requestedAmount);
   const ficoMinimumMatch = checkFicoRequirement(lender, merchant.creditScore);
+  const monthlyRevenueMatch = checkMonthlyRevenueRequirement(lender, merchant.monthlyRevenue, merchant.monthlyDeposits);
+  const timeInBusinessMatch = checkTimeInBusinessRequirement(lender, merchant.timeInBusinessMonths);
 
   // Position match (placeholder - would need actual merchant position data)
   const positionMatch = true;
 
   // Calculate base score
   let score = 0;
-  if (stateMatch) score += 20;
-  if (industryMatch) score += 20;
+  if (stateMatch) score += 15;
+  if (industryMatch) score += 15;
   if (fundingLimitMatch) score += 20;
-  if (ficoMinimumMatch) score += 20;
-  if (positionMatch) score += 20;
+  if (ficoMinimumMatch) score += 15;
+  if (monthlyRevenueMatch) score += 15;
+  if (timeInBusinessMatch) score += 10;
+  if (positionMatch) score += 10;
 
   // Risk-based adjustment
   if (merchant.riskScore !== undefined) {
@@ -153,7 +183,7 @@ export function calculateRoutingMatch(
 
   // Estimate approval rate based on lender and merchant profile
   let estimatedApprovalRate = lender.approvalRate;
-  if (!stateMatch || !industryMatch || !fundingLimitMatch || !ficoMinimumMatch) {
+  if (!stateMatch || !industryMatch || !fundingLimitMatch || !ficoMinimumMatch || !monthlyRevenueMatch || !timeInBusinessMatch) {
     estimatedApprovalRate *= 0.5; // Reduce if restrictions not met
   }
 
@@ -165,6 +195,8 @@ export function calculateRoutingMatch(
     industryMatch,
     fundingLimitMatch,
     ficoMinimumMatch,
+    monthlyRevenueMatch,
+    timeInBusinessMatch,
     positionMatch,
     estimatedApprovalRate,
     estimatedTerms: {
@@ -186,6 +218,9 @@ export async function routeToLenders(input: {
     requestedAmount: number;
     creditScore?: number;
     riskScore?: number;
+    monthlyRevenue?: number;
+    monthlyDeposits?: number;
+    timeInBusinessMonths?: number;
   };
   minCompatibilityScore?: number;
   maxMatches?: number;

@@ -62,6 +62,7 @@ export const departmentNavGroups: DepartmentNavGroup[] = [
     purpose: "Operational command, AI monitoring, auditing, prompt management, and founder controls.",
     items: [
       { href: "/supervisor", label: "Command Center", icon: Gauge, exact: true },
+      { href: "/founder-operations", label: "Founder Ops", icon: Activity },
       { href: "/supervisor/ai-agents", label: "Underwriting", icon: Activity },
       { href: "/supervisor/ai-operations", label: "AI Operations", icon: Bot },
       { href: "/manager-agent", label: "Manager Agent", icon: BrainCircuit },

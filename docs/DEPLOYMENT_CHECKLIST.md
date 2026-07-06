@@ -3,7 +3,7 @@
 ## Pre-deploy
 - [ ] Ensure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` are set in Vercel.
 - [ ] Add `ANTHROPIC_API_KEY` and optional `OPENAI_API_KEY`.
-- [ ] Add `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` for email workflows.
+- [ ] Add `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME`, and `SENDGRID_WEBHOOK_PUBLIC_KEY` for email workflows.
 - [ ] Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` for payments.
 - [ ] Add `OPERION_INTERNAL_API_KEY` for internal API auth.
 - [ ] Add `SLACK_WEBHOOK_URL`, `N8N_WEBHOOK_BASE_URL`, `APOLLO_API_KEY` as needed.
@@ -21,7 +21,7 @@
 - [ ] Configure `vercel.json` if using Edge Functions or output settings.
 
 ## Webhooks & Integrations
-- [ ] Configure SendGrid webhooks and inbound parse if used.
+- [ ] Configure SendGrid Event Webhook for `/api/webhooks/sendgrid`, enable signed verification, and subscribe to delivered/open/click/deferred/bounce/dropped/spam report events.
 - [ ] Configure Stripe webhook endpoint and secret.
 - [ ] Configure Apollo/io API key for enrichment.
 - [ ] Configure Anthropic/OpenAI endpoints and keys.

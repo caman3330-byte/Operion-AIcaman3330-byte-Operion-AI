@@ -11,6 +11,9 @@ export interface DistributionMerchantProfile {
   requestedAmount: number;
   creditScore?: number;
   riskScore?: number;
+  monthlyRevenue?: number;
+  monthlyDeposits?: number;
+  timeInBusinessMonths?: number;
 }
 
 export interface LenderDistributionDecision extends RoutingMatch {
@@ -51,7 +54,7 @@ export async function buildLenderDistributionPlan(input: {
       decisions,
       selectedLenderIds: selected.map((decision) => decision.lenderId),
       routingConfidence,
-      requiresApproval: selected.some((decision) => decision.restrictionFailures.length > 0 || decision.riskAdjustedScore < 65)
+      requiresApproval: true
     }
   };
 }
@@ -77,13 +80,15 @@ export async function persistDistributionPlan(plan: DistributionPlan): Promise<{
           industryMatch: decision.industryMatch,
           fundingLimitMatch: decision.fundingLimitMatch,
           ficoMinimumMatch: decision.ficoMinimumMatch,
+          monthlyRevenueMatch: decision.monthlyRevenueMatch,
+          timeInBusinessMatch: decision.timeInBusinessMatch,
           routingConfidence: decision.routingConfidence,
           restrictionFailures: decision.restrictionFailures
         } as Json
       }));
 
     if (rows.length === 0) return { success: true, inserted: 0 };
-    const { error } = await supabase.from("lender_matches").insert(rows);
+    const { error } = await supabase.from("lender_matches").upsert(rows, { onConflict: "lead_id,lender_id" });
     if (error) return { success: false, inserted: 0, error: error.message };
     logger.info("Lender distribution plan persisted", { leadId: plan.merchant.leadId, inserted: rows.length });
     return { success: true, inserted: rows.length };
@@ -101,7 +106,9 @@ export function buildDistributionDecision(
     match.stateMatch ? undefined : "state_restricted",
     match.industryMatch ? undefined : "industry_restricted",
     match.fundingLimitMatch ? undefined : "outside_funding_limits",
-    match.ficoMinimumMatch ? undefined : "below_minimum_fico"
+    match.ficoMinimumMatch ? undefined : "below_minimum_fico",
+    match.monthlyRevenueMatch ? undefined : "below_minimum_revenue",
+    match.timeInBusinessMatch ? undefined : "below_minimum_time_in_business"
   ].filter((failure): failure is string => Boolean(failure));
   const riskPenalty = merchant.riskScore === undefined ? 0 : merchant.riskScore > 80 ? 25 : merchant.riskScore > 65 ? 14 : merchant.riskScore > 50 ? 6 : 0;
   const speedLift = lender.fundingSpeed === "fast" ? 4 : lender.fundingSpeed === "slow" ? -4 : 0;

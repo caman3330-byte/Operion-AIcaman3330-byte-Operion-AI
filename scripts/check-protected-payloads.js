@@ -9,6 +9,7 @@ const routes = [
   "/supervisor",
   "/supervisor/ai-operations",
   "/supervisor/ai-agents",
+  "/founder-operations",
   "/testing",
   "/acquisition",
   "/leads",
@@ -36,6 +37,9 @@ const forbidden = [
   "Lender routing",
   "Workflow Monitor",
   "Underwriting Queue",
+  "Founder Operations Dashboard",
+  "Estimated Funded Volume",
+  "Metrics Not Yet Calculable",
   "Merchant profile and application lifecycle",
   "Uploaded documents",
   "AI task history"

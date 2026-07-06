@@ -4,6 +4,7 @@ import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layou
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { MerchantCandidateReviewActions } from "./merchant-candidate-review-actions";
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
 import { formatDateTime } from "@/lib/utils";
 
@@ -13,10 +14,11 @@ export default async function MerchantSourcesPage() {
   const access = await getInternalPageAccess();
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
 
-  const [sources, scans, importQueue, metrics] = await Promise.all([
+  const [sources, scans, importQueue, approvedImportQueue, metrics] = await Promise.all([
     acquisitionRepository.listMerchantSources({ limit: 200 }),
     acquisitionRepository.listMerchantSourceScans(25),
-    acquisitionRepository.listMerchantImportQueue(25),
+    acquisitionRepository.listMerchantImportQueue(100),
+    acquisitionRepository.listApprovedMerchantImportQueue(100),
     acquisitionRepository.merchantAcquisitionDepartmentMetrics()
   ]);
   const activeSources = sources.filter((source) => source.active && source.health_status !== "disabled");
@@ -63,42 +65,7 @@ export default async function MerchantSourcesPage() {
           <CardTitle>Verified Merchant Import Queue</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Merchant</TableHead>
-                <TableHead>Industry</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead className="text-right">Score</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {importQueue.map((candidate) => (
-                <TableRow key={candidate.id}>
-                  <TableCell>
-                    <div className="max-w-md">
-                      <p className="font-medium">{candidate.business_name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{candidate.website_url}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="capitalize">{candidate.industry.replace(/_/g, " ")}</TableCell>
-                  <TableCell>{candidate.business_phone ?? "Missing"}</TableCell>
-                  <TableCell>{candidate.business_email ?? "Not found"}</TableCell>
-                  <TableCell className="text-right">{candidate.quality_score}</TableCell>
-                  <TableCell><Badge variant="warning">Founder review</Badge></TableCell>
-                </TableRow>
-              ))}
-              {importQueue.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                    No verified merchants are waiting for founder import review yet.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
+          <MerchantCandidateReviewActions pendingCandidates={importQueue} approvedCandidates={approvedImportQueue} />
         </CardContent>
       </Card>
 

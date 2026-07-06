@@ -17,12 +17,14 @@ export interface MerchantSourceScanOptions {
 }
 
 export async function scanMerchantAcquisitionSources(options: MerchantSourceScanOptions) {
-  const sources = (await acquisitionRepository.listMerchantSources({ activeOnly: true, limit: options.sourceLimit ?? 10 }))
+  const sourceLimit = options.sourceLimit ?? 10;
+  const sources = (await acquisitionRepository.listMerchantSources({ activeOnly: true, limit: Math.max(sourceLimit * 4, 50) }))
     .filter((source) =>
       source.approval_status === "approved" &&
-      source.health_status !== "blocked" &&
-      source.health_status !== "disabled"
-    );
+      source.health_status === "active"
+    )
+    .sort(compareSourceScanPriority)
+    .slice(0, sourceLimit);
   const results = [];
 
   for (const source of sources) {
@@ -38,6 +40,29 @@ export async function scanMerchantAcquisitionSources(options: MerchantSourceScan
     imported: results.reduce((sum, result) => sum + result.imported, 0),
     results
   };
+}
+
+function compareSourceScanPriority(left: MerchantAcquisitionSource, right: MerchantAcquisitionSource) {
+  const rightScore = sourcePriorityScore(right);
+  const leftScore = sourcePriorityScore(left);
+  if (rightScore !== leftScore) return rightScore - leftScore;
+  return scanAge(left.last_scanned_at) - scanAge(right.last_scanned_at);
+}
+
+function sourcePriorityScore(source: MerchantAcquisitionSource) {
+  return (
+    Number(source.acquisition_yield_score ?? 0) * 4 +
+    Number(source.test_businesses_validated ?? 0) * 3 +
+    Number(source.source_quality_score ?? 0) * 2 +
+    Number(source.extraction_compatibility_score ?? 0) +
+    Number(source.success_rate ?? 0)
+  );
+}
+
+function scanAge(value: string | null) {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 async function scanMerchantSource(source: MerchantAcquisitionSource, options: MerchantSourceScanOptions) {

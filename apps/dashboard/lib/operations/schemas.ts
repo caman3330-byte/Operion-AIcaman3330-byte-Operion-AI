@@ -53,11 +53,14 @@ export const crmActivityFeedSchema = z.object({
 export const lenderDistributionSchema = z.object({
   businessApplicationId: z.string().uuid().optional(),
   leadId: z.string().uuid().optional(),
-  state: z.string().min(2),
-  industry: z.string().min(1),
-  requestedAmount: z.number().positive(),
+  state: z.string().min(2).optional(),
+  industry: z.string().min(1).optional(),
+  requestedAmount: z.number().positive().optional(),
   creditScore: z.number().int().min(300).max(850).optional(),
   riskScore: z.number().min(0).max(100).optional(),
+  monthlyRevenue: z.number().nonnegative().optional(),
+  monthlyDeposits: z.number().nonnegative().optional(),
+  timeInBusinessMonths: z.number().int().nonnegative().optional(),
   maxDistributions: z.number().int().positive().max(20).optional(),
   minimumScore: z.number().min(0).max(100).optional(),
   persist: z.boolean().default(false)

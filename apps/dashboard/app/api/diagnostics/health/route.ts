@@ -28,6 +28,11 @@ export async function GET(request: NextRequest) {
         crm: configuration.crm ? "configured" : "not_configured",
         stripe: configuration.stripe ? "configured" : "not_configured",
         apollo: configuration.apollo ? "configured" : "not_configured",
+        google: configuration.google ? "configured" : "not_configured",
+        cloudflare: configuration.cloudflare ? "configured" : "not_configured",
+        zoho: configuration.zoho ? "configured" : "not_configured",
+        acquisitionScheduler: configuration.acquisitionScheduler ? "enabled" : "disabled",
+        merchantIntelligenceScheduler: configuration.merchantIntelligenceScheduler ? "enabled" : "disabled",
         internalApi: configuration.internalApi ? "configured" : "not_configured",
         slack: configuration.slack ? "configured" : "not_configured",
         n8n: configuration.n8n ? "configured" : "not_configured"
