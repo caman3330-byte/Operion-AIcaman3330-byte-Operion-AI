@@ -4,13 +4,13 @@ import { handleRouteError } from '@/lib/errors';
 import { createHash } from 'node:crypto';
 import { getAcquisitionAdapter } from '@/lib/acquisition/adapters/registry';
 import { normalizeImportRows } from '@/lib/acquisition/manual-import';
-import { researchBusiness, qualifyBusiness, researchToImportRow } from '@/lib/data-prospects/research-service';
+import { normalizeBusinessLead } from '@/lib/acquisition/normalization';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const BATCH_SIZE = 10; // Process 10 rows at a time
-const RATE_LIMIT_MS = 500; // Delay between API calls
+const BATCH_SIZE = 10;
+const RATE_LIMIT_MS = 500;
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,34 +52,61 @@ export async function POST(request: NextRequest) {
           .eq('id', row.id)) as any;
 
         const originalData = row.original_data || {};
+        let enrichedData: any = { ...originalData };
+        let researchSource = 'uploaded_data';
 
-        // Research the business
-        const researchResult = await researchBusiness(originalData, googlePlacesAdapter);
+        // Try to enrich with Google Places
+        if (googlePlacesAdapter && originalData.business_name) {
+          try {
+            const placeResult = await googlePlacesAdapter.discover({
+              query: originalData.business_name,
+              location: originalData.city && originalData.state
+                ? `${originalData.city}, ${originalData.state}`
+                : undefined,
+              limit: 1,
+              sourceTimeoutMs: 5000,
+            });
 
-        // Qualify and score
-        const qualification = await qualifyBusiness(originalData, researchResult);
+            if (placeResult.records && placeResult.records.length > 0) {
+              const place = placeResult.records[0]!;
+              enrichedData = {
+                ...enrichedData,
+                ...place,
+              };
+              researchSource = 'google_places';
+            }
+          } catch (err) {
+            // If Google Places fails, continue with uploaded data
+            console.error('Google Places enrichment error:', err);
+          }
+        }
 
-        // Convert to import row format
-        const importRow = researchToImportRow(originalData, researchResult, qualification);
+        // Normalize the enriched data using existing system
+        // The normalizeBusinessLead function returns ManualImportRow compatible format
+        const normalized = normalizeBusinessLead(enrichedData);
+
+        // Calculate qualification
+        const score = calculateLeadScore(normalized, enrichedData);
+        const qualification = determineQualification(normalized, enrichedData);
 
         // Update the row with research results
         await (supabase
           .from('acquisition_import_rows' as any)
           .update({
             status: 'researched',
-            researched_data: importRow,
-            qualification_score: qualification.lead_score,
-            qualification_status: qualification.fit_level,
+            researched_data: enrichedData,
+            qualification_score: score,
+            qualification_status: qualification,
             research_timestamp: new Date().toISOString(),
           })
           .eq('id', row.id)) as any;
 
-        // Prepare for batch import
+        // Prepare for batch import - use the normalized data
         resultsToInsert.push({
           batch_id: row.batch_id,
           row_number: row.row_number,
-          data: importRow,
-          qualification: qualification,
+          data: normalized,
+          source: researchSource,
         });
 
         processed++;
@@ -102,12 +129,12 @@ export async function POST(request: NextRequest) {
     // Batch insert researched businesses into acquisition_prospects via import_data_prospects RPC
     if (resultsToInsert.length > 0) {
       try {
-        const batches = resultsToInsert.reduce((acc, item) => {
+        const batches = resultsToInsert.reduce((acc: Record<string, any[]>, item: any) => {
           const batchId = item.batch_id;
           if (!acc[batchId]) acc[batchId] = [];
           acc[batchId].push(item.data);
           return acc;
-        }, {} as Record<string, any[]>);
+        }, {});
 
         for (const [batchId, rows] of Object.entries(batches)) {
           const contentHash = createHash('sha256').update(JSON.stringify(rows)).digest('hex');
@@ -143,7 +170,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET endpoint to check research progress
 export async function GET(request: NextRequest) {
   try {
     const supabase = await getSupabaseAdmin();
@@ -229,4 +255,53 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return handleRouteError(error);
   }
+}
+
+// Calculate lead score based on verified information
+function calculateLeadScore(normalized: any, enriched: any): number {
+  let score = 0;
+
+  // Verified fields (highest weight)
+  if (normalized.business_name && enriched.google_place_id) score += 25;
+  if (normalized.website_url) score += 15;
+  if (normalized.phone) score += 15;
+  if (normalized.address) score += 10;
+
+  // Data completeness
+  if (normalized.email) score += 10;
+  if (normalized.industry) score += 10;
+  if (normalized.city && normalized.state) score += 10;
+
+  return Math.min(100, Math.max(0, score));
+}
+
+// Determine qualification level
+function determineQualification(normalized: any, enriched: any): string {
+  const hasWebsite = !!normalized.website_url;
+  const hasPhone = !!normalized.phone;
+  const hasEmail = !!normalized.email;
+  const hasGooglePlace = !!enriched.google_place_id;
+  const hasBusiness = !!normalized.business_name;
+
+  // Strong fit: multiple verified signals
+  if (hasGooglePlace && hasWebsite && (hasPhone || hasEmail)) {
+    return 'strong_fit';
+  }
+
+  // Possible fit: web or Google presence plus contact
+  if ((hasWebsite || hasGooglePlace) && hasPhone) {
+    return 'possible_fit';
+  }
+
+  // Weak fit: has business name but limited verification
+  if (hasBusiness && !hasWebsite && !hasGooglePlace) {
+    return 'weak_fit';
+  }
+
+  // Not a fit: no viable business identity
+  if (!hasBusiness) {
+    return 'not_a_fit';
+  }
+
+  return 'needs_review';
 }
