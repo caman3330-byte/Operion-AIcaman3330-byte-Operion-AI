@@ -112,6 +112,20 @@ export async function middleware(request: NextRequest) {
       return withSecurityHeaders(NextResponse.next());
     }
 
+    // Allow scheduler endpoint with CRON_SECRET validation (handled by route handler)
+    if (pathname === "/api/acquisition/google-places-scheduler") {
+      const cronSecret = request.nextUrl.searchParams.get("secret");
+      const expectedSecret = process.env.CRON_SECRET;
+      // If CRON_SECRET is configured, require valid secret; otherwise allow for local testing
+      if (expectedSecret && (!cronSecret || cronSecret !== expectedSecret)) {
+        return new NextResponse(JSON.stringify({ error: "unauthorized" }), {
+          status: 401,
+          headers: { "content-type": "application/json" }
+        });
+      }
+      return withSecurityHeaders(NextResponse.next());
+    }
+
     // Lazily import Supabase server client only for protected API routes.
     let createServerClient: any;
     try {
