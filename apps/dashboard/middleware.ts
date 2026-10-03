@@ -54,7 +54,8 @@ const publicApiPrefixes = [
   "/api/portal/upload-link",
   "/api/auth/logout",
   "/api/webhooks/sendgrid",
-  "/api/acquisition/google-places-scheduler"
+  "/api/acquisition/google-places-scheduler",
+  "/api/data/diagnostics"
 ];
 
 const customerApiPrefixes = [
