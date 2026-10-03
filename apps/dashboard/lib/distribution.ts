@@ -7,6 +7,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { withRetry } from "@/lib/retry";
 import { writeAuditLog } from "@/lib/audit";
 import { sendLenderPackageNotificationEmail } from "@/lib/email/sendgrid";
+import { permitsExternalDelivery } from "../environment-safety.cjs";
 
 interface DistributeLeadInput {
   lead: Lead;
@@ -20,6 +21,7 @@ export async function matchLenders(lead: Lead) {
 }
 
 export async function distributeLead(input: DistributeLeadInput) {
+  if (!permitsExternalDelivery(process.env)) throw new ValidationError("Lender delivery is disabled outside production");
   if (!input.lead.distribution_approved_at) {
     throw new ValidationError("Lead must be approved before distribution");
   }

@@ -20,6 +20,8 @@ import type {
   MerchantAcquisitionCandidateInsert,
   MerchantAcquisitionCandidateUpdate,
   MerchantAcquisitionSourceInsert,
+  MerchantAcquisitionSourceShardInsert,
+  MerchantAcquisitionSourceShardUpdate,
   MerchantAcquisitionSourceScanInsert,
   MerchantAcquisitionSourceScanUpdate,
   MerchantAcquisitionSourceUpdate,
@@ -102,11 +104,115 @@ export const acquisitionRepository = {
     return data;
   },
 
+  async listMerchantSourceShards(sourceId: string, limit = 50) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("merchant_acquisition_source_shards")
+      .select("*")
+      .eq("source_id", sourceId)
+      .order("offset_value", { ascending: true, nullsFirst: true })
+      .order("page_number", { ascending: true, nullsFirst: true })
+      .order("created_at", { ascending: true })
+      .limit(limit);
+    if (error) throwAcquisitionDatabaseError(error);
+    return data ?? [];
+  },
+
+  async upsertMerchantSourceShard(payload: MerchantAcquisitionSourceShardInsert) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("merchant_acquisition_source_shards")
+      .upsert(payload, { onConflict: "source_id,shard_key" })
+      .select("*")
+      .single();
+    if (error) throwAcquisitionDatabaseError(error);
+    return data;
+  },
+
+  async updateMerchantSourceShard(id: string, payload: MerchantAcquisitionSourceShardUpdate) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("merchant_acquisition_source_shards")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error || !data) throwAcquisitionDatabaseError(error ?? { message: "Merchant acquisition source shard not found" });
+    return data;
+  },
+
+  async claimMerchantSourceLock(id: string, lockToken: string, lockExpiresAt: string) {
+    const supabase = getSupabaseAdmin();
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("merchant_acquisition_sources" as never)
+      .update({ lock_token: lockToken, locked_at: now, lock_expires_at: lockExpiresAt } as never)
+      .eq("id" as never, id as never)
+      .or(`lock_token.is.null,lock_expires_at.lt.${now}` as never)
+      .select("*")
+      .maybeSingle();
+    if (error && !isMissingLockColumn(error)) throwAcquisitionDatabaseError(error);
+    return { claimed: Boolean(data), source: data ?? null, skipped: Boolean(error) };
+  },
+
+  async releaseMerchantSourceLock(id: string, lockToken: string) {
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase
+      .from("merchant_acquisition_sources" as never)
+      .update({ lock_token: null, locked_at: null, lock_expires_at: null } as never)
+      .eq("id" as never, id as never)
+      .eq("lock_token" as never, lockToken as never);
+    if (error && !isMissingLockColumn(error)) throwAcquisitionDatabaseError(error);
+    return { released: !error, skipped: Boolean(error) };
+  },
+
+  async claimMerchantSourceShardLock(id: string, lockToken: string, lockExpiresAt: string) {
+    const supabase = getSupabaseAdmin();
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("merchant_acquisition_source_shards" as never)
+      .update({ lock_token: lockToken, locked_at: now, lock_expires_at: lockExpiresAt, started_at: now } as never)
+      .eq("id" as never, id as never)
+      .or(`lock_token.is.null,lock_expires_at.lt.${now}` as never)
+      .select("*")
+      .maybeSingle();
+    if (error && !isMissingLockColumn(error)) throwAcquisitionDatabaseError(error);
+    return { claimed: Boolean(data), shard: data ?? null, skipped: Boolean(error) };
+  },
+
+  async releaseMerchantSourceShardLock(id: string, lockToken: string) {
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase
+      .from("merchant_acquisition_source_shards" as never)
+      .update({ lock_token: null, locked_at: null, lock_expires_at: null } as never)
+      .eq("id" as never, id as never)
+      .eq("lock_token" as never, lockToken as never);
+    if (error && !isMissingLockColumn(error)) throwAcquisitionDatabaseError(error);
+    return { released: !error, skipped: Boolean(error) };
+  },
+
   async updateMerchantSource(id: string, payload: MerchantAcquisitionSourceUpdate) {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.from("merchant_acquisition_sources").update(payload).eq("id", id).select("*").single();
     if (error || !data) throwAcquisitionDatabaseError(error ?? { message: "Merchant acquisition source not found" });
     return data;
+  },
+
+  async updateMerchantSourceFreshnessMetrics(id: string, payload: {
+    last_success_at?: string | null;
+    last_new_lead_at?: string | null;
+    consecutive_zero_yield?: number;
+    duplicate_rate?: number;
+    verified_rate?: number;
+    false_positive_rate?: number;
+  }) {
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase
+      .from("merchant_acquisition_sources" as never)
+      .update(payload as never)
+      .eq("id" as never, id as never);
+    if (error && !isMissingFreshnessMetricColumn(error)) throwAcquisitionDatabaseError(error);
+    return { applied: !error, skipped: Boolean(error) };
   },
 
   async createMerchantSourceDiscoveryRun(payload: MerchantSourceDiscoveryRunInsert) {
@@ -154,6 +260,49 @@ export const acquisitionRepository = {
       .single();
     if (error) throwAcquisitionDatabaseError(error);
     return data;
+  },
+
+  async findMerchantCandidateDuplicates(input: {
+    businessName: string;
+    domain?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  }) {
+    const supabase = getSupabaseAdmin();
+    const normalizedName = normalizeBusinessName(input.businessName);
+    const nameToken = normalizedName.split(" ").find((token) => token.length >= 4);
+    const queries = [
+      input.domain
+        ? supabase.from("merchant_acquisition_candidates").select("*").eq("domain", input.domain).limit(10)
+        : Promise.resolve({ data: [], error: null }),
+      input.email
+        ? supabase.from("merchant_acquisition_candidates").select("*").eq("business_email", input.email).limit(10)
+        : Promise.resolve({ data: [], error: null }),
+      input.phone
+        ? supabase
+            .from("merchant_acquisition_candidates")
+            .select("*")
+            .or(`business_phone.eq.${escapeSupabaseFilter(input.phone)},source_phone.eq.${escapeSupabaseFilter(input.phone)}`)
+            .limit(10)
+        : Promise.resolve({ data: [], error: null }),
+      nameToken
+        ? supabase.from("merchant_acquisition_candidates").select("*").ilike("business_name", `%${escapeLikePattern(nameToken)}%`).limit(25)
+        : Promise.resolve({ data: [], error: null })
+    ];
+    const results = await Promise.all(queries);
+    for (const result of results) {
+      if (result.error) throwAcquisitionDatabaseError(result.error);
+    }
+
+    const rows = results.flatMap((result) => result.data ?? []);
+    return rows
+      .filter((candidate, index, all) => all.findIndex((row) => row.id === candidate.id) === index)
+      .filter((candidate) =>
+        (input.domain && candidate.domain === input.domain) ||
+        (input.email && candidate.business_email === input.email) ||
+        (input.phone && (candidate.business_phone === input.phone || candidate.source_phone === input.phone)) ||
+        similarBusinessName(normalizedName, normalizeBusinessName(candidate.business_name))
+      );
   },
 
   async listMerchantCandidates(options: { sourceId?: string; status?: MerchantCandidateEnrichmentStatus; limit?: number } = {}) {
@@ -211,10 +360,10 @@ export const acquisitionRepository = {
     const supabase = getSupabaseAdmin();
     const [sources, scans, candidates, pendingImports] = await Promise.all([
       supabase.from("merchant_acquisition_sources").select("active,approval_status,health_status"),
-      supabase.from("merchant_acquisition_source_scans").select("id"),
+      supabase.from("merchant_acquisition_source_scans").select("id,started_at"),
       supabase
         .from("merchant_acquisition_candidates")
-        .select("business_name,domain,business_email,enrichment_status,import_review_status,quality_score,website_verified,phone_verified,identity_match"),
+        .select("business_name,domain,business_email,business_phone,source_phone,enrichment_status,import_review_status,quality_score,website_verified,phone_verified,email_found,identity_match,created_at,updated_at"),
       supabase
         .from("merchant_acquisition_candidates")
         .select("*")
@@ -233,10 +382,13 @@ export const acquisitionRepository = {
     const candidateRows = candidates.data ?? [];
     return {
       sources_scanned: scans.data?.length ?? 0,
+      sources_scanned_today: scans.data?.filter((scan) => isToday(scan.started_at)).length ?? 0,
       candidate_sources_pending_review: sourceRows.filter((source) => source.approval_status === "pending_review").length,
       active_sources: sourceRows.filter((source) => source.active && source.health_status !== "disabled").length,
       candidates_discovered: candidateRows.length,
       candidates_enriched: candidateRows.filter((candidate) => ["completed", "rejected", "failed"].includes(candidate.enrichment_status)).length,
+      candidates_discovered_today: candidateRows.filter((candidate) => isToday(candidate.created_at)).length,
+      candidates_enriched_today: candidateRows.filter((candidate) => isToday(candidate.updated_at) && ["completed", "rejected", "failed"].includes(candidate.enrichment_status)).length,
       verified_merchants: candidateRows.filter((candidate) =>
         candidate.enrichment_status === "completed" &&
         candidate.website_verified &&
@@ -245,7 +397,14 @@ export const acquisitionRepository = {
         Number(candidate.quality_score ?? 0) >= 80 &&
         isUsableMerchantImportCandidate(candidate)
       ).length,
-      pending_imports: (pendingImports.data ?? []).filter(isUsableMerchantImportCandidate).length
+      rejected_candidates: candidateRows.filter((candidate) => candidate.enrichment_status === "rejected").length,
+      duplicates: countDuplicateCandidates(candidateRows),
+      pending_imports: (pendingImports.data ?? []).filter(isUsableMerchantImportCandidate).length,
+      imported: candidateRows.filter((candidate) => candidate.import_review_status === "imported").length,
+      with_phone: candidateRows.filter((candidate) => candidate.business_phone || candidate.source_phone).length,
+      with_email: candidateRows.filter((candidate) => candidate.business_email || candidate.email_found).length,
+      with_phone_and_email: candidateRows.filter((candidate) => (candidate.business_phone || candidate.source_phone) && (candidate.business_email || candidate.email_found)).length,
+      target_verified_merchants: 500
     };
   },
 
@@ -658,6 +817,11 @@ export function isAcquisitionMigrationMissing(error: unknown) {
   return error instanceof ConfigurationError && error.message.includes("0004");
 }
 
+function isMissingFreshnessMetricColumn(error: { code?: string; message?: string }) {
+  return error.code === "42703" ||
+    /last_success_at|last_new_lead_at|consecutive_zero_yield|duplicate_rate|verified_rate|false_positive_rate/i.test(error.message ?? "");
+}
+
 async function countRows(table: string, filters: Record<string, string | number | boolean> = {}) {
   const supabase = getSupabaseAdmin();
   let query = supabase.from(table as never).select("id", { count: "exact", head: true });
@@ -694,8 +858,39 @@ function summarizeDimension<T extends Record<string, unknown>>(rows: T[], key: k
     .slice(0, 5);
 }
 
+function isToday(value?: string | null) {
+  if (!value) return false;
+  const then = new Date(value);
+  const now = new Date();
+  return then.getUTCFullYear() === now.getUTCFullYear()
+    && then.getUTCMonth() === now.getUTCMonth()
+    && then.getUTCDate() === now.getUTCDate();
+}
+
+function countDuplicateCandidates(rows: Array<{
+  business_name?: string | null;
+  domain?: string | null;
+  business_email?: string | null;
+  business_phone?: string | null;
+  source_phone?: string | null;
+}>) {
+  return countExtraRows(rows.map((row) => row.domain).filter(Boolean))
+    + countExtraRows(rows.map((row) => row.business_email).filter(Boolean))
+    + countExtraRows(rows.map((row) => row.business_phone ?? row.source_phone).filter(Boolean))
+    + countExtraRows(rows.map((row) => normalizeBusinessName(row.business_name ?? "")).filter(Boolean));
+}
+
+function countExtraRows(values: Array<string | null | undefined>) {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    if (!value) continue;
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+}
+
 function escapeSupabaseFilter(value: string) {
-  return value.replace(/,/g, "\\,");
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 function escapeLikePattern(value: string) {
@@ -723,6 +918,11 @@ function isUsableMerchantImportCandidate(candidate: {
   const sourceOrPlatformDomain = /\b(nrca|mycrowdwisdom|blob\.core\.windows|confirmsubscription|roofingalliance|professionalroofing|everybodyneedsaroof|careersinroofing|tiktok|livechat|givelively|phccweb|webpolicyportal|wearecis|b2clogin|hubs\.li|hvacindustrymarketplace|aimg|higherlogic|emflipbooks|yourmembership|browsehappy|flickr|sunbeltbuildersshow|texasbuildersfoundation|tabproductdepot|growthzonecms|ieci|tdlr\.texas)\b/i;
   const placeholderEmail = /(@company\.com|@companyname\.com|latinotype\.com)$/i;
   return !sourceOrPlatformName.test(name) && !sourceOrPlatformDomain.test(domain) && !placeholderEmail.test(email);
+}
+
+function isMissingLockColumn(error: { code?: string; message?: string }) {
+  const message = error.message ?? "";
+  return error.code === "42703" || /lock_token|locked_at|lock_expires_at|started_at|completed_at/i.test(message);
 }
 
 function throwAcquisitionDatabaseError(error: { code?: string; message?: string }): never {

@@ -56,6 +56,7 @@ import type {
   LeadTier,
   MerchantAcquisitionSource,
   MerchantAcquisitionCandidate,
+  MerchantAcquisitionSourceShard,
   MerchantAcquisitionSourceScan,
   MerchantSourceDiscoveryRun,
   MerchantCandidateImportReviewStatus,
@@ -165,6 +166,9 @@ export type MerchantAcquisitionSourceUpdate = LoosePartial<Omit<MerchantAcquisit
 export type MerchantAcquisitionSourceScanInsert = LoosePartial<Omit<MerchantAcquisitionSourceScan, "id">> &
   Pick<MerchantAcquisitionSourceScan, "source_id">;
 export type MerchantAcquisitionSourceScanUpdate = LoosePartial<Omit<MerchantAcquisitionSourceScan, "id" | "source_id">>;
+export type MerchantAcquisitionSourceShardInsert = LoosePartial<Omit<MerchantAcquisitionSourceShard, "id" | "created_at" | "updated_at">> &
+  Pick<MerchantAcquisitionSourceShard, "source_id" | "shard_key" | "shard_url">;
+export type MerchantAcquisitionSourceShardUpdate = LoosePartial<Omit<MerchantAcquisitionSourceShard, "id" | "source_id" | "shard_key" | "created_at">>;
 export type MerchantSourceDiscoveryRunInsert = LoosePartial<Omit<MerchantSourceDiscoveryRun, "id">>;
 export type MerchantSourceDiscoveryRunUpdate = LoosePartial<Omit<MerchantSourceDiscoveryRun, "id" | "started_at">>;
 export type MerchantAcquisitionCandidateInsert = LoosePartial<Omit<MerchantAcquisitionCandidate, "id" | "created_at" | "updated_at">> &
@@ -445,6 +449,12 @@ export interface Database {
         Row: MerchantAcquisitionSourceScan;
         Insert: MerchantAcquisitionSourceScanInsert;
         Update: MerchantAcquisitionSourceScanUpdate;
+        Relationships: [];
+      };
+      merchant_acquisition_source_shards: {
+        Row: MerchantAcquisitionSourceShard;
+        Insert: MerchantAcquisitionSourceShardInsert;
+        Update: MerchantAcquisitionSourceShardUpdate;
         Relationships: [];
       };
       merchant_source_discovery_runs: {

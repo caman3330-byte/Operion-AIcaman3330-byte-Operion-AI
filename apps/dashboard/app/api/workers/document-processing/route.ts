@@ -38,9 +38,9 @@ export async function GET(request: NextRequest) {
       const value = await runDocumentProcessingWorker(limit);
       return {
         value,
-        queueAffected: value.processed + value.skipped + value.failed,
-        success: value.failed === 0,
-        metadata: { transitioned: value.transitioned, limit }
+        queueAffected: value.processed + value.failed,
+        success: value.failed === 0 && value.blocked === 0,
+        metadata: { transitioned: value.transitioned, blocked: value.blocked, limit }
       };
     });
     return NextResponse.json({ data: result });

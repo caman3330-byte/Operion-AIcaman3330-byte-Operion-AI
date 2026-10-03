@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import fs from "node:fs";
+import path from "node:path";
 import { AuthorizationError, AuthenticationError, ConfigurationError } from "@/lib/errors";
 import { getConfigurationStatus } from "@/lib/env";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
@@ -21,7 +23,10 @@ const founderEquivalentRoles: ExtendedAppRole[] = ["founder", "super_admin", "ad
 const builtInFounderEmails = ["founder@operion.ai", "founder@operioncapital.com", "admin@operion.ai"];
 
 export async function requireFounder(request: Request): Promise<FounderActor> {
-  return requireRole(request, founderEquivalentRoles);
+  const actor = await requireRole(request, founderEquivalentRoles);
+  // Scheduler/workflow credentials are not a founder session.
+  if (!founderEquivalentRoles.includes(actor.role)) throw new AuthorizationError("Founder access required");
+  return actor;
 }
 
 export async function requireInternalUser(request: Request): Promise<FounderActor> {
@@ -29,8 +34,8 @@ export async function requireInternalUser(request: Request): Promise<FounderActo
 }
 
 export async function requireScheduler(request: Request): Promise<FounderActor> {
-  const cronSecret = process.env.CRON_SECRET;
-  const internalKey = process.env.OPERION_INTERNAL_API_KEY;
+  const cronSecret = readSecretEnv("CRON_SECRET");
+  const internalKey = readSecretEnv("OPERION_INTERNAL_API_KEY");
   const authorization = request.headers.get("authorization");
 
   if (cronSecret && authorization === `Bearer ${cronSecret}`) {
@@ -58,8 +63,7 @@ export async function requireCustomer(request: Request): Promise<FounderActor> {
 
 export async function requireRole(request: Request, allowedRoles: ExtendedAppRole[]): Promise<FounderActor> {
   const config = getConfigurationStatus();
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const internalKey = process.env.OPERION_INTERNAL_API_KEY;
+  const internalKey = readSecretEnv("OPERION_INTERNAL_API_KEY");
 
   if (internalKey && request.headers.get("x-operion-internal-key") === internalKey) {
     return {
@@ -70,14 +74,6 @@ export async function requireRole(request: Request, allowedRoles: ExtendedAppRol
   }
 
   if (!config.auth) {
-    if (process.env.NODE_ENV !== "production") {
-      return {
-        id: "local-founder",
-        email: adminEmail ?? "founder@operion.ai",
-        role: "founder"
-      };
-    }
-
     throw new ConfigurationError("Supabase Auth must be configured for protected API routes");
   }
 
@@ -192,12 +188,8 @@ export async function resolveUserRole(userId: string, email: string, claims?: Ro
     return "founder";
   }
 
-  const metadataRole = normalizeRoleClaim(
-    claims?.app_metadata?.app_role ??
-      claims?.app_metadata?.role ??
-      claims?.user_metadata?.app_role ??
-      claims?.user_metadata?.role
-  );
+  // user_metadata is editable by the signed-in user and cannot grant access.
+  const metadataRole = normalizeRoleClaim(claims?.app_metadata?.app_role ?? claims?.app_metadata?.role);
   if (metadataRole) {
     return metadataRole;
   }
@@ -265,6 +257,29 @@ function extractBearerToken(request: Request) {
   }
 
   return authorization.slice("Bearer ".length);
+}
+
+function readSecretEnv(key: string) {
+  if (process.env[key]) return process.env[key];
+  if ("EdgeRuntime" in globalThis) return undefined;
+
+  const candidates = [
+    path.resolve(process.cwd(), ".env.local"),
+    path.resolve(process.cwd(), "../../.env.local"),
+    path.resolve(process.cwd(), "apps/dashboard/.env.local")
+  ];
+
+  for (const file of candidates) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      const match = fs.readFileSync(file, "utf8").match(new RegExp(`^${key}=(.*)$`, "m"));
+      if (match?.[1]) return match[1].trim().replace(/^['"]|['"]$/g, "");
+    } catch {
+      continue;
+    }
+  }
+
+  return undefined;
 }
 
 function extractSupabaseCookieToken(cookieHeader: string) {

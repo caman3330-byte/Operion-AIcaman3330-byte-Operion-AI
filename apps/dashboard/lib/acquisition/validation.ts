@@ -290,7 +290,7 @@ export function isGenericBusinessName(value: string) {
     "member search", "business directory", "membership directory", "roofing contractors",
     "login", "log in", "sign in", "contact", "contact us", "learn more", "visit website", "member application", "full"
   ].includes(normalized)) return true;
-  return /\b(?:sponsorship campaign|member login|directory search|view directory)\b/.test(normalized);
+  return /\b(?:sponsorship campaign|member login|directory search|view directory|national roofing directory|find a contractor|member directory)\b/.test(normalized);
 }
 
 function isDirectorySource(source: string) {

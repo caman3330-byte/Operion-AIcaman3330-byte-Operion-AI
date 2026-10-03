@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireInternalUser } from "@/lib/auth";
-import { handleRouteError } from "@/lib/errors";
+import { requireFounder } from "@/lib/auth";
+import { handleRouteError, ValidationError } from "@/lib/errors";
 import { runLeadAcquisitionAgent } from "@/lib/workers/lead-acquisition-agent";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,9 @@ const tickSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    await requireInternalUser(request);
+    await requireFounder(request);
     const payload = tickSchema.parse(await request.json().catch(() => ({})));
+    if (payload.researchMode || payload.sources?.includes("ai_seed")) throw new ValidationError("Generated research businesses cannot enter DATA.");
     const result = await runLeadAcquisitionAgent({
       limit: payload.limit,
       ...(payload.sources ? { sources: payload.sources } : {}),

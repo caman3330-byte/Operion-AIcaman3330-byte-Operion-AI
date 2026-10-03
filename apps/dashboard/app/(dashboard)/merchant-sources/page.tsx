@@ -56,8 +56,15 @@ export default async function MerchantSourcesPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Sources Scanned" value={String(metrics.sources_scanned)} detail="Historical scan records" icon={Activity} />
         <MetricCard title="Candidates Enriched" value={String(metrics.candidates_enriched)} detail={`${metrics.candidates_discovered} discovered`} icon={Globe2} />
-        <MetricCard title="Verified Merchants" value={String(metrics.verified_merchants)} detail="Website + phone + identity" icon={CheckCircle2} tone="success" />
-        <MetricCard title="Pending Imports" value={String(metrics.pending_imports)} detail={`${metrics.candidate_sources_pending_review} sources need approval`} icon={Clock3} tone={metrics.pending_imports > 0 ? "warning" : "default"} />
+        <MetricCard title="Verified Merchants" value={`${metrics.verified_merchants}/${metrics.target_verified_merchants}`} detail="Website + phone + identity" icon={CheckCircle2} tone="success" />
+        <MetricCard title="Founder Review" value={String(metrics.pending_imports)} detail={`${metrics.imported} imported, ${metrics.rejected_candidates} rejected`} icon={Clock3} tone={metrics.pending_imports > 0 ? "warning" : "default"} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title="Scanned Today" value={String(metrics.sources_scanned_today)} detail="Acquisition source runs" icon={Activity} />
+        <MetricCard title="New Today" value={String(metrics.candidates_discovered_today)} detail={`${metrics.candidates_enriched_today} enriched today`} icon={Globe2} />
+        <MetricCard title="Duplicates" value={String(metrics.duplicates)} detail="Candidate-level duplicate signals" icon={AlertTriangle} tone={metrics.duplicates > 0 ? "warning" : "default"} />
+        <MetricCard title="Contactable" value={String(metrics.with_phone_and_email)} detail={`${metrics.with_phone} phone, ${metrics.with_email} email`} icon={CheckCircle2} tone="success" />
       </div>
 
       <Card>

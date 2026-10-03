@@ -26,12 +26,12 @@ export default function ContactPage() {
               ].map(([Icon, title, text]) => {
                 const ItemIcon = Icon as typeof Mail;
                 return (
-                  <div key={String(title)} className="rounded-lg border border-white/10 bg-card/80 p-4">
+                  <div key={String(title)} className="rounded-lg border border-sky-100 bg-white p-4 shadow-sm">
                     <div className="flex items-start gap-3">
                       <ItemIcon className="mt-0.5 h-5 w-5 text-primary" />
                       <div>
-                        <p className="font-semibold text-white">{title as string}</p>
-                        <p className="mt-1 text-sm leading-6 text-muted-foreground">{text as string}</p>
+                        <p className="font-semibold text-slate-950">{title as string}</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">{text as string}</p>
                       </div>
                     </div>
                   </div>
@@ -40,7 +40,7 @@ export default function ContactPage() {
             </div>
           </div>
 
-          <form className="rounded-lg border border-white/10 bg-card/80 p-6">
+          <form className="rounded-lg border border-sky-100 bg-white p-6 shadow-sm">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Full name" name="name" />
               <Field label="Business email" name="email" type="email" />
@@ -52,7 +52,7 @@ export default function ContactPage() {
               </div>
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Button asChild>
+              <Button asChild className="border-sky-700 bg-[#0b5cab] text-white shadow-lg shadow-sky-900/15 hover:bg-[#084e91]">
                 <a href="mailto:funding@operioncapital.com">
                   Email funding team
                   <ArrowRight className="h-4 w-4" />

@@ -2,13 +2,14 @@ import Link from "next/link";
 import type { Route as NextRoute } from "next";
 import { getInternalPageAccess, ProtectedPageRedirect } from "@/components/layout/protected-page";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { getMerchantPipelineData } from "@/lib/data/merchant-profile";
 
 export const dynamic = "force-dynamic";
 
 function merchantDetailHref(applicationId: string) {
-  return `/apps/dashboard/merchants/${applicationId}` as NextRoute;
+  return `/merchants/${applicationId}` as NextRoute;
 }
 
 function classifyScope(record: unknown): "live" | "qa" {
@@ -31,11 +32,19 @@ function statusVariant(status: string) {
   return "secondary";
 }
 
-export default async function MerchantsPage() {
+export default async function MerchantsPage({ searchParams }: { searchParams?: Promise<{ q?: string; status?: string }> }) {
   const access = await getInternalPageAccess();
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
 
-  const { applications, counts } = await getMerchantPipelineData();
+  const { applications: allApplications, counts } = await getMerchantPipelineData();
+  const params = await searchParams;
+  const query = (params?.q ?? "").trim().toLowerCase();
+  const status = params?.status ?? "";
+  const applications = allApplications.filter((application) => {
+    const matchesQuery = !query || [application.business_name, application.id, application.contact_email].some((value) => String(value ?? "").toLowerCase().includes(query));
+    const matchesStatus = !status || application.status === status;
+    return matchesQuery && matchesStatus;
+  });
   const liveCount = applications.filter((a) => classifyScope(a) === "live").length;
   const qaCount = applications.length - liveCount;
 
@@ -47,6 +56,15 @@ export default async function MerchantsPage() {
           Review merchant applications, funding readiness, underwriting state, and CRM activity from one operations dashboard.
         </p>
       </div>
+
+      <form className="flex flex-wrap gap-3" method="get">
+        <input name="q" defaultValue={params?.q ?? ""} placeholder="Search business, application ID, or email" aria-label="Search merchants" className="min-w-0 basis-64 flex-1 rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground" />
+        <select name="status" defaultValue={status} className="rounded-md border border-white/10 bg-card/80 px-3 py-2 text-sm text-white">
+          <option value="">All statuses</option>
+          {['awaiting_documents','documents_uploaded','underwriting_review','ai_review','submitted','funded','rejected'].map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
+        </select>
+        <Button type="submit">Search</Button>
+      </form>
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-lg border border-white/10 bg-card/80 p-5">
@@ -64,7 +82,7 @@ export default async function MerchantsPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-white/10 bg-card/80">
+      <div className="max-w-full overflow-x-auto rounded-lg border border-border bg-card" role="region" aria-label="Merchant applications" tabIndex={0}>
         <table className="min-w-full divide-y divide-white/5 text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-[0.16em] text-muted-foreground">
             <tr>
@@ -74,6 +92,7 @@ export default async function MerchantsPage() {
               <th className="px-4 py-3">Requested</th>
               <th className="px-4 py-3">State</th>
               <th className="px-4 py-3">Updated</th>
+              <th className="px-4 py-3">File Room</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -99,6 +118,7 @@ export default async function MerchantsPage() {
                 <td className="px-4 py-4 text-white">{formatCurrency(Number(application.requested_amount))}</td>
                 <td className="px-4 py-4 text-muted-foreground">{application.state ?? "N/A"}</td>
                 <td className="px-4 py-4 text-muted-foreground">{formatDateTime(application.updated_at)}</td>
+                <td className="px-4 py-4"><Button asChild variant="outline" size="sm"><Link href={`${merchantDetailHref(application.id)}#documents` as NextRoute}>Review files</Link></Button></td>
               </tr>
               );
             })}

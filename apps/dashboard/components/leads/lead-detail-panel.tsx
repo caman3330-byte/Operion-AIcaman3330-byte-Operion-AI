@@ -1,6 +1,8 @@
 "use client";
 
 import type { Lead } from "@operion/shared";
+import Link from "next/link";
+import type { Route } from "next";
 import { Check, Pause, ShieldX, X } from "lucide-react";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ export function LeadDetailPanel({
             </SheetHeader>
             <div className="mt-5 flex-1 space-y-5 overflow-y-auto">
               <LeadStatusBadge status={lead.status} tier={lead.tier} />
+              <Button asChild variant="outline"><Link href={`/admin/leads/${lead.id}` as Route}>Full record, history & files</Link></Button>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <Detail label="Score" value={lead.qualification_score?.toString() ?? "—"} />
                 <Detail label="Revenue" value={formatCurrency(lead.annual_revenue_est)} />
@@ -79,7 +82,7 @@ function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border bg-background p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate font-medium">{value}</p>
+      <p className="mt-1 break-words font-medium">{value}</p>
     </div>
   );
 }

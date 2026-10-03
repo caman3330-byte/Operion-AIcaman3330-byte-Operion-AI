@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDocumentTypeLabel } from "@/lib/documents/processing";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { getMerchantProfileData } from "@/lib/data/merchant-profile";
+import { DocumentViewer } from "@/components/documents/document-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -29,13 +30,8 @@ function getRiskLabel(status: string, missingDocuments: number) {
 function getFundingProbability(application: any) {
   const metadata = typeof application.metadata === "object" && application.metadata ? (application.metadata as Record<string, unknown>) : {};
   const probability = metadata.funding_probability;
-  if (typeof probability === "number") return probability;
-
-  if (application.status === "funded") return 92;
-  if (application.status === "approved") return 78;
-  if (application.status === "qualified" || application.status === "routed") return 62;
-  if (application.status === "documents_pending") return 44;
-  return 29;
+  return typeof probability === "number" && Number.isFinite(probability) && probability >= 0 && probability <= 100
+    ? probability : null;
 }
 
 function getOperatorNotes(metadata: Record<string, unknown>): OperatorNotesValue {
@@ -313,7 +309,7 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <p className="text-xs text-muted-foreground">Probability</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{fundingProbability}%</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">{fundingProbability === null ? "Not assessed" : `${fundingProbability}%`}</p>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <p className="text-xs text-muted-foreground">Risk status</p>
@@ -620,10 +616,10 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card>
+      <div id="documents" className="grid scroll-mt-20 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <Card className="min-w-0">
           <CardHeader>
-            <CardTitle>Uploaded documents</CardTitle>
+            <CardTitle>File Room: uploaded documents</CardTitle>
           </CardHeader>
           <CardContent>
             {documents.length === 0 ? (
@@ -632,24 +628,18 @@ export default async function MerchantDetailsPage({ params }: { params: Promise<
               <div className="space-y-3">
                 {documents.map((document) => (
                   <div key={document.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="font-medium text-white">{getDocumentTypeLabel(document.document_type)}</p>
                       <Badge variant={document.status === "verified" ? "success" : document.status === "uploaded" ? "warning" : "secondary"}>
                         {document.status}
                       </Badge>
                     </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{document.file_name ?? "No file recorded"}</p>
+                    <p className="mt-2 break-all text-sm text-muted-foreground">{document.file_name ?? "No file recorded"}</p>
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <span>Bucket: {document.storage_bucket ?? "merchant-documents"}</span>
                       <span>Processing: {document.processing_status ?? "pending"}</span>
                     </div>
-                    {document.storage_path ? (
-                      <Button asChild variant="outline" size="sm" className="mt-4">
-                        <Link href={`/api/documents/${document.id}/signed-url`} target="_blank" rel="noreferrer">
-                          View secure file
-                        </Link>
-                      </Button>
-                    ) : null}
+                    {document.storage_path ? <div className="mt-4 flex flex-wrap gap-2"><DocumentViewer documentId={document.id} fileName={document.file_name ?? "bank-statement.pdf"} mimeType={document.mime_type} /><Button asChild variant="outline" size="sm"><Link href={`/api/documents/${document.id}/signed-url`} target="_blank" rel="noreferrer">Download</Link></Button></div> : null}
                   </div>
                 ))}
               </div>

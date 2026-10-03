@@ -1,0 +1,101 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [7 0 R 8 0 R 9 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 398 >>
+stream
+BT
+/F1 14 Tf
+72 720 Td
+(TEST / SAMPLE / NOT A REAL BANK STATEMENT) Tj
+0 -32 Td
+(TEST - Operion Demo Plumbing) Tj
+0 -32 Td
+(Statement period: August 1, 2026 - August 31, 2026) Tj
+0 -32 Td
+(Synthetic account: TEST-ACCOUNT-001) Tj
+0 -32 Td
+(Synthetic institution: TEST BANK - NOT A REAL FINANCIAL INSTITUTION) Tj
+0 -32 Td
+(Beginning balance: $10,000.00) Tj
+0 -32 Td
+(Ending balance: $13,250.00) Tj
+
+ET
+endstream
+endobj
+5 0 obj
+<< /Length 406 >>
+stream
+BT
+/F1 14 Tf
+72 720 Td
+(TEST TRANSACTIONS - SYNTHETIC DATA ONLY) Tj
+0 -32 Td
+(08/03  Synthetic deposit                 $5,000.00) Tj
+0 -32 Td
+(08/08  Synthetic supplier payment         \($1,200.00\)) Tj
+0 -32 Td
+(08/15  Synthetic deposit                 $3,500.00) Tj
+0 -32 Td
+(08/22  Synthetic operating expense          \($800.00\)) Tj
+0 -32 Td
+(08/28  Synthetic deposit                 $2,000.00) Tj
+
+ET
+endstream
+endobj
+6 0 obj
+<< /Length 341 >>
+stream
+BT
+/F1 14 Tf
+72 720 Td
+(TEST SUMMARY - SYNTHETIC DATA ONLY) Tj
+0 -32 Td
+(Total synthetic deposits: $10,500.00) Tj
+0 -32 Td
+(Total synthetic withdrawals: $7,250.00) Tj
+0 -32 Td
+(Transaction count: 5) Tj
+0 -32 Td
+(Negative balance indicators: None) Tj
+0 -32 Td
+(This PDF is a deterministic test fixture and is not a financial document.) Tj
+
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000197 00000 n 
+0000000646 00000 n 
+0000001103 00000 n 
+0000001495 00000 n 
+0000001621 00000 n 
+0000001747 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+1873
+%%EOF

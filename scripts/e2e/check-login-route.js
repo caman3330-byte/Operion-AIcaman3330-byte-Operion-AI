@@ -1,3 +1,4 @@
+require('./environment-guard.cjs');
 const URL = process.env.DASHBOARD_URL || 'http://localhost:3000';
 
 (async () => {

@@ -4,6 +4,7 @@ import { readServerEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { recordApiUsage } from "@/lib/api-usage";
 import { renderOperionEmail } from "@/lib/email/templates";
+import { permitsExternalDelivery } from "../environment-safety.cjs";
 
 interface NotifyFounderInput {
   severity: AlertSeverity;
@@ -26,6 +27,7 @@ export async function notifyFounder(input: NotifyFounderInput) {
 }
 
 async function sendSlackNotification(input: NotifyFounderInput) {
+  if (!permitsExternalDelivery(process.env)) return;
   const env = readServerEnv();
   if (!env.SLACK_WEBHOOK_URL) {
     logger.debug("slack_notification_skipped", { reason: "SLACK_WEBHOOK_URL not configured", alertType: input.alertType });
@@ -46,6 +48,7 @@ async function sendSlackNotification(input: NotifyFounderInput) {
 }
 
 async function sendEmailNotification(input: NotifyFounderInput) {
+  if (!permitsExternalDelivery(process.env)) return;
   const env = readServerEnv();
   if (!env.SENDGRID_API_KEY || !env.SENDGRID_FROM_EMAIL || !env.ADMIN_EMAIL) {
     logger.debug("email_notification_skipped", { reason: "email notification env not configured", alertType: input.alertType });

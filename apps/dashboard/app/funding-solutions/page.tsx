@@ -39,10 +39,10 @@ export default function FundingSolutionsPage() {
               title="Business funding products prepared through one intelligent application."
               description="Apply once, structure your business profile, and prepare for review across MCA funding, business loans, and future lender-specific financing paths."
             />
-            <div className="rounded-lg border border-primary/15 bg-black/30 p-5">
+            <div className="rounded-lg border border-sky-100 bg-white p-5 shadow-sm">
               <div className="grid gap-3 sm:grid-cols-2">
                 {["Revenue", "Deposits", "Industry", "Credit range", "Funding amount", "Use of funds"].map((item) => (
-                  <div key={item} className="rounded-md border border-primary/15 bg-white/[0.025] p-4 text-sm font-medium text-white">
+                  <div key={item} className="rounded-md border border-sky-100 bg-sky-50 p-4 text-sm font-medium text-slate-800">
                     {item}
                   </div>
                 ))}
@@ -51,15 +51,15 @@ export default function FundingSolutionsPage() {
           </div>
         </section>
 
-        <MotionSection className="border-y border-white/10 bg-white/[0.025] px-4 py-20 sm:px-6 lg:px-8">
+        <MotionSection className="border-y border-sky-100 bg-sky-50/40 px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto grid max-w-7xl gap-4 md:grid-cols-2 lg:grid-cols-4">
             {solutions.map((solution) => {
               const Icon = solution.icon;
               return (
-                <div key={solution.title} className="rounded-lg border border-primary/15 bg-black/30 p-5">
-                  <Icon className="h-5 w-5 text-primary" />
-                  <h2 className="mt-5 font-semibold text-white">{solution.title}</h2>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{solution.text}</p>
+                <div key={solution.title} className="rounded-lg border border-sky-100 bg-white p-5 shadow-sm">
+                  <Icon className="h-5 w-5 text-sky-600" />
+                  <h2 className="mt-5 font-semibold text-slate-950">{solution.title}</h2>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{solution.text}</p>
                 </div>
               );
             })}
@@ -70,8 +70,8 @@ export default function FundingSolutionsPage() {
           <div className="mx-auto max-w-7xl rounded-lg border border-primary/20 bg-primary/10 p-8 sm:p-10">
             <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
-                <h2 className="font-serif text-3xl font-medium tracking-normal text-white">Start with one secure application.</h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                <h2 className="font-serif text-3xl font-medium tracking-normal text-slate-950">Start with one secure application.</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
                   Share your business details once and prepare your profile for private funding review.
                 </p>
               </div>

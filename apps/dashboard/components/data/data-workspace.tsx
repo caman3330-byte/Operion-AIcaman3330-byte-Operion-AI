@@ -15,7 +15,7 @@ import { AcquireData } from "./acquire-data";
 const statuses = ["imported", "enriching", "enriched", "missing_contact", "verified", "duplicate", "ready_for_outreach"];
 const emptyFilters = { q: "", status: "", industry: "", state: "", provider: "", has_email: "", has_phone: "", verified: "", from: "", to: "" };
 type ListResult = { data: DataRecord[]; pagination: { page: number; page_size: number; total: number; total_pages: number } };
-export function readable(value: string) { return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
+export function readable(value?: string | null) { if (!value) return ""; return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
 export function displayDate(value: string) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? "Unavailable" : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }); }
 export async function readResponse(response: Response) {
   const payload = await response.json().catch(() => ({}));
@@ -96,4 +96,4 @@ export function DataWorkspace({ source }: { source: DataSource }) {
 }
 
 function Missing() { return <span className="text-xs text-muted-foreground">Not available</span>; }
-function Status({ value }: { value: string }) { return <Badge variant={value === "verified" || value === "enriched" ? "success" : value === "missing_contact" || value === "duplicate" ? "warning" : "secondary"}>{readable(value)}</Badge>; }
+function Status({ value }: { value?: string | null }) { if (!value) return <Missing />; return <Badge variant={value === "verified" || value === "enriched" ? "success" : value === "missing_contact" || value === "duplicate" ? "warning" : "secondary"}>{readable(value)}</Badge>; }

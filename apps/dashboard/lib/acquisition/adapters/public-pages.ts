@@ -2,6 +2,14 @@ import { lookup } from "node:dns/promises";
 import type { Json } from "@operion/shared";
 import { isGenericBusinessName } from "@/lib/acquisition/validation";
 import { identifyMcaIndustry } from "@/lib/acquisition/industry-profiles";
+import {
+  AcquisitionTimeoutError,
+  assertBudgetAvailable,
+  boundedNumber,
+  boundedTimeoutMs,
+  createRunBudget,
+  type AcquisitionRunBudget
+} from "@/lib/acquisition/runtime-controls";
 import { logger } from "@/lib/logger";
 import { withRetry } from "@/lib/retry";
 import type { RawBusinessLead } from "@/lib/acquisition/normalization";
@@ -14,6 +22,9 @@ import type {
 
 const MAX_RESPONSE_BYTES = 2_000_000;
 const REQUEST_TIMEOUT_MS = 10_000;
+const DEFAULT_SOURCE_TIMEOUT_MS = 45_000;
+const DEFAULT_DETAIL_TIMEOUT_MS = 8_000;
+const DEFAULT_MAX_SOURCE_PAGES = 10;
 
 export function createPublicPageAdapter(
   key: Exclude<FreeFirstSourceKey, "apollo" | "google_places">,
@@ -27,27 +38,65 @@ export function createPublicPageAdapter(
       const records: RawBusinessLead[] = [];
       const errors: string[] = [];
       const delayMs = boundedNumber(process.env.ACQUISITION_REQUEST_DELAY_MS, 1_000, 250, 10_000);
+      const sourceTimeoutMs = input.sourceTimeoutMs ?? boundedNumber(
+        process.env.MERCHANT_ACQUISITION_SOURCE_TIMEOUT_MS,
+        DEFAULT_SOURCE_TIMEOUT_MS,
+        10_000,
+        55_000
+      );
+      const pageTimeoutMs = input.pageTimeoutMs ?? boundedNumber(
+        process.env.MERCHANT_ACQUISITION_PAGE_TIMEOUT_MS,
+        REQUEST_TIMEOUT_MS,
+        3_000,
+        20_000
+      );
+      const detailTimeoutMs = input.detailTimeoutMs ?? boundedNumber(
+        process.env.MERCHANT_ACQUISITION_DETAIL_TIMEOUT_MS,
+        DEFAULT_DETAIL_TIMEOUT_MS,
+        2_000,
+        15_000
+      );
+      const maxPages = input.maxPages ?? boundedNumber(process.env.MAX_SOURCE_PAGES, DEFAULT_MAX_SOURCE_PAGES, 1, 10);
+      const budget = createRunBudget(sourceTimeoutMs);
+      let pagesVisited = 0;
+      let timedOut = false;
 
       for (const rawUrl of urls) {
         try {
+          assertBudgetAvailable(budget, "source extraction");
           const url = await validatePublicUrl(rawUrl);
           if (!(await isAllowedByRobots(url))) {
             errors.push(`${url.hostname}: blocked by robots.txt`);
             continue;
           }
 
-          const html = await fetchPublicPage(url);
-          const extracted = await extractBusinesses(html, url, key, input.category, input.limit - records.length, delayMs);
+          const html = await fetchPublicPage(url, { timeoutMs: pageTimeoutMs, budget });
+          pagesVisited += 1;
+          const extracted = await extractBusinesses(html, url, key, input.category, input.limit - records.length, {
+            delayMs,
+            pageTimeoutMs,
+            detailTimeoutMs,
+            maxPages,
+            budget,
+            pagesVisited
+          });
+          pagesVisited = extracted.pagesVisited;
           records.push(...extracted.records);
           errors.push(...extracted.errors);
           logger.info("acquisition_public_page_processed", { source: key, host: url.hostname, records: records.length });
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown public page error";
           errors.push(message);
+          timedOut = timedOut || error instanceof AcquisitionTimeoutError || /timed out|aborted/i.test(message);
           logger.warn("acquisition_public_page_failed", { source: key, url: safeUrlForLog(rawUrl), error: message });
         }
 
         if (records.length >= input.limit) break;
+        if (remainingBudgetExceeded(budget)) {
+          timedOut = true;
+          errors.push("source extraction timed out before all URLs were processed");
+          break;
+        }
         await sleep(delayMs);
       }
 
@@ -60,7 +109,13 @@ export function createPublicPageAdapter(
           requested_url_count: urls.length,
           robots_respected: true,
           request_delay_ms: delayMs,
-          business_level_extraction: true
+          business_level_extraction: true,
+          source_timeout_ms: sourceTimeoutMs,
+          page_timeout_ms: pageTimeoutMs,
+          detail_timeout_ms: detailTimeoutMs,
+          max_source_pages: maxPages,
+          pages_visited: pagesVisited,
+          timed_out: timedOut
         } as Json
       };
     }
@@ -73,20 +128,29 @@ async function extractBusinesses(
   source: FreeFirstSourceKey,
   fallbackCategory: string | undefined,
   limit: number,
-  delayMs: number
-): Promise<{ records: RawBusinessLead[]; errors: string[] }> {
+  controls: DirectoryExtractionControls
+): Promise<{ records: RawBusinessLead[]; errors: string[]; pagesVisited: number }> {
   const structured = extractStructuredBusinesses(html, url, source, fallbackCategory)
     .map((record) => hydrateStructuredRecord(record, html, url, source, fallbackCategory))
     .filter((record) => isEligibleExtractedBusiness(record, url, source));
-  if (structured.length > 0) return { records: structured.slice(0, limit), errors: [] };
+  if (structured.length > 0) return { records: structured.slice(0, limit), errors: [], pagesVisited: controls.pagesVisited };
   if (isDirectoryAdapter(source)) {
-    return extractDirectoryBusinesses(html, url, source, fallbackCategory, limit, delayMs);
+    return extractDirectoryBusinesses(html, url, source, fallbackCategory, limit, controls);
   }
 
   const title = decodeEntities(matchFirst(html, /<title[^>]*>([\s\S]*?)<\/title>/i) ?? url.hostname);
   const heading = decodeEntities(matchFirst(html, /<h1[^>]*>([\s\S]*?)<\/h1>/i) ?? title);
   const record = recordFromContext(selectBusinessName(title, heading, url.hostname), url, html, url, source, fallbackCategory, "company_website");
-  return { records: isEligibleExtractedBusiness(record, url, source) ? [record] : [], errors: [] };
+  return { records: isEligibleExtractedBusiness(record, url, source) ? [record] : [], errors: [], pagesVisited: controls.pagesVisited };
+}
+
+interface DirectoryExtractionControls {
+  delayMs: number;
+  pageTimeoutMs: number;
+  detailTimeoutMs: number;
+  maxPages: number;
+  pagesVisited: number;
+  budget: AcquisitionRunBudget;
 }
 
 async function extractDirectoryBusinesses(
@@ -95,11 +159,19 @@ async function extractDirectoryBusinesses(
   source: FreeFirstSourceKey,
   fallbackCategory: string | undefined,
   limit: number,
-  delayMs: number
+  controls: DirectoryExtractionControls
 ) {
   const records: RawBusinessLead[] = [];
   const errors: string[] = [];
   const links = extractLinks(html, directoryUrl);
+
+  const patternRecords = [
+    ...extractCommunityBuilderRows(html, directoryUrl, source, fallbackCategory),
+    ...extractContractorProfileCards(html, directoryUrl, source, fallbackCategory),
+    ...extractWordPressBusinessDirectoryListings(html, directoryUrl, source, fallbackCategory)
+  ].filter((record) => isEligibleExtractedBusiness(record, directoryUrl, source))
+    .slice(readOperionOffset(directoryUrl));
+  records.push(...uniqueRecords(patternRecords).slice(0, limit));
 
   for (const entry of extractMemberEntries(html)) {
     if (records.length >= limit) break;
@@ -117,27 +189,193 @@ async function extractDirectoryBusinesses(
   for (const detail of detailLinks) {
     if (records.length >= limit) break;
     try {
+      assertBudgetAvailable(controls.budget, "detail extraction");
       if (!(await isAllowedByRobots(detail.url))) {
         errors.push(`${detail.url.hostname}${detail.url.pathname}: blocked by robots.txt`);
         continue;
       }
-      const detailHtml = await fetchPublicPage(detail.url);
+      const detailHtml = await fetchPublicPage(detail.url, { timeoutMs: controls.detailTimeoutMs, budget: controls.budget });
       const external = extractLinks(detailHtml, detail.url).find((link) => isIndependentBusinessUrl(link.url, directoryUrl));
       if (!external) continue;
       const heading = decodeEntities(matchFirst(detailHtml, /<h1[^>]*>([\s\S]*?)<\/h1>/i) ?? detail.text);
       const record = recordFromContext(heading, external.url, detailHtml, directoryUrl, source, fallbackCategory, "directory_member_detail");
       if (isEligibleExtractedBusiness(record, directoryUrl, source)) records.push(record);
-      await sleep(delayMs);
+      await sleep(controls.delayMs);
     } catch (error) {
       errors.push(`${detail.url.hostname}${detail.url.pathname}: ${error instanceof Error ? error.message : "detail extraction failed"}`);
+      if (error instanceof AcquisitionTimeoutError) break;
+    }
+  }
+
+  const paginationLinks = links
+    .filter((link) => sameSite(link.url.hostname, directoryUrl.hostname) && isPaginationPath(link.url, link.text))
+    .filter((link, index, rows) => rows.findIndex((candidate) => candidate.url.toString() === link.url.toString()) === index)
+    .slice(0, Math.max(0, controls.maxPages - controls.pagesVisited));
+
+  for (const page of paginationLinks) {
+    if (records.length >= limit) break;
+    if (controls.pagesVisited >= controls.maxPages) {
+      errors.push(`pagination paused after ${controls.pagesVisited} pages; more work may remain`);
+      break;
+    }
+    try {
+      assertBudgetAvailable(controls.budget, "pagination extraction");
+      if (!(await isAllowedByRobots(page.url))) {
+        errors.push(`${page.url.hostname}${page.url.pathname}: blocked by robots.txt`);
+        continue;
+      }
+      const pageHtml = await fetchPublicPage(page.url, { timeoutMs: controls.pageTimeoutMs, budget: controls.budget });
+      controls.pagesVisited += 1;
+      const pageRecords = await extractDirectoryBusinesses(pageHtml, page.url, source, fallbackCategory, limit - records.length, controls);
+      records.push(...pageRecords.records);
+      errors.push(...pageRecords.errors);
+      await sleep(controls.delayMs);
+    } catch (error) {
+      errors.push(`${page.url.hostname}${page.url.pathname}: ${error instanceof Error ? error.message : "pagination extraction failed"}`);
+      if (error instanceof AcquisitionTimeoutError) break;
     }
   }
 
   return {
-    records: records.filter((record, index, rows) =>
-      rows.findIndex((candidate) => normalizeHost(candidate.website_url) === normalizeHost(record.website_url)) === index
-    ).slice(0, limit),
-    errors
+    records: uniqueRecords(records).slice(0, limit),
+    errors,
+    pagesVisited: controls.pagesVisited
+  };
+}
+
+function extractCommunityBuilderRows(
+  html: string,
+  directoryUrl: URL,
+  source: FreeFirstSourceKey,
+  fallbackCategory: string | undefined
+) {
+  const records: RawBusinessLead[] = [];
+  const rowPattern = /<div\b[^>]*class=["'][^"']*\bcbUserListRow\b[^"']*["'][^>]*data-id=["']?([^"'\s>]+)["']?[^>]*>([\s\S]*?)(?=<div\b[^>]*class=["'][^"']*\bcbUserListRow\b|<\/form>|<div class=["']cbPoweredBy\b)/gi;
+  for (const match of html.matchAll(rowPattern)) {
+    const rowHtml = match[2] ?? "";
+    const memberType = fieldText(rowHtml, "cb_membertype");
+    if (memberType && !/\bcontractor\b/i.test(memberType)) continue;
+    const businessName = fieldText(rowHtml, "cb_company");
+    const city = fieldText(rowHtml, "cb_workcity");
+    const phone = fieldText(rowHtml, "cb_workphone");
+    const websiteText = fieldText(rowHtml, "cb_website");
+    const website = parseWebsiteUrl(websiteText);
+    if (!businessName || !website || !isIndependentBusinessUrl(website, directoryUrl)) continue;
+    records.push(recordFromFields({
+      businessName,
+      website,
+      phone,
+      city,
+      state: null,
+      context: rowHtml,
+      sourceUrl: directoryUrl,
+      source,
+      fallbackCategory,
+      extraction: "community_builder_member_row",
+      sourceRecordId: match[1] ?? website.toString()
+    }));
+  }
+  return records;
+}
+
+function extractContractorProfileCards(
+  html: string,
+  directoryUrl: URL,
+  source: FreeFirstSourceKey,
+  fallbackCategory: string | undefined
+) {
+  const records: RawBusinessLead[] = [];
+  const cardPattern = /<div\b[^>]*class=["'][^"']*\bprofile\b[^"']*["'][^>]*>([\s\S]*?)(?=<div\b[^>]*class=["'][^"']*\bprofile\b|<ul\b[^>]*class=["'][^"']*\bpagination\b|<\/section>)/gi;
+  for (const match of html.matchAll(cardPattern)) {
+    const cardHtml = match[1] ?? "";
+    const businessName = textByClass(cardHtml, "company-name");
+    const websiteLink = extractLinks(cardHtml, directoryUrl).find((link) =>
+      /website|visit site|view site/i.test(link.text) && isIndependentBusinessUrl(link.url, directoryUrl)
+    );
+    const website = websiteLink?.url;
+    if (!businessName || !website) continue;
+    records.push(recordFromFields({
+      businessName,
+      website,
+      phone: matchFirst(cardHtml, /tel:([^"'? >]+)/i) ?? matchFirst(cardHtml, /((?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4})/),
+      city: null,
+      state: null,
+      context: cardHtml,
+      sourceUrl: directoryUrl,
+      source,
+      fallbackCategory,
+      extraction: "contractor_profile_card",
+      sourceRecordId: website.toString()
+    }));
+  }
+  return records;
+}
+
+function extractWordPressBusinessDirectoryListings(
+  html: string,
+  directoryUrl: URL,
+  source: FreeFirstSourceKey,
+  fallbackCategory: string | undefined
+) {
+  const records: RawBusinessLead[] = [];
+  const listingPattern = /<div\b[^>]*class=["'][^"']*\bwpbdp-listing\b[^"']*\bexcerpt\b[^"']*["'][^>]*>([\s\S]*?)(?=<div\b[^>]*class=["'][^"']*\bwpbdp-listing\b[^"']*\bexcerpt\b|<div\b[^>]*class=["'][^"']*\bwpbdp-pagination\b|<\/main>|<\/article>)/gi;
+  for (const match of html.matchAll(listingPattern)) {
+    const listingHtml = match[1] ?? "";
+    if (!/\bcontractor members?\b/i.test(stripTags(listingHtml))) continue;
+    const businessName = fieldValueByLabel(listingHtml, "Listing Title")
+      ?? decodeEntities(matchFirst(listingHtml, /<div\b[^>]*class=["'][^"']*\blisting-title\b[^"']*["'][^>]*>[\s\S]*?<h\d[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>/i) ?? "");
+    const websiteText = fieldValueByLabel(listingHtml, "Website");
+    const website = parseWebsiteUrl(websiteText)
+      ?? extractLinks(listingHtml, directoryUrl).find((link) => isIndependentBusinessUrl(link.url, directoryUrl))?.url;
+    if (!businessName || !website || !isIndependentBusinessUrl(website, directoryUrl)) continue;
+    records.push(recordFromFields({
+      businessName,
+      website,
+      phone: matchFirst(listingHtml, /tel:([^"'? >]+)/i) ?? fieldValueByLabel(listingHtml, "Phone"),
+      city: null,
+      state: null,
+      context: listingHtml,
+      sourceUrl: directoryUrl,
+      source,
+      fallbackCategory,
+      extraction: "wordpress_business_directory_listing",
+      sourceRecordId: website.toString()
+    }));
+  }
+  return records;
+}
+
+function recordFromFields(input: {
+  businessName: string;
+  website: URL;
+  phone?: string | null;
+  city?: string | null;
+  state?: string | null;
+  context: string;
+  sourceUrl: URL;
+  source: FreeFirstSourceKey;
+  fallbackCategory: string | undefined;
+  extraction: string;
+  sourceRecordId: string;
+}): RawBusinessLead {
+  const contextText = stripTags(input.context);
+  return {
+    business_name: decodeEntities(input.businessName),
+    email: matchFirst(input.context, /mailto:([^"'? >]+)/i),
+    phone: input.phone ? safeDecodeURIComponent(input.phone) : null,
+    website_url: input.website.origin,
+    city: input.city,
+    state: input.state,
+    industry: identifyMcaIndustry(input.businessName, contextText, input.fallbackCategory),
+    source: input.source,
+    source_record_id: input.sourceRecordId,
+    raw_payload: {
+      source_url: input.sourceUrl.toString(),
+      extraction: input.extraction,
+      acquired_at: new Date().toISOString(),
+      city: input.city,
+      state: input.state
+    }
   };
 }
 
@@ -197,8 +435,8 @@ function recordFromContext(
   const location = extractCityState(context);
   return {
     business_name: cleanName,
-    email: email ? decodeURIComponent(email) : null,
-    phone: phone ? decodeURIComponent(phone) : null,
+    email: email ? safeDecodeURIComponent(email) : null,
+    phone: phone ? safeDecodeURIComponent(phone) : null,
     website_url: website.origin,
     city: location.city,
     state: location.state,
@@ -249,10 +487,14 @@ function parseWebsiteUrl(value?: string | null) {
   }
 }
 
-async function fetchPublicPage(url: URL) {
+async function fetchPublicPage(url: URL, options: { timeoutMs?: number; budget?: AcquisitionRunBudget } = {}) {
   const response = await withRetry(
     async () => {
-      const result = await fetchWithValidatedRedirects(url);
+      assertBudgetAvailable(options.budget, `${url.hostname} request`);
+      const result = await fetchWithValidatedRedirects(url, 0, {
+        timeoutMs: options.timeoutMs ?? REQUEST_TIMEOUT_MS,
+        budget: options.budget
+      });
       if (result.status === 429 || result.status >= 500) throw new Error(`${url.hostname}: transient HTTP ${result.status}`);
       return result;
     },
@@ -283,17 +525,21 @@ async function isAllowedByRobots(url: URL) {
   }
 }
 
-async function fetchWithValidatedRedirects(url: URL, redirects = 0): Promise<Response> {
+async function fetchWithValidatedRedirects(
+  url: URL,
+  redirects = 0,
+  options: { timeoutMs: number; budget?: AcquisitionRunBudget | undefined }
+): Promise<Response> {
   const response = await fetch(url, {
     headers: { "user-agent": "OperionCapital-FounderAcquisition/1.0" },
     redirect: "manual",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    signal: AbortSignal.timeout(boundedTimeoutMs(options.timeoutMs, options.budget))
   });
   if (response.status < 300 || response.status >= 400) return response;
   if (redirects >= 3) throw new Error(`${url.hostname}: too many redirects`);
   const location = response.headers.get("location");
   if (!location) throw new Error(`${url.hostname}: redirect missing location`);
-  return fetchWithValidatedRedirects(await validatePublicUrl(new URL(location, url).toString()), redirects + 1);
+  return fetchWithValidatedRedirects(await validatePublicUrl(new URL(location, url).toString()), redirects + 1, options);
 }
 
 async function validatePublicUrl(rawUrl: string) {
@@ -312,7 +558,7 @@ function extractLinks(html: string, baseUrl: URL) {
   const links: Array<{ url: URL; text: string; index: number }> = [];
   for (const match of html.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
     try {
-      const url = new URL(decodeEntities(match[1] ?? ""), baseUrl);
+      const url = new URL(decodeEntities(safeDecodeURIComponent(match[1] ?? "")), baseUrl);
       if (["http:", "https:"].includes(url.protocol)) {
         links.push({ url, text: decodeEntities(match[2] ?? ""), index: match.index ?? 0 });
       }
@@ -344,9 +590,33 @@ function extractMemberEntries(html: string) {
   }));
 }
 
+function fieldText(html: string, fieldSuffix: string) {
+  const pattern = new RegExp(`<[^>]+class=["'][^"']*cbUserListFL_${fieldSuffix}[^"']*["'][^>]*>[\\s\\S]*?<span[^>]+class=["'][^"']*cbListFieldCont[^"']*["'][^>]*>([\\s\\S]*?)<\\/span>`, "i");
+  return decodeEntities(matchFirst(html, pattern) ?? "");
+}
+
+function textByClass(html: string, className: string) {
+  const pattern = new RegExp(`<[^>]+class=["'][^"']*\\b${escapeRegExp(className)}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/[^>]+>`, "i");
+  return decodeEntities(matchFirst(html, pattern) ?? "");
+}
+
+function fieldValueByLabel(html: string, label: string) {
+  const pattern = new RegExp(`<span\\b[^>]*class=["'][^"']*\\bfield-label\\b[^"']*["'][^>]*>\\s*${escapeRegExp(label)}\\s*<\\/span>\\s*<div\\b[^>]*class=["'][^"']*\\bvalue\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/div>`, "i");
+  const value = matchFirst(html, pattern);
+  return value ? decodeEntities(value) : null;
+}
+
+function uniqueRecords(records: RawBusinessLead[]) {
+  return records.filter((record, index, rows) => {
+    const host = normalizeHost(record.website_url);
+    if (!host) return false;
+    return rows.findIndex((candidate) => normalizeHost(candidate.website_url) === host) === index;
+  });
+}
+
 function isEligibleExtractedBusiness(record: RawBusinessLead, sourceUrl: URL, source: FreeFirstSourceKey) {
-  if (!record.business_name || isGenericBusinessName(record.business_name)) return false;
-  if (!record.website_url || !isValidUsPhone(record.phone) || !identifyMcaIndustry(record.industry)) return false;
+  if (!record.business_name || isGenericBusinessName(record.business_name) || isNonMerchantLinkName(record.business_name)) return false;
+  if (!record.website_url || !identifyMcaIndustry(record.industry)) return false;
   try {
     return !isDirectoryAdapter(source) || isIndependentBusinessUrl(new URL(record.website_url), sourceUrl);
   } catch {
@@ -362,11 +632,13 @@ function isValidUsPhone(value?: string | null) {
 function isIndependentBusinessUrl(candidate: URL, directoryUrl: URL) {
   return !sameSite(candidate.hostname, directoryUrl.hostname)
     && !isNonBusinessHost(candidate.hostname)
-    && !/\/(?:login|signin|search|category|categories)(?:\/|$)/i.test(candidate.pathname);
+    && !/\/(?:login|signin|search|category|categories|cart|checkout|privacy|terms|events?)(?:\/|$)/i.test(candidate.pathname);
 }
 
 function isNonBusinessHost(hostname: string) {
-  return /(facebook|instagram|linkedin|twitter|x\.com|youtube|google|bing|yelp|bbb|chamberofcommerce|chamberorganizer|growthzone|zoho|mapquest|apple)\./i.test(hostname);
+  return /(facebook|instagram|linkedin|twitter|x\.com|youtube|google|bing|yelp|bbb|chamberofcommerce|chamberorganizer|growthzone|zoho|mapquest|apple|constantcontact|mailchimp|authorize|paypal|wixpress|yourmembership|higherlogic|typeform|memberclicks|termsfeed|texas|txdot|govdelivery)\./i.test(hostname)
+    || /\.(gov|edu)$/i.test(hostname)
+    || /\b(nationalroofingdirectory|roofingalliance|professionalroofing|everybodyneedsaroof|careersinroofing|hvacindustrymarketplace|gilmoreglobal|standardindustries|members1st|saferoofsovertexas|bimsmith|leverage\.gallery|capitol\.texas)\b/i.test(hostname);
 }
 
 function isDirectoryAdapter(source: FreeFirstSourceKey) {
@@ -376,6 +648,12 @@ function isDirectoryAdapter(source: FreeFirstSourceKey) {
 function isMemberDetailPath(pathname: string) {
   return /\/(?:member|members|directory|details|profile|business|listing)s?\//i.test(pathname)
     && !/\/(?:category|categories|search|login|events?)\//i.test(pathname);
+}
+
+function isPaginationPath(url: URL, text: string) {
+  const label = text.toLowerCase().replace(/\s+/g, " ").trim();
+  return /\b(?:next|more|load more|older|2|3)\b/.test(label)
+    || /(?:[?&](?:page|p|pg)=\d+|\/page\/\d+)/i.test(url.toString());
 }
 
 function parseRobots(text: string) {
@@ -444,13 +722,31 @@ function decodeEntities(value: string) {
   return stripTags(value).replace(/&amp;/gi, "&").replace(/&quot;/gi, "\"").replace(/&#39;/gi, "'");
 }
 
+function isNonMerchantLinkName(value: string) {
+  return /\b(?:be safe\.?\s*be smart\.?\s*hire a phcc professional|our sponsors|current bylaws|members$|get in touch|for the next 24 hours|evacuations|active fire|document before you discard|useful links|standards and field guides|legislative fly-in|upcoming events|annual sponsors|details|territory manager|roofing fraud|applicable texas codes|important website information|main navigation|resources|helpful tools|connect with us|privacy policy|powered by|membership directory)\b/i.test(value)
+    || /^\s*(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/i.test(value)
+    || /\b(?:toll free|fax)\b/i.test(value);
+}
+
+function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 function parseUrlList(value?: string) {
   return (value ?? "").split(/[\n,]/).map((entry) => entry.trim()).filter(Boolean);
 }
 
-function boundedNumber(value: string | undefined, fallback: number, minimum: number, maximum: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : fallback;
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function readOperionOffset(url: URL) {
+  const value = Number(url.searchParams.get("operion_offset") ?? 0);
+  return Number.isFinite(value) && value > 0 ? Math.min(Math.floor(value), 500) : 0;
 }
 
 function isPrivateHostname(hostname: string) {
@@ -472,4 +768,8 @@ function safeUrlForLog(value: string) {
 
 function sleep(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function remainingBudgetExceeded(budget: AcquisitionRunBudget) {
+  return boundedTimeoutMs(1, budget) <= 1 && Date.now() - budget.startedAt >= budget.timeoutMs;
 }

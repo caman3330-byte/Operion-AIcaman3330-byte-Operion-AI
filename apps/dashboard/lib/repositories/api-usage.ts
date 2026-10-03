@@ -1,6 +1,14 @@
-import type { ApiService } from "@operion/shared";
+import type { ApiService, Json } from "@operion/shared";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import type { ApiUsageLogInsert } from "@/lib/supabase/types";
+
+export interface ApiUsageSummary extends Record<string, Json> {
+  days: number;
+  total_cost_usd: number;
+  successful_calls: number;
+  failed_calls: number;
+  by_service: Record<ApiService, number>;
+}
 
 export const apiUsageRepository = {
   async create(payload: ApiUsageLogInsert) {
@@ -13,7 +21,7 @@ export const apiUsageRepository = {
     return data;
   },
 
-  async summary(days = 30) {
+  async summary(days = 30): Promise<ApiUsageSummary> {
     const supabase = getSupabaseAdmin();
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase.from("api_usage_log").select("*").gte("created_at", since);
@@ -28,7 +36,7 @@ export const apiUsageRepository = {
         acc[row.service] += Number(row.estimated_cost_usd ?? 0);
         return acc;
       },
-      { anthropic: 0, openai: 0, apollo: 0, sendgrid: 0, stripe: 0 }
+      { anthropic: 0, openai: 0, nvidia: 0, groq: 0, google: 0, openrouter: 0, apollo: 0, sendgrid: 0, stripe: 0 }
     );
 
     return {

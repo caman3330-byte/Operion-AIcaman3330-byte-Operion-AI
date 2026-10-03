@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { Client } = require("pg");
+const { assertMigrationTarget, databaseTarget } = require("../apps/dashboard/environment-safety.cjs");
 
 const rootDir = path.resolve(__dirname, "..");
 const migrationsDir = path.resolve(rootDir, "packages/database/migrations");
@@ -30,6 +31,7 @@ async function run() {
     console.error("Missing SUPABASE_DB_URL or SUPABASE_DB_PASSWORD+NEXT_PUBLIC_SUPABASE_URL");
     process.exit(1);
   }
+  assertMigrationTarget(process.env, dbUrl, process.argv);
 
   if (!fs.existsSync(migrationsDir)) {
     console.error("Migrations directory not found:", migrationsDir);
@@ -46,10 +48,10 @@ async function run() {
     return;
   }
 
-  const client = new Client({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
+  const client = new Client({ connectionString: dbUrl, ssl: databaseTarget(dbUrl) === "local" ? false : { rejectUnauthorized: false }, ...(dryRun ? { options: "-c default_transaction_read_only=on" } : {}) });
   await client.connect();
 
-  await ensureMigrationLedger(client);
+  if (!dryRun) await ensureMigrationLedger(client);
   const applied = await loadAppliedMigrations(client);
   const pending = files.filter((file) => !applied.has(file));
 
@@ -101,6 +103,8 @@ async function ensureMigrationLedger(client) {
 }
 
 async function loadAppliedMigrations(client) {
+  const exists = await client.query("select to_regclass('public.operion_schema_migrations') as ledger");
+  if (!exists.rows[0].ledger) return new Set();
   const result = await client.query("select filename from public.operion_schema_migrations");
   return new Set(result.rows.map((row) => row.filename));
 }

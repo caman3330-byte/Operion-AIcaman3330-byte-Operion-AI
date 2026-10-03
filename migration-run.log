@@ -1,0 +1,8 @@
+<claude-code-hint v="1" type="plugin" value="vercel@claude-plugins-official" />
+Retrieving project…
+Downloading `preview` Environment Variables
+
+> operion-ai@0.1.0 supabase:apply
+> node ./scripts/apply-migrations.js
+
+Missing SUPABASE_DB_URL or SUPABASE_DB_PASSWORD+NEXT_PUBLIC_SUPABASE_URL

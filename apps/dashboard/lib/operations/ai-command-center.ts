@@ -299,7 +299,7 @@ export async function buildAiCommandCenterModel(): Promise<AiCommandCenterModel>
       total_cost_usd: 0,
       successful_calls: 0,
       failed_calls: 0,
-      by_service: { anthropic: 0, openai: 0, apollo: 0, sendgrid: 0, stripe: 0 }
+      by_service: { anthropic: 0, openai: 0, nvidia: 0, groq: 0, google: 0, openrouter: 0, apollo: 0, sendgrid: 0, stripe: 0 }
     })),
     auditLogRepository.list({ limit: 120 }).catch(() => [])
   ]);

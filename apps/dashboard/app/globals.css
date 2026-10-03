@@ -2,6 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Scope operations colors to authenticated layouts, including portaled dialogs. */
+body:has(.operations-shell) {
+  --background: 210 30% 97%;
+  --foreground: 215 35% 16%;
+  --card: 0 0% 100%;
+  --card-foreground: 215 35% 16%;
+  --muted: 212 26% 93%;
+  --muted-foreground: 215 16% 40%;
+  --accent: 207 80% 95%;
+  --accent-foreground: 207 85% 30%;
+  --primary: 207 88% 36%;
+  --primary-foreground: 0 0% 100%;
+  --border: 214 24% 85%;
+  --input: 214 24% 85%;
+  --ring: 207 88% 36%;
+  color-scheme: light;
+}
+
+body:has(.operations-shell) .text-white {
+  color: hsl(var(--foreground));
+}
+
+body:has(.operations-shell) .capital-gold-sheen,
+body:has(.operations-shell) .glass-panel {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+body:has(.operations-shell) button,
+body:has(.operations-shell) a[class*="inline-flex"] {
+  box-shadow: none;
+  transform: none;
+}
+
+body:has(.operations-shell) .bg-primary,
+body:has(.operations-shell) .bg-primary:hover {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+body:has(.operations-shell) .hover\:text-white:hover {
+  color: hsl(var(--foreground));
+}
+
+body:has(.operations-shell) .border-white\/10,
+body:has(.operations-shell) .border-white\/12,
+body:has(.operations-shell) .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
+  border-color: hsl(var(--border));
+}
+
 @layer base {
   :root {
     --background: 222 38% 5%;
@@ -50,7 +102,7 @@
   }
 
   body {
-    @apply min-h-screen bg-background font-sans antialiased;
+    @apply min-h-screen overflow-x-hidden bg-background font-sans antialiased;
     letter-spacing: 0;
   }
 
@@ -65,9 +117,10 @@
 @layer components {
   .fintech-shell {
     background:
-      linear-gradient(180deg, rgba(11, 10, 8, 0.96), rgba(3, 4, 7, 0.98) 34rem),
-      linear-gradient(90deg, rgba(215, 183, 106, 0.08), transparent 34rem),
-      hsl(var(--background));
+      radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.08), transparent 30rem),
+      radial-gradient(circle at 92% 8%, rgba(16, 185, 129, 0.06), transparent 26rem),
+      linear-gradient(180deg, #ffffff 0%, #f8fbfd 45%, #eef7fb 100%);
+    color: #071b33;
   }
 
   .fintech-grid {
@@ -90,7 +143,8 @@
 
   .capital-cinematic {
     background:
-      linear-gradient(180deg, rgba(3, 3, 3, 0.78), rgba(2, 6, 23, 0.98));
+      linear-gradient(180deg, #ffffff 0%, #f8fbfd 55%, #eef7fb 100%);
+    color: #071b33;
   }
 
   .capital-divider {
@@ -99,5 +153,345 @@
 
   .premium-ring {
     @apply ring-1 ring-white/10;
+  }
+
+  .operion-light-shell {
+    background:
+      radial-gradient(circle at 18% 10%, rgba(18, 79, 64, 0.11), transparent 28rem),
+      radial-gradient(circle at 82% 0%, rgba(14, 165, 233, 0.10), transparent 24rem),
+      linear-gradient(180deg, #ffffff 0%, #f7fbff 44%, #eef7fb 100%);
+    color: #071b33;
+  }
+
+  .operations-stage::before {
+    content: "";
+    position: absolute;
+    inset: 14%;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.18), transparent 64%);
+    filter: blur(22px);
+    pointer-events: none;
+  }
+
+  .real-estate-hero {
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.9) 0 2px, transparent 2px 100%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.52) 0 2px, transparent 2px 100%),
+      radial-gradient(circle at 20% 18%, rgba(255, 247, 225, 0.92), transparent 22rem),
+      linear-gradient(130deg, rgba(255, 253, 246, 0.94) 0%, rgba(238, 248, 242, 0.82) 42%, rgba(224, 241, 250, 0.72) 100%);
+    background-size: 86px 100%, 100% 72px, auto, auto;
+  }
+
+  .real-estate-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(115deg, transparent 0 47%, rgba(255, 255, 255, 0.7) 47% 51%, transparent 51%),
+      linear-gradient(90deg, rgba(18, 79, 64, 0.13), transparent 22%),
+      radial-gradient(circle at 78% 24%, rgba(14, 165, 233, 0.18), transparent 18rem);
+    pointer-events: none;
+  }
+
+  .real-estate-hero::after {
+    content: "";
+    position: absolute;
+    left: 5%;
+    right: 5%;
+    bottom: 0;
+    height: 38%;
+    background:
+      linear-gradient(90deg, rgba(18, 79, 64, 0.16), transparent 18%, rgba(255, 255, 255, 0.52) 48%, transparent 80%),
+      linear-gradient(180deg, transparent, rgba(18, 79, 64, 0.1));
+    clip-path: polygon(0 42%, 24% 28%, 44% 36%, 60% 16%, 100% 0, 100% 100%, 0 100%);
+    opacity: 0.72;
+    pointer-events: none;
+  }
+
+  .business-world-hero {
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.92) 0 2px, transparent 2px 100%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.58) 0 2px, transparent 2px 100%),
+      radial-gradient(circle at 19% 18%, rgba(255, 246, 219, 0.95), transparent 21rem),
+      radial-gradient(circle at 74% 22%, rgba(181, 230, 255, 0.24), transparent 19rem),
+      linear-gradient(132deg, rgba(255, 253, 246, 0.97) 0%, rgba(238, 249, 244, 0.86) 42%, rgba(224, 242, 251, 0.76) 100%);
+    background-size: 92px 100%, 100% 76px, auto, auto, auto;
+  }
+
+  .business-world-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(116deg, transparent 0 44%, rgba(255, 255, 255, 0.78) 44% 48%, transparent 48%),
+      linear-gradient(102deg, transparent 0 57%, rgba(255, 255, 255, 0.36) 57% 59%, transparent 59%),
+      linear-gradient(90deg, rgba(18, 79, 64, 0.14), transparent 24%),
+      radial-gradient(circle at 84% 28%, rgba(14, 165, 233, 0.16), transparent 18rem);
+    pointer-events: none;
+  }
+
+  .business-world-hero::after {
+    content: "";
+    position: absolute;
+    left: 3%;
+    right: 3%;
+    bottom: -1px;
+    height: 42%;
+    background:
+      linear-gradient(90deg, rgba(18, 79, 64, 0.15), transparent 18%, rgba(255, 255, 255, 0.58) 48%, transparent 80%),
+      linear-gradient(180deg, transparent, rgba(18, 79, 64, 0.11)),
+      repeating-linear-gradient(92deg, rgba(255, 255, 255, 0.3) 0 1px, transparent 1px 54px);
+    clip-path: polygon(0 46%, 16% 28%, 32% 38%, 48% 20%, 64% 30%, 100% 2%, 100% 100%, 0 100%);
+    opacity: 0.78;
+    pointer-events: none;
+  }
+
+  .office-desk-rig {
+    border-radius: 44% 44% 0 0;
+    background:
+      radial-gradient(ellipse at 54% 0%, rgba(255, 255, 255, 0.88), transparent 40%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(18, 79, 64, 0.08));
+    filter: drop-shadow(0 24px 36px rgba(15, 49, 43, 0.12));
+  }
+
+  .office-desk-rig::before {
+    content: "";
+    position: absolute;
+    left: 16%;
+    right: 12%;
+    top: 8%;
+    height: 52%;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    background:
+      linear-gradient(135deg, rgba(7, 27, 51, 0.08), rgba(255, 255, 255, 0.72)),
+      linear-gradient(180deg, rgba(18, 79, 64, 0.13), rgba(14, 165, 233, 0.12));
+    transform: perspective(460px) rotateX(9deg) rotateY(-8deg);
+    box-shadow: 0 18px 42px rgba(15, 49, 43, 0.13);
+  }
+
+  .office-desk-rig::after {
+    content: "";
+    position: absolute;
+    left: 2%;
+    right: 0;
+    bottom: 0;
+    height: 36%;
+    border-radius: 999px 999px 0 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(211, 231, 223, 0.64));
+    transform: perspective(520px) rotateX(54deg);
+    transform-origin: bottom;
+  }
+
+  .application-device {
+    transform: perspective(900px) rotateX(4deg);
+  }
+
+  .application-device::before {
+    content: "";
+    position: absolute;
+    inset: 1.25rem 2.25rem 3.25rem;
+    border-radius: 1.75rem;
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.34), transparent 46%, rgba(14, 165, 233, 0.14));
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .operion-core-atmosphere {
+    background:
+      radial-gradient(circle at 50% 43%, rgba(18, 79, 64, 0.18), transparent 9rem),
+      radial-gradient(circle at 50% 43%, transparent 0 8rem, rgba(14, 165, 233, 0.07) 8.2rem 8.5rem, transparent 8.7rem),
+      radial-gradient(circle at 50% 43%, transparent 0 14rem, rgba(18, 79, 64, 0.05) 14.2rem 14.5rem, transparent 14.8rem);
+    pointer-events: none;
+  }
+
+  .business-owner-silhouette {
+    position: absolute;
+    inset: 0;
+    transform-origin: bottom center;
+    opacity: 0.82;
+    filter: drop-shadow(0 22px 22px rgba(7, 27, 51, 0.14));
+  }
+
+  .business-owner-silhouette span {
+    position: absolute;
+    display: block;
+  }
+
+  .owner-shadow {
+    left: 22%;
+    right: 6%;
+    bottom: -4%;
+    height: 10%;
+    border-radius: 999px;
+    background: rgba(7, 27, 51, 0.16);
+    filter: blur(9px);
+    transform: rotate(-4deg);
+  }
+
+  .owner-head {
+    left: 42%;
+    top: 3%;
+    width: 20%;
+    height: 12%;
+    border-radius: 48% 48% 42% 42%;
+    background: linear-gradient(145deg, rgba(36, 58, 72, 0.92), rgba(9, 31, 53, 0.94));
+  }
+
+  .owner-body {
+    left: 28%;
+    top: 16%;
+    width: 40%;
+    height: 45%;
+    border-radius: 38% 38% 22% 22%;
+    background:
+      linear-gradient(92deg, transparent 0 47%, rgba(255, 255, 255, 0.13) 47% 50%, transparent 50%),
+      linear-gradient(140deg, #0b2d4a, #123d35 58%, #071b33);
+    clip-path: polygon(22% 0, 78% 0, 94% 58%, 75% 100%, 27% 100%, 6% 58%);
+  }
+
+  .owner-arm {
+    top: 24%;
+    width: 8%;
+    height: 34%;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(23, 63, 82, 0.94), rgba(7, 27, 51, 0.94));
+    transform-origin: top center;
+  }
+
+  .owner-arm-left {
+    left: 22%;
+    transform: rotate(7deg);
+  }
+
+  .owner-arm-right {
+    left: 68%;
+    transform: rotate(-10deg);
+  }
+
+  .owner-leg {
+    top: 58%;
+    width: 13%;
+    height: 35%;
+    border-radius: 999px 999px 28% 28%;
+    background: linear-gradient(180deg, #132e43, #06192b);
+    transform-origin: top center;
+  }
+
+  .owner-leg-left {
+    left: 34%;
+    transform: rotate(4deg);
+  }
+
+  .owner-leg-right {
+    left: 51%;
+    transform: rotate(-6deg);
+  }
+
+  .owner-briefcase {
+    left: 72%;
+    top: 50%;
+    width: 24%;
+    height: 17%;
+    border-radius: 0.55rem;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: linear-gradient(145deg, rgba(7, 27, 51, 0.92), rgba(18, 79, 64, 0.86));
+  }
+
+  .owner-briefcase::before {
+    content: "";
+    position: absolute;
+    left: 32%;
+    right: 32%;
+    top: -22%;
+    height: 28%;
+    border-radius: 999px 999px 0 0;
+    border: 2px solid rgba(7, 27, 51, 0.78);
+    border-bottom: 0;
+  }
+
+  .network-lines {
+    background:
+      radial-gradient(circle at 50% 43%, rgba(18, 79, 64, 0.28), transparent 11rem),
+      radial-gradient(circle at 50% 43%, transparent 0 13rem, rgba(14, 165, 233, 0.11) 13.1rem 13.35rem, transparent 13.6rem),
+      radial-gradient(circle at 50% 43%, transparent 0 19rem, rgba(18, 79, 64, 0.08) 19.1rem 19.35rem, transparent 19.7rem),
+      linear-gradient(34deg, transparent 0 46%, rgba(18, 79, 64, 0.18) 46% 46.4%, transparent 46.4%),
+      linear-gradient(142deg, transparent 0 48%, rgba(14, 165, 233, 0.18) 48% 48.4%, transparent 48.4%),
+      linear-gradient(88deg, transparent 0 49%, rgba(18, 79, 64, 0.16) 49% 49.4%, transparent 49.4%),
+      linear-gradient(8deg, transparent 0 52%, rgba(14, 165, 233, 0.1) 52% 52.3%, transparent 52.3%);
+  }
+
+  .camera-vignette {
+    background:
+      radial-gradient(circle at 50% 45%, transparent 0 48%, rgba(7, 27, 51, 0.18) 82%, rgba(7, 27, 51, 0.28) 100%),
+      linear-gradient(120deg, rgba(255, 255, 255, 0.12), transparent 42%);
+    mix-blend-mode: multiply;
+  }
+
+  /* Preserve the translucent look without rerasterizing dozens of blurred layers on scroll. */
+  .cinematic-journey [class*="backdrop-blur"] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .cinematic-journey [class*="blur-3xl"] {
+    filter: none !important;
+  }
+
+  @media (max-width: 767px) {
+    .cinematic-journey > .sticky > .grid {
+      grid-template-rows: 280px minmax(0, 1fr);
+      gap: 12px;
+      padding-top: 44px;
+      padding-bottom: 20px;
+    }
+
+    .cinematic-copy {
+      min-height: 0;
+      height: 280px;
+      padding-top: 0;
+    }
+
+    .cinematic-copy > div:first-child > span:first-child {
+      display: none;
+    }
+
+    .cinematic-copy > div {
+      top: 48px;
+    }
+
+    .cinematic-copy h1,
+    .cinematic-copy h2 {
+      font-size: 30px;
+      line-height: 1.12;
+      letter-spacing: 0;
+      margin-top: 10px;
+    }
+
+    .cinematic-copy p {
+      font-size: 14px;
+      line-height: 1.5;
+      margin-top: 12px;
+    }
+
+    .cinematic-copy > div:first-child > div:last-child {
+      display: none;
+    }
+
+    .cinematic-stage {
+      min-height: 300px;
+      height: 100%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

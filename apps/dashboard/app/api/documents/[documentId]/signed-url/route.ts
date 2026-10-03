@@ -19,14 +19,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     await authorizeDocumentAccess(request, document);
 
     const bucket = document.storage_bucket ?? getDocumentStorageBucket(document.document_type);
-    const signedUrlOptions = document.file_name ? { download: document.file_name } : undefined;
+    const inlinePreview = request.nextUrl.searchParams.get("preview") === "1" &&
+      (document.mime_type === "application/pdf" || document.file_name?.toLowerCase().endsWith(".pdf"));
+    const signedUrlOptions = !inlinePreview && document.file_name ? { download: document.file_name } : undefined;
     const { data, error } = await getSupabaseAdmin().storage.from(bucket).createSignedUrl(document.storage_path, 5 * 60, signedUrlOptions);
 
     if (error || !data?.signedUrl) {
       throw new NotFoundError("Unable to create secure document link");
     }
 
-    return NextResponse.redirect(data.signedUrl);
+    const response = NextResponse.redirect(data.signedUrl);
+    response.headers.set("Cache-Control", "private, no-store");
+    response.headers.set("Referrer-Policy", "no-referrer");
+    return response;
   } catch (error) {
     return handleRouteError(error);
   }

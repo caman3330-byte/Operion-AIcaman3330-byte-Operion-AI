@@ -15,10 +15,12 @@ const deprecatedMerchantAuthPrefixes = [
 ];
 
 const internalProtectedPrefixes = [
+  "/data",
   "/admin",
   "/operations",
   "/executive",
   "/founder-operations",
+  "/autonomous-operations",
   "/supervisor",
   "/manager-agent",
   "/acquisition",
@@ -48,6 +50,7 @@ const operationalTestingPrefixes = [
 const publicApiPrefixes = [
   "/api/health",
   "/api/applications",
+  "/api/autonomous",
   "/api/portal/upload-link",
   "/api/auth/logout",
   "/api/webhooks/sendgrid"
@@ -316,12 +319,8 @@ async function resolveRole(
     return "founder";
   }
 
-  const metadataRole = normalizeRoleClaim(
-    user?.app_metadata?.app_role ??
-      user?.app_metadata?.role ??
-      user?.user_metadata?.app_role ??
-      user?.user_metadata?.role
-  );
+  // user_metadata is editable by the signed-in user and cannot grant access.
+  const metadataRole = normalizeRoleClaim(user?.app_metadata?.app_role ?? user?.app_metadata?.role);
   if (metadataRole) {
     return metadataRole;
   }
@@ -404,6 +403,7 @@ export const config = {
     "/supervisor/:path*",
     "/executive/:path*",
     "/founder-operations/:path*",
+    "/autonomous-operations/:path*",
     "/manager-agent/:path*",
     "/acquisition/:path*",
     "/leads/:path*",

@@ -1,0 +1,73 @@
+{
+  "errors": [],
+  "checks": {
+    "desktopFresh": {
+      "overflow": false,
+      "journey": true,
+      "seen": null,
+      "y": 0,
+      "height": 7353
+    },
+    "keyboardScroll": true,
+    "desktopComplete": {
+      "overflow": false,
+      "journey": true,
+      "seen": "true",
+      "y": 6353,
+      "height": 7353
+    },
+    "desktopFooter": true,
+    "desktopReturning": {
+      "overflow": false,
+      "journey": false,
+      "seen": "true",
+      "y": 0,
+      "height": 3044
+    },
+    "desktopSkip": {
+      "overflow": false,
+      "journey": false,
+      "seen": "true",
+      "y": 0,
+      "height": 3044
+    },
+    "mobileFresh": {
+      "overflow": false,
+      "journey": true,
+      "seen": null,
+      "y": 0,
+      "height": 8715
+    },
+    "touchScroll": true,
+    "mobileComplete": {
+      "overflow": false,
+      "journey": true,
+      "seen": "true",
+      "y": 7871,
+      "height": 8715
+    },
+    "mobileFooter": true,
+    "mobileReturning": {
+      "overflow": false,
+      "journey": false,
+      "seen": "true",
+      "y": 0,
+      "height": 5842
+    },
+    "mobileSkip": {
+      "overflow": false,
+      "journey": false,
+      "seen": "true",
+      "y": 0,
+      "height": 5842
+    },
+    "reducedMotion": {
+      "overflow": false,
+      "journey": false,
+      "seen": null,
+      "y": 0,
+      "height": 3068
+    },
+    "serverFirstFrame": true
+  }
+}

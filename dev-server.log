@@ -1,0 +1,220 @@
+
+> operion-ai@0.1.0 dev
+> npm --workspace @operion/dashboard run dev
+
+
+> @operion/dashboard@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.29.236:3000
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · middlewareClientMaxBodySize: "55mb"
+
+ ✓ Starting...
+ ✓ Ready in 2.5s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 941ms (168 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (101kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (231kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ○ Compiling /leads ...
+ ✓ Compiled /leads in 5.4s (1087 modules)
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:42:59.057Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:42:59.378Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:42:59.379Z","configured":true}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:42:59.581Z","operation":"leads.list","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.leads' in the schema cache"}}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:43:00.093Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /leads 200 in 7030ms
+ ○ Compiling /data ...
+ ✓ Compiled /data in 723ms (1117 modules)
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:43:02.720Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:43:03.020Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:43:03.021Z","configured":true}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:43:03.271Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 1602ms
+ ✓ Compiled /api/data in 372ms (1108 modules)
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:43:10.726Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:43:10.740Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:43:10.740Z","configured":true}
+{"level":"error","event":"unhandled_route_error","service":"operion-dashboard","timestamp":"2026-10-03T02:43:11.481Z","error":{"name":"Error","message":"permission denied for table acquisition_prospects","stack":"Error: permission denied for table acquisition_prospects\n    at GET (webpack-internal:///(rsc)/./app/api/data/route.ts:38:26)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async AppRouteRouteModule.do (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\compiled\\next-server\\app-route.runtime.dev.js:5:38696)\n    at async AppRouteRouteModule.handle (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\compiled\\next-server\\app-route.runtime.dev.js:5:45978)\n    at async responseGenerator (webpack-internal:///(rsc)/../../node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fdata%2Froute&page=%2Fapi%2Fdata%2Froute&appPaths=&pagePath=private-next-app-dir%2Fapi%2Fdata%2Froute.ts&appDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard&isDev=true&tsconfigPath=tsconfig.json&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:203:38)\n    at async AppRouteRouteModule.handleResponse (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\compiled\\next-server\\app-route.runtime.dev.js:1:195304)\n    at async handleResponse (webpack-internal:///(rsc)/../../node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fdata%2Froute&page=%2Fapi%2Fdata%2Froute&appPaths=&pagePath=private-next-app-dir%2Fapi%2Fdata%2Froute.ts&appDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard&isDev=true&tsconfigPath=tsconfig.json&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:265:32)\n    at async handler (webpack-internal:///(rsc)/../../node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fdata%2Froute&page=%2Fapi%2Fdata%2Froute&appPaths=&pagePath=private-next-app-dir%2Fapi%2Fdata%2Froute.ts&appDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard&isDev=true&tsconfigPath=tsconfig.json&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:317:13)\n    at async DevServer.renderToResponseWithComponentsImpl (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\base-server.js:1430:9)\n    at async DevServer.renderPageComponent (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\base-server.js:1482:24)\n    at async DevServer.renderToResponseImpl (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\base-server.js:1522:32)\n    at async DevServer.pipeImpl (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\base-server.js:1026:25)\n    at async NextNodeServer.handleCatchallRenderRequest (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\next-server.js:394:17)\n    at async DevServer.handleRequestImpl (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\base-server.js:917:17)\n    at async C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\dev\\next-dev-server.js:400:20\n    at async Span.traceAsyncFn (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\trace\\trace.js:157:20)\n    at async DevServer.handleRequest (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\dev\\next-dev-server.js:396:24)\n    at async invokeRender (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\lib\\router-server.js:240:21)\n    at async handleRequest (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\lib\\router-server.js:437:24)\n    at async requestHandlerImpl (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\lib\\router-server.js:485:13)\n    at async Server.requestListener (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\lib\\start-server.js:226:13)"}}
+ GET /api/data?source=ai&page=1&page_size=25 500 in 1432ms
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:43:11.672Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 1211ms
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:44:47.274Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:44:48.161Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 1104ms
+ ✓ Compiled /icon.svg in 247ms (680 modules)
+ GET /icon.svg 200 in 372ms
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:44:48.870Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:44:48.890Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:44:48.891Z","configured":true}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:44:49.093Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 476ms
+ ✓ Compiled /api/data in 150ms (682 modules)
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:44:49.685Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:44:49.702Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:44:49.702Z","configured":true}
+{"level":"error","event":"unhandled_route_error","service":"operion-dashboard","timestamp":"2026-10-03T02:44:50.234Z","error":{"name":"Error","message":"permission denied for table acquisition_prospects","stack":"Error: permission denied for table acquisition_prospects\n    at GET (webpack-internal:///(rsc)/./app/api/data/route.ts:38:26)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async AppRouteRouteModule.do (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\compiled\\next-server\\app-route.runtime.dev.js:5:38696)\n    at async AppRouteRouteModule.handle (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\compiled\\next-server\\app-route.runtime.dev.js:5:45978)\n    at async responseGenerator (webpack-internal:///(rsc)/../../node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fdata%2Froute&page=%2Fapi%2Fdata%2Froute&appPaths=&pagePath=private-next-app-dir%2Fapi%2Fdata%2Froute.ts&appDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard&isDev=true&tsconfigPath=tsconfig.json&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:203:38)\n    at async AppRouteRouteModule.handleResponse (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\compiled\\next-server\\app-route.runtime.dev.js:1:195304)\n    at async handleResponse (webpack-internal:///(rsc)/../../node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fdata%2Froute&page=%2Fapi%2Fdata%2Froute&appPaths=&pagePath=private-next-app-dir%2Fapi%2Fdata%2Froute.ts&appDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard&isDev=true&tsconfigPath=tsconfig.json&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:265:32)\n    at async handler (webpack-internal:///(rsc)/../../node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fdata%2Froute&page=%2Fapi%2Fdata%2Froute&appPaths=&pagePath=private-next-app-dir%2Fapi%2Fdata%2Froute.ts&appDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CAsus%5CDesktop%5CAMAN%5COperion-AI%5Capps%5Cdashboard&isDev=true&tsconfigPath=tsconfig.json&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:317:13)\n    at async DevServer.renderToResponseWithComponentsImpl (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\base-server.js:1430:9)\n    at async DevServer.renderPageComponent (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\base-server.js:1482:24)\n    at async DevServer.renderToResponseImpl (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\base-server.js:1522:32)\n    at async DevServer.pipeImpl (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\base-server.js:1026:25)\n    at async NextNodeServer.handleCatchallRenderRequest (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\next-server.js:394:17)\n    at async DevServer.handleRequestImpl (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\base-server.js:917:17)\n    at async C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\dev\\next-dev-server.js:400:20\n    at async Span.traceAsyncFn (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\trace\\trace.js:157:20)\n    at async DevServer.handleRequest (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\dev\\next-dev-server.js:396:24)\n    at async invokeRender (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\lib\\router-server.js:240:21)\n    at async handleRequest (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\lib\\router-server.js:437:24)\n    at async requestHandlerImpl (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\lib\\router-server.js:485:13)\n    at async Server.requestListener (C:\\Users\\Asus\\Desktop\\AMAN\\Operion-AI\\node_modules\\next\\dist\\server\\lib\\start-server.js:226:13)"}}
+ GET /api/data?source=ai&page=1&page_size=25 500 in 939ms
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:44:50.236Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 753ms
+ ✓ Compiled in 788ms (1103 modules)
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:45:02.208Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:45:02.225Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:45:02.226Z","configured":true}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:45:03.070Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 994ms
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:45:55.759Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:45:56.926Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 1355ms
+ GET /api/data?source=ai&page=1&page_size=25 200 in 1039ms
+ ○ Compiling /data/manual-upload ...
+ ✓ Compiled /data/manual-upload in 716ms (1089 modules)
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:46:37.074Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+ GET /data/manual-upload 200 in 1573ms
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:46:38.691Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:46:38.692Z","configured":true}
+ GET /api/data?source=manual&page=1&page_size=25 200 in 795ms
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:48:48.315Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:48:49.474Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 1411ms
+ GET /api/data?source=ai&page=1&page_size=25 200 in 476ms
+ GET /api/data?source=ai&page=1&page_size=25&q=Dallas 200 in 521ms
+ GET /api/data?source=ai&page=1&page_size=25 200 in 492ms
+ ✓ Compiled /api/data/[id] in 487ms (1091 modules)
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:49:49.705Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:49:49.705Z","configured":true}
+ GET /api/data/968152f3-a0d5-4ad0-865e-d08e41cdb3e3?kind=prospect 200 in 2131ms
+ GET /api/data?source=ai&page=1&page_size=25 200 in 702ms
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:50:03.288Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:50:03.713Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data/manual-upload 200 in 641ms
+ GET /api/data?source=manual&page=1&page_size=25 200 in 445ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 1344ms (1105 modules)
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:50:23.091Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:50:23.108Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:50:23.132Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:50:23.132Z","configured":true}
+ GET /data/manual-upload 200 in 449ms
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:50:23.429Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:50:24.327Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data/manual-upload 200 in 2079ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 637ms (1105 modules)
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:50:25.073Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:50:25.083Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:50:25.099Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:50:25.100Z","configured":true}
+ GET /data/manual-upload 200 in 397ms
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:50:25.460Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:50:25.505Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data/manual-upload 200 in 1018ms
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:50:26.494Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:50:26.924Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 552ms
+ GET /api/data?source=ai&page=1&page_size=25 200 in 475ms
+ GET /api/data/968152f3-a0d5-4ad0-865e-d08e41cdb3e3?kind=prospect 200 in 463ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1444ms (1156 modules)
+ GET / 200 in 2039ms
+ ✓ Compiled /icon.svg in 356ms (725 modules)
+ GET /icon.svg 200 in 500ms
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:58:37.598Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T02:58:38.287Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T02:58:38.287Z","configured":true}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T02:58:38.885Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 1545ms
+ ✓ Compiled in 1381ms (1329 modules)
+ ✓ Compiled in 591ms (436 modules)
+ ✓ Compiled in 494ms (436 modules)
+ ✓ Compiled in 456ms (436 modules)
+ ✓ Compiled in 1455ms (1281 modules)
+ ✓ Compiled in 478ms (436 modules)
+ ✓ Compiled in 731ms (436 modules)
+ ✓ Compiled in 694ms (436 modules)
+ ✓ Compiled in 755ms (436 modules)
+ ✓ Compiled in 771ms (436 modules)
+ ✓ Compiled in 627ms (436 modules)
+ ✓ Compiled in 715ms (436 modules)
+ ✓ Compiled in 721ms (436 modules)
+ ✓ Compiled in 698ms (436 modules)
+ ✓ Compiled in 973ms (436 modules)
+ ✓ Compiled in 623ms (436 modules)
+ ✓ Compiled in 771ms (436 modules)
+ ✓ Compiled / in 437ms (720 modules)
+ ⨯ Error: Cannot find module './8819.js'
+Require stack:
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\server\webpack-runtime.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\server\app\page.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\server\require.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\server\load-components.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\build\utils.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\build\swc\options.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\build\swc\index.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\build\analysis\parse-module.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\build\analysis\get-page-static-info.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\server\lib\router-server.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\server\app\page.js:2:9681)
+    at Object.<anonymous> (C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\server\app\page.js:2:9743) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/'
+}
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 2.6s (1503 modules)
+ GET / 500 in 4096ms
+{"level":"debug","event":"supabase_public_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T03:19:53.733Z","keys":["NEXT_PUBLIC_SUPABASE_URL","NEXT_PUBLIC_SUPABASE_ANON_KEY"]}
+{"level":"debug","event":"supabase_server_env_validated","service":"operion-dashboard","timestamp":"2026-10-03T03:19:54.356Z","keys":["NEXT_PUBLIC_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"]}
+{"level":"info","event":"supabase_admin_client_initialized","service":"operion-dashboard","timestamp":"2026-10-03T03:19:54.357Z","configured":true}
+{"level":"warn","event":"live_data_unavailable","service":"operion-dashboard","timestamp":"2026-10-03T03:19:55.041Z","operation":"alerts.listUnresolved","error":{"code":"PGRST205","details":null,"hint":null,"message":"Could not find the table 'public.alerts' in the schema cache"}}
+ GET /data 200 in 1890ms
+ ○ Compiling /icon.svg ...
+ ✓ Compiled /icon.svg in 524ms (919 modules)
+ ⨯ Error: Cannot find module './8819.js'
+Require stack:
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\server\webpack-runtime.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\server\app\icon.svg\route.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\server\require.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\server\load-components.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\build\utils.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\build\swc\options.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\build\swc\index.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\build\analysis\parse-module.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\build\analysis\get-page-static-info.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\server\lib\router-server.js
+- C:\Users\Asus\Desktop\AMAN\Operion-AI\node_modules\next\dist\server\lib\start-server.js
+    at <unknown> (C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\server\app\icon.svg\route.js:1:8602)
+    at Object.<anonymous> (C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\server\app\icon.svg\route.js:1:8654) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/icon.svg'
+}
+ GET /icon.svg 500 in 1070ms
+ ✓ Compiled in 2.3s (1628 modules)
+ ✓ Compiled in 2s (1460 modules)
+ ✓ Compiled in 1236ms (1460 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\cache\webpack\server-development\0.pack.gz_' -> 'C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\cache\webpack\server-development\0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\cache\webpack\client-development\10.pack.gz_' -> 'C:\Users\Asus\Desktop\AMAN\Operion-AI\apps\dashboard\.next\cache\webpack\client-development\10.pack.gz'
+   Reload env: .env.local
+ ✓ Compiled in 1028ms (1628 modules)
+   Reload env: .env.local
+ ✓ Compiled in 814ms (1614 modules)
+ ✓ Compiled in 917ms (589 modules)
+ ✓ Compiled in 667ms (589 modules)
+ ✓ Compiled in 705ms (589 modules)
+ ✓ Compiled in 549ms (589 modules)
+ ✓ Compiled in 2.2s (1628 modules)
+ ✓ Compiled in 1981ms (1628 modules)
+ ✓ Compiled in 640ms (589 modules)
+ ✓ Compiled in 632ms (589 modules)
+ ✓ Compiled in 636ms (589 modules)
+ ✓ Compiled in 612ms (589 modules)
+ ✓ Compiled in 886ms (589 modules)
+ ✓ Compiled in 693ms (589 modules)
+ ✓ Compiled in 674ms (589 modules)

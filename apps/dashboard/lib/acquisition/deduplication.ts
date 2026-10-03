@@ -11,12 +11,16 @@ export function deduplicateAcquisitionRecords(records: RawBusinessLead[]): Dedup
   const seenDomains = new Set<string>();
   const seenEmails = new Set<string>();
   const seenPhones = new Set<string>();
+  const seenSourceIds = new Set<string>();
   const seenNames: string[] = [];
 
   for (const record of records) {
     const normalized = normalizeBusinessLead(record);
+    const sourceIdentity = record.source?.trim() && normalized.source_record_id
+      ? JSON.stringify([record.source.trim(), normalized.source_record_id]) : null;
     const reason =
-      (normalized.domain && seenDomains.has(normalized.domain) ? "domain" : null)
+      (sourceIdentity && seenSourceIds.has(sourceIdentity) ? "source_record_id" : null)
+      ?? (normalized.domain && seenDomains.has(normalized.domain) ? "domain" : null)
       ?? (normalized.email && seenEmails.has(normalized.email) ? "email" : null)
       ?? (normalized.phone && seenPhones.has(normalized.phone) ? "phone" : null)
       ?? (seenNames.some((name) => similarName(name, normalized.normalized_business_name)) ? "company_name_similarity" : null);
@@ -27,6 +31,7 @@ export function deduplicateAcquisitionRecords(records: RawBusinessLead[]): Dedup
     }
 
     unique.push(record);
+    if (sourceIdentity) seenSourceIds.add(sourceIdentity);
     if (normalized.domain) seenDomains.add(normalized.domain);
     if (normalized.email) seenEmails.add(normalized.email);
     if (normalized.phone) seenPhones.add(normalized.phone);

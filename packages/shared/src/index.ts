@@ -40,7 +40,7 @@ export type EntityType =
   | "funding_offer"
   | "document";
 export type AlertSeverity = "INFO" | "WARN" | "CRITICAL";
-export type ApiService = "anthropic" | "openai" | "apollo" | "sendgrid" | "stripe";
+export type ApiService = "anthropic" | "openai" | "nvidia" | "groq" | "google" | "openrouter" | "apollo" | "sendgrid" | "stripe";
 export type SuppressionType = "email" | "domain" | "business_name" | "apollo_id" | "phone";
 export type AddedBy = "system" | "founder";
 export type ManagerAgentRunStatus = "queued" | "running" | "completed" | "failed";
@@ -571,6 +571,12 @@ export type MerchantAcquisitionSource = {
   approved_by: string | null;
   health_status: MerchantSourceHealthStatus;
   last_scanned_at: string | null;
+  last_success_at: string | null;
+  last_new_lead_at: string | null;
+  consecutive_zero_yield: number;
+  duplicate_rate: number;
+  verified_rate: number;
+  false_positive_rate: number;
   success_rate: number;
   source_quality_score: number;
   estimated_merchant_count: number | null;
@@ -590,6 +596,9 @@ export type MerchantAcquisitionSource = {
   last_error: string | null;
   disabled_reason: string | null;
   failure_streak: number;
+  lock_token: string | null;
+  locked_at: string | null;
+  lock_expires_at: string | null;
   metadata: Json;
   created_at: string;
   updated_at: string;
@@ -608,6 +617,34 @@ export type MerchantAcquisitionSourceScan = {
   robots_blocked: boolean;
   error_message: string | null;
   metadata: Json;
+};
+
+export type MerchantSourceShardStatus = "queued" | "running" | "completed" | "partial" | "failed" | "empty";
+
+export type MerchantAcquisitionSourceShard = {
+  id: string;
+  source_id: string;
+  shard_key: string;
+  shard_url: string;
+  page_number: number | null;
+  offset_value: number | null;
+  status: MerchantSourceShardStatus;
+  discovered_count: number;
+  processed_count: number;
+  verified_count: number;
+  duplicate_count: number;
+  rejected_count: number;
+  failure_count: number;
+  last_processed_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  last_error: string | null;
+  lock_token: string | null;
+  locked_at: string | null;
+  lock_expires_at: string | null;
+  metadata: Json;
+  created_at: string;
+  updated_at: string;
 };
 
 export type MerchantSourceDiscoveryRun = {
@@ -648,6 +685,12 @@ export type MerchantAcquisitionCandidate = {
   review_notes: string | null;
   quality_score: number;
   rejection_reason: string | null;
+  failure_reason_code: string | null;
+  attempt_count: number;
+  last_attempt_at: string | null;
+  next_retry_at: string | null;
+  last_error: string | null;
+  source_shard_id: string | null;
   last_enriched_at: string | null;
   raw_payload: Json;
   created_at: string;

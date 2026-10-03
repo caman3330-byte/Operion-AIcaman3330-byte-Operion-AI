@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const schedulerEnabled = process.env.ACQUISITION_SCHEDULER_ENABLED === "true";
     const limit = Number(request.nextUrl.searchParams.get("limit") ?? 25);
     const sourceLimit = Number(request.nextUrl.searchParams.get("source_limit") ?? 5);
+    const dryRun = request.nextUrl.searchParams.get("dry_run") === "true";
 
     const data = await withSchedulerRun<Record<string, unknown>>({
       schedulerKey: "merchant_source_scanner",
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       environmentFlag: "ACQUISITION_SCHEDULER_ENABLED",
       environmentFlagEnabled: schedulerEnabled
     }, async () => {
-      if (!schedulerEnabled) {
+      if (!schedulerEnabled && !dryRun) {
         return {
           value: {
             status: "disabled",
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
           },
           status: "disabled",
           success: true,
-          metadata: { limit, source_limit: sourceLimit }
+          metadata: { limit, source_limit: sourceLimit, dry_run: dryRun }
         };
       }
 
@@ -41,13 +42,21 @@ export async function GET(request: NextRequest) {
         limit,
         sourceLimit,
         importVerified: false,
-        requestedBy: actor.email
+        requestedBy: actor.email,
+        dryRun,
+        runTimeoutMs: 55_000,
+        sourceTimeoutMs: 45_000,
+        pageTimeoutMs: 10_000,
+        detailTimeoutMs: 8_000,
+        enrichmentTimeoutMs: 15_000,
+        concurrency: 3,
+        maxPages: 5
       });
       return {
         value: { ...value, imported: 0 },
         queueAffected: value.scanned,
         success: value.results.every((item) => item.status !== "failed"),
-        metadata: { limit, source_limit: sourceLimit, verified: value.verified }
+        metadata: { limit, source_limit: sourceLimit, verified: value.verified, dry_run: dryRun }
       };
     });
     return NextResponse.json({ data });

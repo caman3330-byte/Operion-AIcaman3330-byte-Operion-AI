@@ -1,4 +1,5 @@
 import type { Alert, AuditLogEntry, Lead, Lender, PromptTestResult, PromptVersion } from "@operion/shared";
+import { cache } from "react";
 import { getConfigurationStatus } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { alertsRepository } from "@/lib/repositories/alerts";
@@ -43,26 +44,24 @@ export async function getLendersData() {
   return fromSupabase<Lender[]>("lenders.list", () => lendersRepository.list(), []);
 }
 
-export async function getAlertsData() {
+export const getAlertsData = cache(async function getAlertsData() {
   return fromSupabase<Alert[]>("alerts.listUnresolved", () => alertsRepository.listUnresolved(50), []);
-}
+});
 
 export async function getAuditData() {
   return fromSupabase<AuditLogEntry[]>("auditLog.list", () => auditLogRepository.list({ limit: 500 }), []);
 }
 
 export async function getPromptData() {
-  const versions = await fromSupabase<PromptVersion[]>(
+  const [versions, results] = await Promise.all([fromSupabase<PromptVersion[]>(
     "promptVersions.list",
     () => promptVersionsRepository.list(),
     []
-  );
-
-  const results = await fromSupabase<PromptTestResult[]>(
+  ), fromSupabase<PromptTestResult[]>(
     "promptVersions.listTestResults",
     () => promptVersionsRepository.listTestResults(),
     []
-  );
+  )]);
 
   return {
     versions: versions.data,

@@ -5,6 +5,7 @@ import { renderOperionEmail, renderOperationalTestEmail, renderParagraphEmail, t
 import { logger } from "@/lib/logger";
 import { withRetry } from "@/lib/retry";
 import { safeIntegrationCall } from "@/lib/runtime/integration-guards";
+import { permitsExternalDelivery } from "../../environment-safety.cjs";
 
 export interface SendGridResult {
   ok: boolean;
@@ -35,6 +36,9 @@ interface SendEmailInput {
 }
 
 async function sendSendGridEmail(input: SendEmailInput): Promise<SendGridResult> {
+  if (!permitsExternalDelivery(process.env)) {
+    return { ok: false, status: 0, error: "Email delivery disabled in this environment" };
+  }
   const env = readServerEnv();
   const startedAt = Date.now();
   const purpose = input.purpose ?? inferEmailPurposeFromOperation(input.operation);

@@ -19,6 +19,10 @@ export interface AcquisitionAdapterInput {
   location?: string | undefined;
   urls?: string[] | undefined;
   limit: number;
+  sourceTimeoutMs?: number | undefined;
+  pageTimeoutMs?: number | undefined;
+  detailTimeoutMs?: number | undefined;
+  maxPages?: number | undefined;
 }
 
 export interface AcquisitionAdapterResult {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ConfigurationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { assertEnvironment } from "../environment-safety.cjs";
 
 const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 const optionalString = z.preprocess(emptyToUndefined, z.string().min(1).optional());
@@ -22,10 +23,26 @@ const serverSchema = z.object({
   ANTHROPIC_MODEL_DEFAULT: z.string().min(1).default("claude-3-5-haiku"),
   ANTHROPIC_MODEL_PREMIUM: z.string().min(1).default(process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6"),
   OPENAI_API_KEY: optionalString,
+  OPENAI_API_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
   OPENAI_MODEL: z.string().min(1).default("gpt-4.1-mini"),
   OPENAI_FALLBACK_MODEL: optionalString,
   OPENAI_COST_PER_1K_INPUT_TOKENS: z.coerce.number().nonnegative().default(0),
   OPENAI_COST_PER_1K_OUTPUT_TOKENS: z.coerce.number().nonnegative().default(0),
+  NVIDIA_API_KEY: optionalString,
+  NVIDIA_API_BASE_URL: z.string().url().default("https://integrate.api.nvidia.com/v1"),
+  NVIDIA_MODEL: z.string().min(1).default("nvidia/nemotron-3-ultra-550b-a55b"),
+  NVIDIA_WORKER_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
+  NVIDIA_WORKER_MAX_RETRIES: z.coerce.number().int().min(0).max(3).default(1),
+  NVIDIA_MONTHLY_BUDGET_USD: z.coerce.number().nonnegative().default(0),
+  GROQ_API_KEY: optionalString,
+  GROQ_API_BASE_URL: z.string().url().default("https://api.groq.com/openai/v1"),
+  GROQ_MODEL: optionalString,
+  GOOGLE_AI_API_KEY: optionalString,
+  GOOGLE_AI_API_BASE_URL: z.string().url().default("https://generativelanguage.googleapis.com/v1beta/openai"),
+  GOOGLE_AI_MODEL: optionalString,
+  OPENROUTER_API_KEY: optionalString,
+  OPENROUTER_API_BASE_URL: z.string().url().default("https://openrouter.ai/api/v1"),
+  OPENROUTER_MODEL: optionalString,
   SENDGRID_API_KEY: optionalString,
   SENDGRID_FROM_EMAIL: optionalEmail,
   SENDGRID_FROM_NAME: optionalString,
@@ -41,6 +58,16 @@ const serverSchema = z.object({
   ACQUISITION_LOCAL_LISTING_URLS: optionalString,
   ACQUISITION_REQUEST_DELAY_MS: z.coerce.number().int().min(250).max(10_000).default(1_000),
   ACQUISITION_MAX_URLS_PER_RUN: z.coerce.number().int().min(1).max(50).default(25),
+  MERCHANT_ACQUISITION_RUN_TIMEOUT_MS: z.coerce.number().int().min(15_000).max(55_000).default(55_000),
+  MERCHANT_ACQUISITION_SOURCE_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(55_000).default(45_000),
+  MERCHANT_ACQUISITION_PAGE_TIMEOUT_MS: z.coerce.number().int().min(3_000).max(20_000).default(10_000),
+  MERCHANT_ACQUISITION_DETAIL_TIMEOUT_MS: z.coerce.number().int().min(2_000).max(15_000).default(8_000),
+  MERCHANT_ACQUISITION_ENRICHMENT_TIMEOUT_MS: z.coerce.number().int().min(5_000).max(30_000).default(15_000),
+  MERCHANT_ACQUISITION_CONCURRENCY: z.coerce.number().int().min(1).max(5).default(3),
+  MERCHANT_ACQUISITION_SOURCE_CONCURRENCY: z.coerce.number().int().min(1).max(3).default(1),
+  MAX_SOURCE_PAGES: z.coerce.number().int().min(1).max(10).default(5),
+  MERCHANT_SOURCE_QUALIFICATION_TIMEOUT_MS: z.coerce.number().int().min(8_000).max(45_000).default(20_000),
+  MERCHANT_SOURCE_QUALIFICATION_MAX_PAGES: z.coerce.number().int().min(1).max(4).default(2),
   ACQUISITION_SCHEDULER_ENABLED: z.preprocess(emptyToUndefined, z.enum(["true", "false"]).optional()),
   MERCHANT_INTELLIGENCE_SCHEDULER_ENABLED: z.preprocess(emptyToUndefined, z.enum(["true", "false"]).optional()),
   GOOGLE_CLOUD_PROJECT_ID: optionalString,
@@ -73,6 +100,7 @@ const supabaseServerSchema = z.object({
 });
 
 export function readServerEnv() {
+  assertEnvironment(process.env);
   const parsed = serverSchema.safeParse(process.env);
   if (!parsed.success) {
     const details = parsed.error.flatten();
@@ -92,6 +120,9 @@ export interface SupabaseEnvValidationResult {
 }
 
 export function validateSupabaseEnv(): SupabaseEnvValidationResult {
+  try { assertEnvironment(process.env); } catch {
+    return { success: false, errors: { environment: "Supabase environment isolation validation failed" } };
+  }
   const parsed = supabaseServerSchema.safeParse(process.env);
   if (parsed.success) {
     return { success: true, errors: {} };
@@ -108,6 +139,7 @@ export function validateSupabaseEnv(): SupabaseEnvValidationResult {
 }
 
 export function readSupabaseServerEnv() {
+  assertEnvironment(process.env);
   const parsed = supabaseServerSchema.safeParse(process.env);
   if (!parsed.success) {
     const details = parsed.error.flatten();
@@ -122,6 +154,7 @@ export function readSupabaseServerEnv() {
 }
 
 export function readPublicEnv() {
+  if (typeof window === "undefined") assertEnvironment(process.env);
   const parsed = publicSchema.safeParse(process.env);
   if (!parsed.success) {
     const details = parsed.error.flatten();
@@ -144,6 +177,10 @@ export function getConfigurationStatus() {
     auth: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
     openai: Boolean(process.env.OPENAI_API_KEY),
+    nvidia: Boolean(process.env.NVIDIA_API_KEY),
+    groq: Boolean(process.env.GROQ_API_KEY),
+    googleAi: Boolean(process.env.GOOGLE_AI_API_KEY),
+    openrouter: Boolean(process.env.OPENROUTER_API_KEY),
     sendgrid:
       Boolean(process.env.SENDGRID_API_KEY) &&
       Boolean(process.env.SENDGRID_FROM_EMAIL),

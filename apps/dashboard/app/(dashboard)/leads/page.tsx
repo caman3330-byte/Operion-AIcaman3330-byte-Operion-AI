@@ -8,7 +8,7 @@ export default async function LeadsPage() {
   const access = await getInternalPageAccess();
   if (!access.allowed) return <ProtectedPageRedirect to={access.to} reason={access.reason} />;
 
-  const { data: leads } = await getLeadsData();
+  const { data: leads, source } = await getLeadsData();
 
   return (
     <div className="space-y-6">
@@ -18,7 +18,7 @@ export default async function LeadsPage() {
           Review lead quality, approval state, outreach readiness, and founder override actions.
         </p>
       </div>
-      <LeadsTable initialLeads={leads} />
+      {source === "unavailable" ? <p role="alert" className="rounded-md border border-destructive/30 p-4 text-sm">Lead data could not be loaded. This does not mean there are zero leads. Please retry.</p> : <LeadsTable initialLeads={leads} />}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { getDocumentTypeLabel } from "@/lib/documents/processing";
 import { formatDateTime } from "@/lib/utils";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { productionRepository } from "@/lib/repositories/production";
+import { DocumentViewer } from "@/components/documents/document-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +37,20 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
-        <section className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">
+        <section className="min-w-0 space-y-4 break-words">
+          <Card>
+            <CardHeader><CardTitle>Recorded validation</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p>{lead.is_test_data || lead.simulation_run_id ? "TEST / SIMULATION: not a real production prospect" : "Not flagged as test data. This alone does not prove a real, verified business."}</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {([["Business", lead.business_verified], ["Website", lead.website_verified], ["Email", lead.email_verified], ["Phone", lead.phone_verified]] as const).map(([label, verified]) => <p key={label}>{label}: {verified === true ? "Recorded as verified" : "Not verified"}</p>)}
+              </div>
+              <p>Last validation: {lead.validation_timestamp ? formatDateTime(lead.validation_timestamp) : "Not recorded"}</p>
+              <p>{lead.validation_reason || "No validation evidence recorded."}</p>
+              <p className="text-muted-foreground">These are stored validation results, not a fresh independent verification.</p>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle>Contact</CardTitle>
@@ -84,7 +97,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           </Card>
         </section>
 
-        <section className="space-y-4">
+        <section className="min-w-0 space-y-4 break-words">
           <Card>
             <CardHeader>
               <CardTitle>Routing & distributions</CardTitle>
@@ -127,11 +140,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
                       </div>
                       <p className="mt-2 text-sm text-muted-foreground">{document.file_name ?? "No file recorded"}</p>
                       {document.storage_path ? (
-                        <Button asChild variant="outline" size="sm" className="mt-3">
-                          <Link href={`/api/documents/${document.id}/signed-url`} target="_blank" rel="noreferrer">
-                            View secure file
-                          </Link>
-                        </Button>
+                        <div className="mt-3"><DocumentViewer documentId={document.id} fileName={document.file_name ?? "Document"} mimeType={document.mime_type} /></div>
                       ) : null}
                     </div>
                   ))}
@@ -145,7 +154,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
               <CardTitle>Metadata</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="text-xs text-muted-foreground">{JSON.stringify(lead, null, 2)}</pre>
+              <details><summary className="cursor-pointer text-sm">Technical record</summary><pre className="mt-3 whitespace-pre-wrap break-all text-xs text-muted-foreground">{JSON.stringify(lead, null, 2)}</pre></details>
             </CardContent>
           </Card>
         </section>

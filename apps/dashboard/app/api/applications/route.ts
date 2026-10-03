@@ -10,6 +10,8 @@ import { fundingApplicationSchema } from "@/lib/validation";
 import { recordMerchantOnboarding } from "@/lib/services/onboarding";
 import { sendMerchantConfirmationEmail } from "@/lib/email/sendgrid";
 import { createMerchantUploadMagicLink } from "@/lib/portal/merchant-upload-auth";
+import { hashProspectApplicationToken, isProspectApplicationToken } from "@/lib/acquisition/application-token";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,7 @@ export async function POST(request: NextRequest) {
       windowMs: 60_000
     });
     const payload = fundingApplicationSchema.parse(await readJsonBody(request));
+    const session = await resolveAcquisitionSession(request.headers.get("x-operion-application-token"));
     const attribution = {
       source: payload.attribution?.source ?? "direct",
       raw_source: payload.attribution?.raw_source ?? null,
@@ -38,6 +41,28 @@ export async function POST(request: NextRequest) {
         email: actor.email
       });
     }
+    // Acquisition submissions have one and only one persistence path: the locked
+    // PostgreSQL transaction in migration 0040. Do not fall through to the legacy
+    // application/lead inserts below.
+    if (session) {
+      return submitAcquisitionApplication(session, payload);
+    }
+
+    // The application is durable before a CRM lead exists. Acquisition sessions make a
+    // retry resolve this same application instead of creating a second record.
+    const application = await productionRepository.createBusinessApplication({
+      user_id: actor?.id ?? null, profile_id: actor?.id ?? null, lead_id: null,
+      ...(session ? { acquisition_prospect_id: session.acquisition_prospect_id } : {}),
+      status: "awaiting_documents" as any, business_name: payload.business_name, industry: payload.industry,
+      state: payload.state ?? null, website_url: payload.website_url ?? null, annual_revenue: payload.annual_revenue ?? null,
+      monthly_revenue: payload.monthly_revenue ?? null, monthly_deposits: payload.monthly_deposits,
+      requested_amount: payload.requested_amount, product_type: payload.product_type, credit_score_range: payload.credit_score_range,
+      owner_name: payload.owner_name, contact_email: payload.contact_email, contact_phone: payload.contact_phone,
+      ownership_percentage: payload.ownership_percentage ?? null, bank_name: payload.bank_name ?? null,
+      average_daily_balance: payload.average_daily_balance ?? null, funding_purpose: payload.funding_purpose ?? null,
+      consent_to_contact: payload.consent_to_contact, progress_step: 4,
+      metadata: { source: attribution.source, attribution, acquisition_session: Boolean(session) } as Json
+    } as any);
 
     const lead = await leadsRepository.create({
       business_name: payload.business_name,
@@ -52,65 +77,26 @@ export async function POST(request: NextRequest) {
       funding_purpose: payload.funding_purpose ?? null,
       status: "raw",
       internal_notes: JSON.stringify({
-        acquisition_attribution: attribution
+        acquisition_attribution: attribution,
+        ...(session ? { acquisition_prospect_id: session.acquisition_prospect_id } : {})
       })
     });
 
-    const application = await productionRepository.createBusinessApplication({
-      user_id: actor?.id ?? null,
-      profile_id: actor?.id ?? null,
-      lead_id: lead.id,
-      status: "awaiting_documents" as any,
-      business_name: payload.business_name,
-      industry: payload.industry,
-      state: payload.state ?? null,
-      website_url: payload.website_url ?? null,
-      annual_revenue: payload.annual_revenue ?? null,
-      monthly_revenue: payload.monthly_revenue ?? null,
-      monthly_deposits: payload.monthly_deposits,
-      requested_amount: payload.requested_amount,
-      product_type: payload.product_type,
-      credit_score_range: payload.credit_score_range,
-      owner_name: payload.owner_name,
-      contact_email: payload.contact_email,
-      contact_phone: payload.contact_phone,
-      ownership_percentage: payload.ownership_percentage ?? null,
-      bank_name: payload.bank_name ?? null,
-      average_daily_balance: payload.average_daily_balance ?? null,
-      funding_purpose: payload.funding_purpose ?? null,
-      consent_to_contact: payload.consent_to_contact,
-      progress_step: 4,
-      metadata: {
-        source: attribution.source,
-        attribution,
-        ai_qualification_ready: true,
-        ai_qualification_requested_at: new Date().toISOString(),
-        schema_version: "0008",
-        business_address: payload.business_address ?? null,
-        time_in_business_months: payload.time_in_business_months ?? null,
-        tax_id_last4: payload.tax_id_last4 ?? null
-      } as Json
-    });
-
     const linkedLead = await leadsRepository.update(lead.id, {
-      business_application_id: application.id
+      business_application_id: application.id,
+      ...(session ? { acquisition_prospect_id: session.acquisition_prospect_id } : {})
     });
+    const linkedApplication = await productionRepository.updateBusinessApplication(application.id, { lead_id: lead.id } as any);
+    if (session) await markAcquisitionSessionSubmitted(session, application.id, lead.id);
 
-    await Promise.all(
-      [
-        { documentType: "bank_statements", notes: "Required before lender submission." },
-        { documentType: "processing_statements", notes: "Optional if processor volume is part of the funding profile." }
-      ].map(({ documentType, notes }) =>
-        productionRepository.createDocument({
-          user_id: actor?.id ?? null,
-          business_application_id: application.id,
-          lead_id: lead.id,
-          document_type: documentType,
-          status: "requested",
-          notes
-        })
-      )
-    );
+    await productionRepository.createDocument({
+      user_id: actor?.id ?? null,
+      business_application_id: application.id,
+      lead_id: lead.id,
+      document_type: "bank_statements",
+      status: "requested",
+      notes: "Recent business bank statements are required before human review."
+    });
 
     const secureUploadLink = payload.contact_email
       ? await createMerchantUploadMagicLink({
@@ -246,9 +232,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         data: {
-          application,
+          application: linkedApplication,
           lead: linkedLead,
-          ai_task: aiTask
+          ai_task: aiTask,
+          secure_upload_url: secureUploadLink?.created ? secureUploadLink.url : null,
+          secure_upload_expires_at: secureUploadLink?.created ? secureUploadLink.expiresAt : null
         }
       },
       { status: 201 }
@@ -272,4 +260,52 @@ async function readJsonBody(request: NextRequest) {
   } catch {
     throw new ValidationError("Invalid JSON request body");
   }
+}
+
+async function resolveAcquisitionSession(token: string | null) {
+  if (!token) return null;
+  if (!isProspectApplicationToken(token)) throw new ValidationError("Invalid application link.");
+  const { data, error } = await getSupabaseAdmin().from("acquisition_application_sessions" as never)
+    .select("id,acquisition_prospect_id,application_id,lead_id,expires_at" as never)
+    .eq("token_hash" as never, hashProspectApplicationToken(token) as never).maybeSingle();
+  if (error || !data || new Date((data as any).expires_at).getTime() <= Date.now()) throw new ValidationError("This application link is invalid or expired.");
+  return { ...(data as object), tokenHash: hashProspectApplicationToken(token) } as any;
+}
+
+async function markAcquisitionSessionSubmitted(session: any, applicationId: string, leadId: string) {
+  const now = new Date().toISOString();
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase.from("acquisition_application_sessions" as never).update({ application_id: applicationId, lead_id: leadId, submitted_at: now } as never).eq("id" as never, session.id as never).is("application_id" as never, null as never);
+  if (error) throw error;
+  await supabase.from("acquisition_prospects" as never).update({ state_key: "application_submitted" } as never).eq("id" as never, session.acquisition_prospect_id as never);
+}
+
+async function submitAcquisitionApplication(session: { token_hash?: never; [key: string]: any }, payload: ReturnType<typeof fundingApplicationSchema.parse>) {
+  const applicationPayload = {
+    business_name: payload.business_name, industry: payload.industry, state: payload.state ?? null,
+    website_url: payload.website_url ?? null, annual_revenue: payload.annual_revenue ?? null,
+    monthly_revenue: payload.monthly_revenue ?? null, monthly_deposits: payload.monthly_deposits,
+    requested_amount: payload.requested_amount, product_type: payload.product_type,
+    credit_score_range: payload.credit_score_range, owner_name: payload.owner_name,
+    contact_email: payload.contact_email, contact_phone: payload.contact_phone
+  };
+  const leadPayload = {
+    business_name: payload.business_name, contact_name: payload.owner_name,
+    email: payload.contact_email, phone: payload.contact_phone, industry: payload.industry, state: payload.state ?? null
+  };
+  const { data, error } = await getSupabaseAdmin().rpc("submit_acquisition_application" as never, {
+    p_token_hash: session.tokenHash,
+    p_application: applicationPayload,
+    p_lead: leadPayload
+  } as never);
+  const rows = data as unknown as Array<{ application_id: string; lead_id: string; replayed: boolean }> | null;
+  if (error || !rows?.[0]?.application_id || !rows[0]?.lead_id) {
+    throw new ValidationError("The application could not be submitted. Please retry your secure link.");
+  }
+  const result = rows[0];
+  const [application, lead] = await Promise.all([
+    productionRepository.getBusinessApplication(result.application_id),
+    leadsRepository.getById(result.lead_id)
+  ]);
+  return NextResponse.json({ data: { application, lead, idempotent_replay: result.replayed } }, { status: result.replayed ? 200 : 201 });
 }

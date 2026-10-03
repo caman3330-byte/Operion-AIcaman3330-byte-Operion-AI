@@ -1,6 +1,6 @@
 import type { Json, Lead, SimulationMode } from "@operion/shared";
 import { normalizeBusinessLead } from "@/lib/acquisition/normalization";
-import { ingestLeadBatch } from "@/lib/acquisition/pipeline";
+import { ingestSimulationLeadBatch } from "@/lib/acquisition/pipeline";
 import { scoreLeadQuality } from "@/lib/acquisition/scoring";
 import { matchLenders } from "@/lib/distribution";
 import { writeAuditLog } from "@/lib/audit";
@@ -211,7 +211,7 @@ async function ingestGeneratedLeads(simulationRunId: string, generated: Generate
         input: { chunk_size: chunk.length } as Json
       },
       () =>
-        ingestLeadBatch({
+        ingestSimulationLeadBatch({
           sourceKey: "simulation",
           records: chunk,
           requestedBy,

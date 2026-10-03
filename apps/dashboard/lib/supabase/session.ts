@@ -51,7 +51,10 @@ export async function createSupabaseServerComponentClientWithTestOverride() {
 
 async function fetchAdminUserIfRequested(env: ReturnType<typeof readPublicEnv>) {
   try {
-    const hdrs: any = headers();
+    // This is an opt-in local test seam. It is deliberately unavailable in every deployed
+    // environment, including Preview, so a request header can never impersonate an admin.
+    if (process.env.NODE_ENV === "production" || process.env.OPERION_ENABLE_TEST_AUTH_OVERRIDE !== "true") return null;
+    const hdrs = await headers();
     const key = hdrs.get("x-operion-internal-key");
     if (!key || key !== process.env.OPERION_INTERNAL_API_KEY) return null;
     const adminEmail = process.env.ADMIN_EMAIL;

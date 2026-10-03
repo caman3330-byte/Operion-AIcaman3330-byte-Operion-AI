@@ -7,6 +7,7 @@ import {
   ClipboardList,
   DatabaseZap,
   FileBarChart,
+  FileSpreadsheet,
   Gauge,
   type LucideIcon,
   Mail,
@@ -23,6 +24,7 @@ export interface DepartmentNavItem {
   icon: LucideIcon;
   badge?: string;
   exact?: boolean;
+  planned?: boolean;
 }
 
 export interface DepartmentNavGroup {
@@ -30,38 +32,48 @@ export interface DepartmentNavGroup {
   label: string;
   purpose: string;
   items: DepartmentNavItem[];
+  collapsed?: boolean;
+  founderOnly?: boolean;
 }
 
 export const departmentNavGroups: DepartmentNavGroup[] = [
   {
-    key: "merchant-pipeline",
-    label: "Merchant Pipeline",
-    purpose: "Lead acquisition, qualification, merchant applications, and outreach campaigns.",
+    key: "data",
+    label: "Data",
+    purpose: "Businesses before qualification",
+    founderOnly: true,
     items: [
-      { href: "/acquisition", label: "Acquisition", icon: Search },
+      { href: "/data", label: "AI Acquired", icon: DatabaseZap, exact: true },
+      { href: "/data/manual-upload", label: "Manual Upload", icon: FileSpreadsheet }
+    ]
+  },
+  {
+    key: "sales-workflow",
+    label: "Sales workflow",
+    purpose: "",
+    items: [
+      { href: "/leads", label: "Leads", icon: ClipboardList },
+      { href: "", label: "Gmail Outreach", icon: Mail, planned: true },
+      { href: "", label: "Contacts", icon: Building2, planned: true },
+      { href: "", label: "Lender Outreach", icon: Mail, planned: true }
+    ]
+  },
+  {
+    key: "operations-tools",
+    label: "Operations & administration",
+    purpose: "Existing tools and platform controls",
+    collapsed: true,
+    items: [
+      { href: "/acquisition", label: "Acquisition review", icon: Search },
       { href: "/merchant-intelligence", label: "Intelligence", icon: BrainCircuit },
       { href: "/merchant-acquisition", label: "Funnel", icon: Activity },
       { href: "/merchant-sources", label: "Sources", icon: DatabaseZap },
-      { href: "/leads", label: "Leads", icon: ClipboardList },
       { href: "/merchants", label: "Merchants", icon: BadgeDollarSign },
-      { href: "/outreach", label: "Outreach", icon: Mail }
-    ]
-  },
-  {
-    key: "lender-operations",
-    label: "Lender Operations",
-    purpose: "Lender portfolio, criteria management, pricing, and relationship tracking.",
-    items: [
+      { href: "/outreach", label: "Existing outreach tools", icon: Mail },
       { href: "/lenders", label: "Lenders", icon: Building2 },
-      { href: "/lender-discovery", label: "Discovery", icon: Radar }
-    ]
-  },
-  {
-    key: "platform-control",
-    label: "Platform Control",
-    purpose: "Operational command, AI monitoring, auditing, prompt management, and founder controls.",
-    items: [
+      { href: "/lender-discovery", label: "Lender discovery", icon: Radar },
       { href: "/supervisor", label: "Command Center", icon: Gauge, exact: true },
+      { href: "/autonomous-operations", label: "Autonomy", icon: Bot },
       { href: "/founder-operations", label: "Founder Ops", icon: Activity },
       { href: "/supervisor/ai-agents", label: "Underwriting", icon: Activity },
       { href: "/supervisor/ai-operations", label: "AI Operations", icon: Bot },
@@ -74,4 +86,4 @@ export const departmentNavGroups: DepartmentNavGroup[] = [
   }
 ] as const;
 
-export const navItems = departmentNavGroups.flatMap((group) => group.items);
+export const navItems = departmentNavGroups.flatMap((group) => group.items).filter((item) => !item.planned);

@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { Bot, CheckCircle2, Globe, Mail, Phone, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import type { Route } from "next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -67,24 +69,24 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
   const [isPending, startTransition] = useTransition();
 
   function handleRunAgent() {
-    setAgentStatus("Running lead acquisition agent — discovering MCA prospects...");
+    setAgentStatus("Acquiring business data...");
     startTransition(async () => {
       try {
-        const res = await fetch("/api/workers/lead-acquisition-agent", {
+        const res = await fetch("/api/data/acquire", {
           method: "POST",
           credentials: "same-origin",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ limit: 30 })
+          body: JSON.stringify({ source: "google_places", query: "businesses", limit: 10 })
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          setAgentStatus(`Agent failed: ${String((err as Record<string, unknown>)?.error ?? "Unknown error")}`);
+          setAgentStatus(`Acquisition failed: ${String(err?.error?.message ?? "Unknown error")}`);
           return;
         }
-        const payload = await res.json() as { data: { inserted: number; duplicates: number; failed: number; total_fetched: number; sources_used: string[] } };
-        const d = payload.data;
+        const payload = await res.json() as { data: { counts: { imported: number; duplicates: number; failed: number } } };
+        const d = payload.data.counts;
         setAgentStatus(
-          `Agent complete — ${d.inserted} new leads discovered, ${d.duplicates} duplicates skipped, ${d.failed} failed. Sources: ${d.sources_used.join(", ") || "none"}.`
+          `Acquisition complete — ${d.imported} businesses saved in DATA, ${d.duplicates} duplicate rows recorded, ${d.failed} failed. No leads created or outreach sent.`
         );
         router.refresh();
       } catch (err) {
@@ -120,7 +122,7 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
             </span>
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Production leads come from Google Places and OpenCorporates only. AI seed is blocked from live queues.
+            Review existing leads here. Newly acquired businesses are stored in DATA.
           </p>
         </div>
         <Button size="sm" variant="outline" disabled={isPending} onClick={handleRunAgent}>
@@ -137,7 +139,7 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
 
       {leads.length === 0 ? (
         <div className="rounded-lg border border-white/10 bg-card/80 px-5 py-10 text-center text-sm text-muted-foreground">
-          No production acquisition leads are pending validation review. Run the acquisition agent to discover MCA prospects.
+          No existing acquisition leads are pending review. New acquisitions appear in DATA.
         </div>
       ) : (
         <div className="space-y-3">
@@ -151,10 +153,10 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
               <Card key={lead.id} className="border-white/10">
                 <CardContent className="p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 basis-80 flex-1 break-words">
                       {/* Header */}
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-white">{lead.business_name}</p>
+                        <Link href={`/admin/leads/${lead.id}` as Route} className="font-semibold text-primary underline-offset-4 hover:underline">{lead.business_name}</Link>
                         <Badge variant={lead.status === "rejected" ? "destructive" : "warning"}>{lead.status.replaceAll("_", " ")}</Badge>
                         <Badge variant={validation.variant}>{validation.label}</Badge>
                         {lead.tier ? (
@@ -174,13 +176,13 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
                       {/* Contact info */}
                       <div className="mt-1.5 flex flex-wrap gap-3 text-xs text-muted-foreground">
                         {lead.phone ? (
-                          <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex min-w-0 items-center gap-1 break-all">
                             <Phone className="h-3 w-3" />
                             {lead.phone}
                           </span>
                         ) : null}
                         {lead.email ? (
-                          <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex min-w-0 items-center gap-1 break-all">
                             <Mail className="h-3 w-3" />
                             {lead.email}
                           </span>
@@ -190,7 +192,7 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
                             href={websiteUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 hover:text-primary"
+                            className="inline-flex min-w-0 items-center gap-1 break-all hover:text-primary"
                           >
                             <Globe className="h-3 w-3" />
                             {websiteUrl.replace(/^https?:\/\//, "").split("/")[0]}
@@ -203,17 +205,18 @@ export function AcquisitionQueuePanel({ initialLeads }: Props) {
                         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{lead.ai_summary}</p>
                       ) : null}
                       {lead.validation_reason ? (
-                        <p className="mt-2 max-w-2xl rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                        <p className="mt-2 max-w-2xl rounded-md border border-border bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
                           Validation: {lead.validation_reason}
                         </p>
                       ) : null}
                     </div>
 
                     {/* Right meta */}
-                    <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
+                    <div className="flex min-w-0 flex-col items-start gap-1 break-words text-xs text-muted-foreground sm:items-end">
                       <span>Source: {discoverySource.replaceAll("_", " ")}</span>
                       <span>Validation score: {lead.validation_score ?? 0}/100</span>
                       <span>{new Date(lead.created_at).toLocaleDateString()}</span>
+                      <Button asChild size="sm" variant="outline"><Link href={`/admin/leads/${lead.id}` as Route}>Review lead</Link></Button>
                     </div>
                   </div>
 

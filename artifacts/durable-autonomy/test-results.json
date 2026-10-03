@@ -1,0 +1,117 @@
+{
+  "project": "qvzmdrghnfjqbezneqqc",
+  "checks": {
+    "PAUSED": true,
+    "EMERGENCY_STOP": true,
+    "concurrent_cycle_blocked": true,
+    "durable_cycle_reclaimed": true,
+    "stale_cycle_fenced": true,
+    "command_center_reads_cycles": true,
+    "process_interrupted_after_claim": true,
+    "process_recovery_completed": true,
+    "recovery_tool_runs": 1
+  },
+  "cycles": [
+    {
+      "status": "completed",
+      "id": "9ad7d7dc-f7aa-4ba7-ac19-a3e5f658a442",
+      "tasks": 1,
+      "processed": [
+        {
+          "task_id": "24ab7bc5-1ba2-40fa-8905-701d1e073033",
+          "assigned_agent_key": "source_scanner_agent",
+          "status": "completed",
+          "summary": "Source scan complete: 1 source(s), 0 extracted, 0 verified, 0 rejected, 0 duplicate(s), 0 imported."
+        }
+      ],
+      "evaluations": 1
+    },
+    {
+      "status": "completed",
+      "id": "a6b2fe82-aa2c-4847-b4e2-d9ce91e70774",
+      "tasks": 1,
+      "processed": [
+        {
+          "task_id": "ecc1d616-702b-4371-bc29-35ad0bb045de",
+          "assigned_agent_key": "source_scanner_agent",
+          "status": "completed",
+          "summary": "Source scan complete: 1 source(s), 3 extracted, 0 verified, 0 rejected, 0 duplicate(s), 0 imported."
+        }
+      ],
+      "evaluations": 1
+    },
+    {
+      "status": "completed",
+      "id": "39ca900e-9c9c-4eda-88e5-7b59ca41dd31",
+      "tasks": 1,
+      "processed": [
+        {
+          "task_id": "83e48163-89b4-43fd-8a48-c8f46cb86db8",
+          "assigned_agent_key": "source_scanner_agent",
+          "status": "completed",
+          "summary": "Source scan complete: 1 source(s), 7 extracted, 0 verified, 0 rejected, 5 duplicate(s), 0 imported."
+        }
+      ],
+      "evaluations": 1
+    }
+  ],
+  "evidence": [
+    {
+      "id": "dcb3441a-fa45-42b2-9493-36868f45d7b1",
+      "sequence": "13",
+      "status": "completed",
+      "phase": "TEST_LEASE_VALIDATION",
+      "attempts": 2
+    },
+    {
+      "id": "358b39e4-5be0-4a5e-b5d5-5429ae763944",
+      "sequence": "10",
+      "status": "completed",
+      "phase": "COMPLETE",
+      "attempts": 1
+    },
+    {
+      "id": "9b6f37bf-21df-4a58-9ad7-3c9d25d59490",
+      "sequence": "9",
+      "status": "completed",
+      "phase": "COMPLETE",
+      "attempts": 1
+    },
+    {
+      "id": "0b78b854-3340-4828-96c7-fbc9f410b76f",
+      "sequence": "8",
+      "status": "completed",
+      "phase": "COMPLETE",
+      "attempts": 1
+    },
+    {
+      "id": "ea68d8eb-e715-4bf1-a091-9824db998784",
+      "sequence": "7",
+      "status": "completed",
+      "phase": "COMPLETE",
+      "attempts": 1
+    },
+    {
+      "id": "b04e3813-395e-4a17-9d5d-fd190413ec7c",
+      "sequence": "5",
+      "status": "completed",
+      "phase": "TEST_LEASE_VALIDATION",
+      "attempts": 2
+    },
+    {
+      "id": "0d8fc396-266f-497d-ab70-9e8265c20f39",
+      "sequence": "4",
+      "status": "completed",
+      "phase": "TEST_LEASE_VALIDATION",
+      "attempts": 2
+    },
+    {
+      "id": "39ca900e-9c9c-4eda-88e5-7b59ca41dd31",
+      "sequence": "3",
+      "status": "completed",
+      "phase": "COMPLETE",
+      "attempts": 1
+    }
+  ],
+  "final_state": "PAUSED"
+}

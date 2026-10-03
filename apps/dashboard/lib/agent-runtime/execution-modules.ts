@@ -7,6 +7,11 @@ import { simulationRepository } from "@/lib/repositories/simulation";
 import { leadsRepository } from "@/lib/repositories/leads";
 import { lendersRepository } from "@/lib/repositories/lenders";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import {
+  executeAcquisitionManagerTask,
+  executeAcquisitionMonitorTask,
+  executeSourceScannerTask
+} from "@/lib/autonomous-company/acquisition-loop";
 
 export interface WorkerExecutionResult {
   summary: string;
@@ -33,7 +38,15 @@ const moduleMap: Record<string, ExecutionModule> = {
   underwriting_manager: executeUnderwritingManager,
   underwriting_agent: executeUnderwritingManager,
   finance_manager: executeFinanceManager,
-  finance_accounting_agent: executeFinanceManager
+  finance_accounting_agent: executeFinanceManager,
+  acquisition_manager_agent: executeAcquisitionManagerTask,
+  source_scanner_agent: executeSourceScannerTask,
+  acquisition_monitor_agent: executeAcquisitionMonitorTask,
+  source_discovery_agent: executeAcquisitionReadOnlyWorker,
+  merchant_research_agent: executeAcquisitionReadOnlyWorker,
+  contact_verification_agent: executeAcquisitionReadOnlyWorker,
+  merchant_qualification_agent: executeAcquisitionReadOnlyWorker,
+  deduplication_agent: executeAcquisitionReadOnlyWorker
 };
 
 export async function executeAgentTask(task: AgentTaskQueueItem): Promise<WorkerExecutionResult> {
@@ -80,6 +93,20 @@ async function executeLeadGenerationAgent(task: AgentTaskQueueItem): Promise<Wor
     },
     shouldEscalate: needsAttention,
     escalationMessage: "Lead acquisition quality or failed job volume requires founder review."
+  };
+}
+
+async function executeAcquisitionReadOnlyWorker(task: AgentTaskQueueItem): Promise<WorkerExecutionResult> {
+  const metrics = await acquisitionRepository.merchantAcquisitionDepartmentMetrics();
+  return {
+    summary: `${task.assigned_agent_key} completed a bounded acquisition review: ${metrics.verified_merchants} verified merchant(s), ${metrics.pending_imports} founder-review candidate(s), ${metrics.active_sources} active source(s).`,
+    output: {
+      acquisition_metrics: metrics,
+      recommended_action: "Queue specialized acquisition work through the Acquisition Manager before mutating records."
+    },
+    memory: {
+      last_acquisition_metrics: metrics
+    }
   };
 }
 

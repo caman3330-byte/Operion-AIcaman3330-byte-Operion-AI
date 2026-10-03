@@ -10,11 +10,12 @@ export interface DocumentProcessingResult {
   transitioned: number;
   skipped: number;
   failed: number;
+  blocked: number;
   items: Array<{
     task_id: string;
     application_id: string | null;
     document_id: string | null;
-    status: "completed" | "failed" | "skipped";
+    status: "completed" | "failed" | "skipped" | "blocked";
     transition?: string;
     reason?: string;
   }>;
@@ -24,7 +25,7 @@ const AWAITING_STATUSES = new Set(["awaiting_documents", "documents_pending", "d
 
 export async function runDocumentProcessingWorker(limit = 15): Promise<DocumentProcessingResult> {
   const workerStartedAt = Date.now();
-  const result: DocumentProcessingResult = { processed: 0, transitioned: 0, skipped: 0, failed: 0, items: [] };
+  const result: DocumentProcessingResult = { processed: 0, transitioned: 0, skipped: 0, failed: 0, blocked: 0, items: [] };
 
   // Fetch blocked document_processing tasks — these are documents uploaded
   // but pending OCR/parsing worker (registered as blocked in upload route)
@@ -75,6 +76,16 @@ export async function runDocumentProcessingWorker(limit = 15): Promise<DocumentP
         continue;
       }
 
+      if (!documentId) throw new Error("Document processing task has no document ID");
+      const document = await productionRepository.getDocument(documentId);
+      if (document.business_application_id !== appId) throw new Error("Document does not belong to task application");
+      // Upload receipt is not extraction. Leave pending tasks available to a real processor.
+      if (!("processing_status" in document) || document.processing_status !== "completed") {
+        result.blocked++;
+        result.items.push({ task_id: task.id, application_id: appId, document_id: documentId, status: "blocked", reason: "Document extraction has not completed; OCR/parser execution is required." });
+        continue;
+      }
+
       // Load application
       const app = await productionRepository.getBusinessApplication(appId);
       const appStatus = app.status as string;
@@ -114,7 +125,7 @@ export async function runDocumentProcessingWorker(limit = 15): Promise<DocumentP
         }
       }
 
-      // Mark task completed — the document is acknowledged even if OCR isn't running
+      // Acknowledge only documents whose processor has recorded completion.
       await productionRepository.updateAiTask(task.id, {
         status: "completed",
         completed_at: new Date().toISOString(),
@@ -124,7 +135,7 @@ export async function runDocumentProcessingWorker(limit = 15): Promise<DocumentP
           application_status_before: appStatus,
           transition: transition ?? "no_transition_required",
           processed_at: new Date().toISOString(),
-          processing_note: "Document acknowledged by processing worker. Full OCR/parsing pending external worker activation."
+          processing_note: "Document processor completion acknowledged. Funding decisions still require human review."
         } as Json,
         error_message: null
       });
@@ -199,25 +210,27 @@ export async function runDocumentProcessingWorker(limit = 15): Promise<DocumentP
     processed: result.processed,
     transitioned: result.transitioned,
     skipped: result.skipped,
-    failed: result.failed
+    failed: result.failed,
+    blocked: result.blocked
   });
   const durationMs = Date.now() - workerStartedAt;
   await recordWorkerHeartbeat({
     workerName: "document_processing_worker",
     department: "underwriting",
-    status: result.failed > 0 ? "failed" : "idle",
+    status: result.failed > 0 || result.blocked > 0 ? "failed" : "idle",
     queueName: "ai_tasks:document_processing",
     queueSize: Math.max(0, candidates.length - result.processed - result.skipped - result.failed),
     lastCompletedTask: result.items.find((item) => item.status === "completed")?.task_id ?? null,
-    lastCompletedAt: new Date().toISOString(),
+    ...(result.processed > 0 ? { lastCompletedAt: new Date().toISOString() } : {}),
     averageExecutionMs: result.processed > 0 ? Math.round(durationMs / result.processed) : durationMs,
     lastDurationMs: durationMs,
-    errorMessage: result.failed > 0 ? `${result.failed} document processing task(s) failed.` : null,
+    errorMessage: result.failed > 0 ? `${result.failed} document processing task(s) failed.` : result.blocked > 0 ? `${result.blocked} document(s) await OCR/parser completion.` : null,
     metadata: {
       processed: result.processed,
       transitioned: result.transitioned,
       skipped: result.skipped,
-      failed: result.failed
+      failed: result.failed,
+      blocked: result.blocked
     } as Json
   });
   return result;

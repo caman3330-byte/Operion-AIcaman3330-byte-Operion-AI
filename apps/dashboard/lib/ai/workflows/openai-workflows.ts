@@ -1,5 +1,5 @@
 import type { Json } from "@operion/shared";
-import { runOpenAiStructuredOutput } from "@/lib/ai/openai";
+import { operionAi } from "@/lib/ai/gateway";
 import { openAiStructuredSystemPrompt } from "@/lib/ai/prompts/operion-prompts";
 import type { AiWorkflowResult } from "@/lib/ai/types";
 import {
@@ -18,6 +18,9 @@ import {
 export async function extractLeadFromText(input: Json): Promise<AiWorkflowResult<unknown>> {
   const result = await runOpenAiStructuredOutput({
     operation: "lead_extraction",
+    taskType: "EXTRACTION",
+    capability: "extract",
+    preferredProviders: ["openai"],
     schemaName: "operion_lead_extraction",
     system: `${openAiStructuredSystemPrompt} Extract MCA/business funding lead fields from unstructured intake text.`,
     user: input,
@@ -31,6 +34,10 @@ export async function extractLeadFromText(input: Json): Promise<AiWorkflowResult
 export async function generateUnderwritingSummary(input: Json): Promise<AiWorkflowResult<unknown>> {
   const result = await runOpenAiStructuredOutput({
     operation: "underwriting_summary",
+    taskType: "REASONING",
+    capability: "reason",
+    preferredProviders: ["openai"],
+    sensitive: true,
     schemaName: "operion_underwriting_summary",
     system: `${openAiStructuredSystemPrompt} Create an internal underwriting summary for MCA/business funding review.`,
     user: input,
@@ -44,6 +51,10 @@ export async function generateUnderwritingSummary(input: Json): Promise<AiWorkfl
 export async function generateLenderRecommendations(input: Json): Promise<AiWorkflowResult<unknown>> {
   const result = await runOpenAiStructuredOutput({
     operation: "lender_recommendation",
+    taskType: "REASONING",
+    capability: "reason",
+    preferredProviders: ["openai"],
+    sensitive: true,
     schemaName: "operion_lender_recommendations",
     system: `${openAiStructuredSystemPrompt} Recommend lender routing options based only on provided lender criteria and lead data.`,
     user: input,
@@ -57,6 +68,10 @@ export async function generateLenderRecommendations(input: Json): Promise<AiWork
 export async function generateOutreachDraft(input: Json): Promise<AiWorkflowResult<unknown>> {
   const result = await runOpenAiStructuredOutput({
     operation: "outreach_generation",
+    taskType: "GENERAL",
+    capability: "generate",
+    preferredProviders: ["openai"],
+    sensitive: true,
     schemaName: "operion_outreach_generation",
     system: `${openAiStructuredSystemPrompt} Draft compliant, professional customer outreach for business funding operations.`,
     user: input,
@@ -70,6 +85,9 @@ export async function generateOutreachDraft(input: Json): Promise<AiWorkflowResu
 export async function generateCrmActivity(input: Json): Promise<AiWorkflowResult<unknown>> {
   const result = await runOpenAiStructuredOutput({
     operation: "crm_activity_generation",
+    taskType: "GENERAL",
+    capability: "extract",
+    preferredProviders: ["openai"],
     schemaName: "operion_crm_activity",
     system: `${openAiStructuredSystemPrompt} Convert the provided event or communication into a CRM activity record.`,
     user: input,
@@ -80,10 +98,14 @@ export async function generateCrmActivity(input: Json): Promise<AiWorkflowResult
   return wrap("crm_activity_generation", result);
 }
 
+function runOpenAiStructuredOutput(input: Parameters<typeof operionAi.generateStructured>[0]) {
+  return operionAi.generateStructured(input);
+}
+
 function wrap(workflow: AiWorkflowResult<unknown>["workflow"], result: Awaited<ReturnType<typeof runOpenAiStructuredOutput>>) {
   return {
     workflow,
-    provider: "openai" as const,
+    provider: result.provider,
     data: result.data,
     usage: result.usage,
     raw: result.raw as Json

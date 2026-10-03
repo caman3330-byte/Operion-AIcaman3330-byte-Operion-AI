@@ -40,15 +40,15 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <MotionSection className="border-y border-white/10 bg-white/[0.025] px-4 py-20 sm:px-6 lg:px-8">
+        <MotionSection className="border-y border-sky-100 bg-sky-50/40 px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto grid max-w-7xl gap-4 md:grid-cols-2 lg:grid-cols-4">
             {principles.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="rounded-lg border border-primary/15 bg-black/30 p-5">
-                  <Icon className="h-5 w-5 text-primary" />
-                  <h2 className="mt-5 font-semibold text-white">{item.title}</h2>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.text}</p>
+                <div key={item.title} className="rounded-lg border border-sky-100 bg-white p-5 shadow-sm">
+                  <Icon className="h-5 w-5 text-sky-600" />
+                  <h2 className="mt-5 font-semibold text-slate-950">{item.title}</h2>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.text}</p>
                 </div>
               );
             })}
@@ -62,7 +62,7 @@ export default function AboutPage() {
               title="Institutional process without unnecessary complexity."
               description="The launch foundation focuses on application quality, signed document upload, lender-readiness, email-driven merchant communication, and clean internal operational handoffs."
             />
-            <div className="rounded-lg border border-primary/15 bg-black/30 p-6">
+            <div className="rounded-lg border border-sky-100 bg-white p-6 shadow-sm">
               <div className="grid gap-4 sm:grid-cols-3">
                 {[
                   ["Secure", "Protected application and signed document access"],
@@ -70,8 +70,8 @@ export default function AboutPage() {
                   ["Scalable", "Ready for lender routing and funding qualification"]
                 ].map(([title, text]) => (
                   <div key={title}>
-                    <p className="text-lg font-semibold text-white">{title}</p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
+                    <p className="text-lg font-semibold text-slate-950">{title}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
                   </div>
                 ))}
               </div>

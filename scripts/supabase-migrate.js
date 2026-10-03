@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const { spawnSync } = require("child_process");
 const { URL } = require("url");
+const { assertMigrationTarget } = require("../apps/dashboard/environment-safety.cjs");
 
 const action = process.argv[2] || "help";
 const env = process.env;
@@ -71,6 +72,7 @@ if (action === "push") {
     process.exit(1);
   }
 
+  assertMigrationTarget(env, dbUrl, process.argv);
   const args = ["db", "push", "--include-all", "--db-url", dbUrl, "--yes"];
   if (dryRun) {
     args.splice(args.indexOf("--yes"), 1);

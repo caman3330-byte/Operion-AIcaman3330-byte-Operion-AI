@@ -11,6 +11,10 @@
   ],
   "crons": [
     {
+      "path": "/api/acquisition/google-places-scheduler",
+      "schedule": "0 2,8,14,20 * * *"
+    },
+    {
       "path": "/api/outreach/workers/tick?limit=10&mode=lifecycle",
       "schedule": "30 10 * * *"
     },
@@ -47,15 +51,9 @@
       }
     },
     {
-      "src": "^/merchants/(.*)$",
-      "status": 307,
-      "headers": {
-        "Location": "/apps/dashboard/merchants/$1"
-      }
-    },
-    {
       "src": "^/(?!apps/dashboard)(.*)$",
-      "dest": "/apps/dashboard/$1"
+      "dest": "/apps/dashboard/$1",
+      "continue": true
     }
   ]
 }

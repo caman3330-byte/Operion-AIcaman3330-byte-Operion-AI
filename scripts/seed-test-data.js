@@ -15,6 +15,7 @@ function readEnv(envPath) {
 }
 
 const env = readEnv(path.join(__dirname, '../apps/dashboard/.env.local'));
+require('../apps/dashboard/environment-safety.cjs').assertEnvironment({ ...process.env, ...env }, 'test');
 const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 if (!supabaseUrl || !serviceKey) {

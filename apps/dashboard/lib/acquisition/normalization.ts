@@ -4,6 +4,8 @@ export interface RawBusinessLead {
   email?: string | null | undefined;
   phone?: string | null | undefined;
   website_url?: string | null | undefined;
+  address?: string | null | undefined;
+  zip?: string | null | undefined;
   city?: string | null | undefined;
   industry?: string | null | undefined;
   state?: string | null | undefined;
@@ -60,6 +62,23 @@ export function normalizeBusinessName(value: string) {
     .replace(/\b(llc|inc|corp|corporation|company|co|ltd|limited)\b\.?/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+/** Identity is a business at a location. Shared domains and contacts are not identity. */
+export function buildProspectIdentity(input: { business_name: string; address?: string | null; city?: string | null; state?: string | null; zip?: string | null }) {
+  const normalizeLocation = (value?: string | null) => (value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const normalized_business_name = normalizeBusinessName(input.business_name);
+  const normalized_address = normalizeLocation(input.address);
+  const normalized_city = normalizeLocation(input.city);
+  const normalized_state = normalizeLocation(input.state);
+  const normalized_zip = normalizeLocation(input.zip);
+  const locationKnown = Boolean(normalized_address || normalized_zip || (normalized_city && normalized_state));
+  return {
+    normalized_business_name, normalized_address, normalized_city, normalized_state, normalized_zip,
+    identity_key: normalized_business_name && locationKnown
+      ? [normalized_business_name, normalized_address, normalized_city, normalized_state, normalized_zip].join("|")
+      : null
+  };
 }
 
 export function extractDomain(url: string | null) {

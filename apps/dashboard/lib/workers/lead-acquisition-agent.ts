@@ -1,11 +1,11 @@
 import type { Json } from "@operion/shared";
-import { writeAuditLog } from "@/lib/audit";
+import { ingestLeadBatch } from "@/lib/acquisition/pipeline";
 import { normalizeBusinessLead, type RawBusinessLead } from "@/lib/acquisition/normalization";
 import { scoreLeadQuality } from "@/lib/acquisition/scoring";
-import { applyValidationToQuality, validateAcquisitionLead } from "@/lib/acquisition/validation";
+
 import { selectAnthropicModel } from "@/lib/ai/anthropic-models";
-import { acquisitionRepository } from "@/lib/repositories/acquisition";
-import { leadsRepository } from "@/lib/repositories/leads";
+
+
 import { readServerEnv } from "@/lib/env";
 import { ConfigurationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -99,6 +99,8 @@ async function discoverViaGooglePlaces(
         business_name: place.name,
         phone: place.formatted_phone_number ?? null,
         website_url: place.website ?? null,
+        address: place.formatted_address,
+        source_record_id: place.place_id ?? null,
         industry: industry.industry,
         state: extractedState.length === 2 ? extractedState : state,
         source: "google_places",
@@ -467,136 +469,28 @@ export async function runLeadAcquisitionAgent(
     sources: result.sources_used
   });
 
-  // ── Process each raw lead: normalize → dedup → score → insert ──
+  // Discovery records enter DATA; qualification and lead creation are separate work.
   for (const raw of rawLeads.slice(0, limit)) {
+    const normalized = normalizeBusinessLead(raw);
+    const quality = scoreLeadQuality(normalized);
     try {
-      const normalized = normalizeBusinessLead(raw);
-      const validation = await validateAcquisitionLead({
-        businessName: normalized.business_name,
-        websiteUrl: normalized.website_url,
-        email: normalized.email,
-        phone: normalized.phone,
-        businessCategory: normalized.industry,
-        source: raw.source
+      if (raw.source === "ai_seed") throw new Error("Generated research businesses cannot enter DATA");
+      const stored = await ingestLeadBatch({
+        records: [raw], sourceKey: raw.source ?? "lead_acquisition_agent", requestedBy: "lead_acquisition_agent"
       });
-      const quality = applyValidationToQuality(scoreLeadQuality(normalized), validation);
-
-      // Deduplication check
-      const existing = await acquisitionRepository.findLeadByEmailOrName({
-        email: normalized.email,
-        businessName: normalized.business_name,
-        domain: normalized.domain
-      });
-
-      if (existing.length > 0) {
-        result.duplicates++;
-        result.items.push({
-          business_name: normalized.business_name,
-          state: normalized.state,
-          industry: normalized.industry,
-          score: quality.score,
-          tier: quality.tier,
-          source: raw.source ?? "unknown",
-          status: "duplicate"
-        });
-        continue;
-      }
-
-      // Insert with pending_approval status — no autonomous action
-      const isResearchLead = raw.source === "ai_seed" || options.researchMode === true;
-      const leadStatus = validation.status === "invalid" ? "rejected" : "pending_approval";
-      const validationMetadata = {
-        status: validation.status,
-        website_verified: validation.website_verified,
-        email_verified: validation.email_verified,
-        phone_verified: validation.phone_verified,
-        business_verified: validation.business_verified,
-        validation_score: validation.validation_score,
-        validation_reason: validation.validation_reason,
-        validation_flags: validation.flags
-      };
-
-      const lead = await leadsRepository.create({
-        business_name: normalized.business_name,
-        contact_name: normalized.contact_name,
-        email: normalized.email,
-        phone: normalized.phone,
-        industry: normalized.industry,
-        state: normalized.state,
-        annual_revenue_est: normalized.annual_revenue_est,
-        time_in_business_years: normalized.time_in_business_years,
-        qualification_score: quality.score,
-        tier: quality.tier,
-        status: leadStatus,
-        website_verified: validation.website_verified,
-        email_verified: validation.email_verified,
-        phone_verified: validation.phone_verified,
-        business_verified: validation.business_verified,
-        validation_score: validation.validation_score,
-        validation_reason: validation.validation_reason,
-        validation_timestamp: validation.validation_timestamp,
-        is_test_data: isResearchLead,
-        ai_summary: quality.score >= 65
-          ? `Tier ${quality.tier} prospect: ${quality.reasons.join(", ")}. Discovered via ${raw.source ?? "agent"}.`
-          : null,
-        internal_notes: JSON.stringify({
-          discovery_source: raw.source ?? "lead_acquisition_agent",
-          discovered_by: "lead_acquisition_agent",
-          discovered_at: new Date().toISOString(),
-          website_url: normalized.website_url,
-          score_reasons: quality.reasons,
-          validation: validationMetadata,
-          source_record_id: raw.source_record_id ?? null
-        })
-      });
-
-      await writeAuditLog({
-        eventType: "lead_acquired",
-        actorType: "system",
-        actorId: "lead_acquisition_agent",
-        entityType: "lead",
-        entityId: lead.id,
-        metadata: {
-          business_name: normalized.business_name,
-          state: normalized.state,
-          industry: normalized.industry,
-          score: quality.score,
-          tier: quality.tier,
-          source: raw.source ?? "unknown"
-        } as Json
-      });
-
-      result.inserted++;
-      result.items.push({
-        business_name: normalized.business_name,
-        state: normalized.state,
-        industry: normalized.industry,
-        score: quality.score,
-        tier: quality.tier,
-        source: raw.source ?? "unknown",
-        status: "inserted",
-        reason: validation.validation_reason
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      logger.error("lead_acquisition_record_failed", {
-        business_name: raw.business_name,
-        error: msg
-      });
-      result.failed++;
-      result.items.push({
-        business_name: raw.business_name,
-        state: raw.state ?? null,
-        industry: raw.industry ?? null,
-        score: 0,
-        tier: "D",
-        source: raw.source ?? "unknown",
-        status: "failed",
-        reason: msg
-      });
+      const status = stored.failed.length ? "failed" : stored.duplicates.length ? "duplicate" : "inserted";
+      if (status === "failed") result.failed += 1;
+      else if (status === "duplicate") result.duplicates += 1;
+      else result.inserted += 1;
+      result.items.push({ business_name: normalized.business_name, state: normalized.state, industry: normalized.industry,
+        score: quality.score, tier: quality.tier, source: raw.source ?? "unknown", status });
+    } catch (error) {
+      result.failed += 1;
+      result.items.push({ business_name: normalized.business_name, state: normalized.state, industry: normalized.industry,
+        score: quality.score, tier: quality.tier, source: raw.source ?? "unknown", status: "failed",
+        reason: error instanceof Error ? error.message : "Acquisition failed" });
     }
   }
-
   logger.info("lead_acquisition_agent_done", {
     total_fetched: result.total_fetched,
     inserted: result.inserted,
@@ -607,3 +501,4 @@ export async function runLeadAcquisitionAgent(
 
   return result;
 }
+

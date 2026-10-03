@@ -1,6 +1,9 @@
 import { logger } from "@/lib/logger";
+import { assertEnvironment, permitsExternalDelivery } from "../../environment-safety.cjs";
 
 export function isIntegrationEnabled(name: string) {
+  try { assertEnvironment(process.env); } catch { return false; }
+  if (["sendgrid", "crm", "n8n", "slack", "stripe", "zoho", "acquisition_scheduler", "merchant_intelligence_scheduler"].includes(name) && !permitsExternalDelivery(process.env)) return false;
   switch (name) {
     case "sendgrid":
       return Boolean(process.env.SENDGRID_API_KEY) && Boolean(process.env.SENDGRID_FROM_EMAIL);

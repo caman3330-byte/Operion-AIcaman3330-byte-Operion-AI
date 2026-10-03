@@ -10,9 +10,7 @@ import { ALLOWED_DOCUMENT_MIME_TYPES, DOCUMENT_TYPE_OPTIONS, MAX_DOCUMENT_UPLOAD
 import { cn } from "@/lib/utils";
 import type { DocumentRecord } from "@operion/shared";
 
-const primaryDocumentTypes = DOCUMENT_TYPE_OPTIONS.filter((option) =>
-  ["bank_statements", "processing_statements"].includes(option.value)
-);
+const primaryDocumentTypes = DOCUMENT_TYPE_OPTIONS.filter((option) => option.value === "bank_statements");
 
 interface DocumentUploadFormProps {
   applicationId: string;
@@ -104,13 +102,12 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
   }
 
   return (
-    <div className="rounded-lg border border-primary/15 bg-black/35 p-6 shadow-2xl shadow-black/20">
+    <div className="rounded-lg border border-sky-100 bg-white p-6 text-slate-900 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="font-serif text-lg font-medium text-white">{variant === "portal" ? "Secure upload" : "Upload documents"}</p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Submit latest business bank statements, with processing statements optional, through encrypted uploads and secure
-            signed-access document handling.
+        <p className="font-serif text-lg font-medium text-slate-950">{variant === "portal" ? "Secure upload" : "Upload documents"}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Upload your recent business bank statements through encrypted uploads and secure signed-access document handling.
           </p>
         </div>
         <ShieldCheck className="h-5 w-5 text-primary" />
@@ -118,12 +115,12 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         {documentsByType.map((item) => (
-          <div key={item.value} className="flex items-center justify-between gap-3 rounded-md border border-primary/15 bg-white/[0.02] px-3 py-2">
+          <div key={item.value} className="flex items-center justify-between gap-3 rounded-md border border-sky-100 bg-sky-50 px-3 py-2">
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{item.label}</p>
-              <p className="text-xs text-muted-foreground">{item.record?.file_name ?? "Awaiting upload"}</p>
+              <p className="truncate text-sm font-semibold text-slate-950">{item.label}</p>
+              <p className="text-xs text-slate-600">{item.record?.file_name ?? "Awaiting upload"}</p>
             </div>
-            <div className="shrink-0 rounded-full bg-white/5 px-2 py-1 text-xs text-muted-foreground">{item.record ? item.record.status : "pending"}</div>
+            <div className="shrink-0 rounded-full bg-sky-100 px-2 py-1 text-xs text-slate-600">{item.record ? item.record.status : "pending"}</div>
           </div>
         ))}
       </div>
@@ -161,15 +158,15 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
             handleFiles(Array.from(event.dataTransfer.files ?? []));
           }}
           className={cn(
-            "flex min-h-44 w-full flex-col items-center justify-center rounded-lg border border-dashed border-primary/20 bg-white/[0.02] px-6 py-8 text-center transition",
-            isDragging ? "border-primary/70 bg-primary/10" : "hover:border-primary/45 hover:bg-primary/[0.06]"
+            "flex min-h-44 w-full flex-col items-center justify-center rounded-lg border border-dashed border-sky-200 bg-sky-50/50 px-6 py-8 text-center transition",
+            isDragging ? "border-sky-500 bg-sky-100" : "hover:border-sky-400 hover:bg-sky-50"
           )}
         >
           <UploadCloud className="h-8 w-8 text-primary" />
-          <span className="mt-4 text-sm font-semibold text-white">
+          <span className="mt-4 text-sm font-semibold text-slate-900">
             {files.length > 0 ? `${files.length} file${files.length === 1 ? "" : "s"} selected` : "Drop files here or choose from your device"}
           </span>
-          <span className="mt-2 text-xs text-muted-foreground">PDF, PNG, JPG, XLS, or XLSX up to 50MB each / private capital review</span>
+          <span className="mt-2 text-xs text-slate-600">PDF, PNG, JPG, XLS, or XLSX up to 50MB each / private capital review</span>
         </button>
 
         <input
@@ -189,8 +186,8 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
                 <div className="flex min-w-0 items-center gap-3">
                   <FileText className="h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-white">{selectedFile.name}</p>
-                    <p className="text-xs text-muted-foreground">{Math.max(1, Math.round(selectedFile.size / 1024))} KB</p>
+                    <p className="truncate text-sm font-medium text-slate-900">{selectedFile.name}</p>
+                    <p className="text-xs text-slate-600">{Math.max(1, Math.round(selectedFile.size / 1024))} KB</p>
                   </div>
                 </div>
                 <Button
@@ -218,12 +215,12 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
             <div className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm font-semibold text-white">Documents received</p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                <p className="text-sm font-semibold text-slate-950">Documents received</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
                   Operion Capital will continue funding analysis, prepare your file for private lender review, and contact you if
                   anything else is needed. Most document reviews begin within one business day.
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">Support: support@operioncapital.com</p>
+                <p className="mt-2 text-xs text-slate-600">Support: support@operioncapital.com</p>
               </div>
             </div>
           </div>
@@ -234,7 +231,7 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
             <div className="h-2 overflow-hidden rounded-full bg-white/10">
               <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} />
             </div>
-            <p className="text-xs text-muted-foreground">Uploading securely... {progress}%</p>
+            <p className="text-xs text-slate-600">Uploading securely... {progress}%</p>
           </div>
         ) : null}
 
@@ -243,7 +240,7 @@ export function DocumentUploadForm({ applicationId, documents, merchantToken, va
             {status === "uploading" ? "Uploading..." : files.length > 1 ? "Upload documents" : "Upload document"}
           </Button>
           {activeDocument?.record?.file_name ? (
-            <div className="self-center text-sm text-muted-foreground">Latest: {activeDocument.record.file_name}</div>
+            <div className="self-center text-sm text-slate-600">Latest: {activeDocument.record.file_name}</div>
           ) : null}
         </div>
 

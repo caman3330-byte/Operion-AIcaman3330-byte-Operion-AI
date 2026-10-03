@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import type { Lead, LeadStatus, LeadTier } from "@operion/shared";
 import { Eye, Search } from "lucide-react";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { LeadDetailPanel } from "./lead-detail-panel";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { OverrideModal } from "./override-modal";
+import { buildLeadListView } from "@/lib/leads/list-view";
 
 interface LeadsTableProps {
   initialLeads: Lead[];
@@ -20,6 +21,8 @@ interface LeadsTableProps {
 export function LeadsTable({ initialLeads }: LeadsTableProps) {
   const [leads, setLeads] = useState(initialLeads);
   const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
+  const [page, setPage] = useState(1);
   const [status, setStatus] = useState<LeadStatus | "all">("all");
   const [tier, setTier] = useState<LeadTier | "all">("all");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -27,16 +30,7 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    return leads.filter((lead) => {
-      const matchesQuery = [lead.business_name, lead.contact_name, lead.email, lead.industry]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(query.toLowerCase()));
-      const matchesStatus = status === "all" || lead.status === status;
-      const matchesTier = tier === "all" || lead.tier === tier;
-      return matchesQuery && matchesStatus && matchesTier;
-    });
-  }, [leads, query, status, tier]);
+  const view = useMemo(() => buildLeadListView(leads, { query: deferredQuery, status, tier, page }), [leads, deferredQuery, status, tier, page]);
 
   function openLead(lead: Lead) {
     setSelectedLead(lead);
@@ -91,9 +85,9 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
       <div className="grid gap-3 md:grid-cols-[1fr_180px_140px]">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} className="pl-9" placeholder="Search business, contact, email, industry" />
+          <Input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="pl-9" aria-label="Search loaded leads" placeholder="Business, lead ID, contact, phone, or state" />
         </div>
-        <Select value={status} onChange={(event) => setStatus(event.target.value as LeadStatus | "all")}> 
+        <Select aria-label="Lead status" value={status} onChange={(event) => { setStatus(event.target.value as LeadStatus | "all"); setPage(1); }}>
           <option value="all">All statuses</option>
           <option value="raw">Raw</option>
           <option value="pending_approval">Pending approval</option>
@@ -108,7 +102,7 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
           <option value="nurture">Nurture</option>
           <option value="archived">Archived</option>
         </Select>
-        <Select value={tier} onChange={(event) => setTier(event.target.value as LeadTier | "all")}> 
+        <Select aria-label="Lead tier" value={tier} onChange={(event) => { setTier(event.target.value as LeadTier | "all"); setPage(1); }}>
           <option value="all">All tiers</option>
           <option value="A">Tier A</option>
           <option value="B">Tier B</option>
@@ -119,8 +113,9 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
-      {filtered.length === 0 ? (
-        <EmptyState title="No leads found" description="No leads match the current production filters." />
+      <p className="text-xs text-muted-foreground">Searching {leads.length} loaded records (up to the latest 100), not a database-wide lead count.</p>
+      {view.total === 0 ? (
+        <EmptyState title="No matching loaded leads" description="No loaded records match these filters." />
       ) : (
         <div className="rounded-md border bg-card">
           <Table>
@@ -135,10 +130,10 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((lead) => (
+              {view.rows.map((lead) => (
                 <TableRow key={lead.id}>
                   <TableCell>
-                    <div className="font-medium">{lead.business_name}</div>
+                    <button type="button" className="text-left font-medium text-primary underline-offset-4 hover:underline" onClick={() => openLead(lead)}>{lead.business_name}</button>
                     <div className="text-xs text-muted-foreground">{lead.contact_name ?? "No contact"} - {lead.state ?? "-"}</div>
                   </TableCell>
                   <TableCell>
@@ -158,6 +153,15 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
           </Table>
         </div>
       )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3" aria-label="Lead pagination">
+        <p className="text-sm text-muted-foreground" aria-live="polite">{view.first}-{view.last} of {view.total} matching loaded leads</p>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={view.page === 1} onClick={() => setPage(view.page - 1)}>Previous</Button>
+          <span className="text-sm">{view.page} / {view.pageCount}</span>
+          <Button variant="outline" size="sm" disabled={view.page === view.pageCount} onClick={() => setPage(view.page + 1)}>Next</Button>
+        </div>
+      </div>
 
       <LeadDetailPanel
         lead={selectedLead}

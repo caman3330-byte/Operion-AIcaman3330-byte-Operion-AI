@@ -1,0 +1,53 @@
+{
+  "state": [
+    {
+      "status": "PAUSED",
+      "emergency_stop": false
+    }
+  ],
+  "cycles": [
+    {
+      "sequence": "1",
+      "sources": [
+        {
+          "reason": "Milestone 1C High Yield Test Source produced 30 verified merchant(s) from 100 discovered record(s), with 30.0% verification yield; learned priority is 75.",
+          "priority": 60.888702174242916,
+          "source_id": "dd03fac1-e6ff-4e9d-a37e-5c628e87c71b",
+          "source_name": "Milestone 1C High Yield Test Source"
+        }
+      ],
+      "reason": "Prioritized Milestone 1C High Yield Test Source from learned source performance evidence."
+    },
+    {
+      "sequence": "2",
+      "sources": [
+        {
+          "reason": "No learned source strategy was available; ranked by source quality score.",
+          "priority": 27,
+          "source_id": "e1316bdd-8755-41bc-a3f5-853b687fb875",
+          "source_name": "ACCA Contractor Locator"
+        }
+      ],
+      "reason": "Prioritized ACCA Contractor Locator from learned source performance evidence."
+    },
+    {
+      "sequence": "3",
+      "sources": [
+        {
+          "reason": "No learned source strategy was available; ranked by source quality score.",
+          "priority": 27,
+          "source_id": "082fb526-e288-4246-b0f6-53cd6b830a9a",
+          "source_name": "PHCC Indiana Contractor Member Portal"
+        }
+      ],
+      "reason": "Prioritized PHCC Indiana Contractor Member Portal from learned source performance evidence."
+    }
+  ],
+  "learning": [
+    {
+      "evaluations": "4",
+      "lessons": "3",
+      "strategies": "3"
+    }
+  ]
+}

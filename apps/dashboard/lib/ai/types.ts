@@ -1,7 +1,7 @@
 import type { AiTaskType, Json } from "@operion/shared";
 import { z } from "zod";
 
-export type AiProvider = "openai" | "claude";
+export type AiProvider = "openai" | "claude" | "anthropic" | "nvidia" | "groq" | "google" | "openrouter";
 
 export type AiWorkflowName =
   | "lead_extraction"
@@ -19,7 +19,7 @@ export interface AiUsage {
   inputTokens: number | null;
   outputTokens: number | null;
   latencyMs: number;
-  estimatedCostUsd: number;
+  estimatedCostUsd: number | null;
 }
 
 export interface AiWorkflowResult<T> {

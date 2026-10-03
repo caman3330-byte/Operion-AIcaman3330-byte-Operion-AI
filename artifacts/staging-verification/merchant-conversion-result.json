@@ -1,0 +1,14 @@
+{
+  "execution": "fully isolated VM mocks; no network, credentials, real database or external delivery",
+  "approved_import": "PASS",
+  "repeated_import_duplicate_prevention": "PASS",
+  "application_creation_document_request_and_qualification_queue": "PASS (mocks only)",
+  "imported_lead_to_application_linkage": "FAIL",
+  "application_resubmission_idempotency": "FAIL",
+  "observed": {
+    "crm_leads_after_one_import_and_two_identical_submissions": 3,
+    "applications": 2,
+    "ai_tasks_queued": 2,
+    "original_imported_lead_has_application": false
+  }
+}

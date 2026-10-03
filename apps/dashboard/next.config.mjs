@@ -1,5 +1,8 @@
 import path from "path";
 import { fileURLToPath } from "url";
+import { assertDeploymentEnvironment } from "./deployment-environment.mjs";
+
+assertDeploymentEnvironment(process.env);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

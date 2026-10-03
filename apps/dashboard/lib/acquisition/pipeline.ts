@@ -5,6 +5,7 @@ import { contactConfidence, scoreLeadQuality } from "@/lib/acquisition/scoring";
 import { applyValidationToQuality, validateAcquisitionLead } from "@/lib/acquisition/validation";
 import { acquisitionRepository } from "@/lib/repositories/acquisition";
 import { leadsRepository } from "@/lib/repositories/leads";
+import { ingestAcquiredProspects } from "@/lib/data-prospects/acquisition";
 
 export interface IngestLeadBatchInput {
   sourceKey: string;
@@ -17,6 +18,25 @@ export interface IngestLeadBatchInput {
 }
 
 export async function ingestLeadBatch(input: IngestLeadBatchInput) {
+  const result = await ingestAcquiredProspects({
+    records: input.records,
+    provider: input.sourceKey,
+    requestedBy: input.requestedBy ?? "system"
+  });
+  if (input.jobId) await acquisitionRepository.updateJob(input.jobId, {
+    status: result.failed.length ? "failed" : "completed",
+    counts: { created: result.created.length, duplicates: result.duplicates.length, failed: result.failed.length } as Json,
+    result_summary: `${result.created.length} DATA prospect(s) acquired.`,
+    completed_at: new Date().toISOString()
+  });
+  return { ...result, job: input.jobId ? { id: input.jobId } : null };
+}
+
+/** Only the existing, explicitly synthetic simulation may create synthetic leads. */
+export async function ingestSimulationLeadBatch(input: IngestLeadBatchInput & { isTestData: true }) {
+  if (!input.isTestData || input.sourceKey !== "simulation" || !input.simulationRunId) {
+    throw new Error("Synthetic lead ingestion requires an explicit simulation run");
+  }
   const requestedBy = input.requestedBy ?? "system";
   const source = await acquisitionRepository.getSourceByKey(input.sourceKey);
   const job = input.jobId

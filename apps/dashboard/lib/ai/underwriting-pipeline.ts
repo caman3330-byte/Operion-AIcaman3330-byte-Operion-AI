@@ -127,7 +127,7 @@ export async function executeAiUnderwritingPipeline(
       executionLatencyMs: Date.now() - startedAt,
       inputTokens: underwritingResponse.usage.inputTokens ?? 0,
       outputTokens: underwritingResponse.usage.outputTokens ?? 0,
-      estimatedCostUsd: underwritingResponse.usage.estimatedCostUsd,
+      estimatedCostUsd: underwritingResponse.usage.estimatedCostUsd ?? 0,
       retryCount: 0,
       confidenceScore,
       promptType: "underwriting",

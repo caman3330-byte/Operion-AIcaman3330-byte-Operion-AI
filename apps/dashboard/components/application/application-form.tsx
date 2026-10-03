@@ -27,6 +27,7 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
   const [step, setStep] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedApplication, setSubmittedApplication] = useState<{ id: string; uploadUrl?: string | null } | null>(null);
   const [started, setStarted] = useState(false);
   const [isPending, startTransition] = useTransition();
   const progress = useMemo(() => Math.round(((step + 1) / steps.length) * 100), [step]);
@@ -94,6 +95,10 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
         }
 
         form.reset();
+        setSubmittedApplication({
+          id: String(result.data?.application?.id ?? ""),
+          uploadUrl: result.data?.secure_upload_url ?? null
+        });
         setSubmitted(true);
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Unable to submit application.");
@@ -107,12 +112,15 @@ export function ApplicationForm({ initialAttribution }: { initialAttribution?: A
         <CheckCircle2 className="mx-auto h-10 w-10 text-[#9b7624]" />
         <h2 className="mt-4 font-serif text-2xl font-semibold tracking-normal text-[#17130c]">Application received</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#5c5140]">
-          Operion Capital has your funding request. Updates are handled by secure email and direct funding-team follow-up. No
-          merchant dashboard or portal login is required.
+          Operion Capital has created your private application. Upload your recent business bank statements to continue.
         </p>
+        {submittedApplication?.id ? <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#7a5a16]">Application {submittedApplication.id}</p> : null}
         <div className="mx-auto mt-5 flex max-w-md items-start gap-3 rounded-md border border-[#d7b76a]/35 bg-[#fffaf0] px-4 py-3 text-left text-sm text-[#7a5a16]">
           <Mail className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>Check your email for the secure upload link. Documents are uploaded only through the signed document portal.</p>
+          <p>
+            {submittedApplication?.uploadUrl ? <a className="font-semibold underline" href={submittedApplication.uploadUrl}>Upload bank statements securely</a> : "Check your email for the secure upload link."}
+            {" Documents are uploaded only through the signed document portal."}
+          </p>
         </div>
       </div>
     );

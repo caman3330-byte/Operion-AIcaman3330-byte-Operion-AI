@@ -1,9 +1,10 @@
 import { resolveUserRole } from "@/lib/auth";
 import { getServerSessionUser } from "@/lib/supabase/session";
+import { cache } from "react";
 
 const internalRoles = new Set(["staff", "supervisor", "founder", "super_admin", "admin", "operator", "analyst"]);
 
-export async function getInternalPageAccess() {
+export const getInternalPageAccess = cache(async function getInternalPageAccess() {
   const user = await getServerSessionUser();
   if (!user?.email) {
     return {
@@ -27,7 +28,7 @@ export async function getInternalPageAccess() {
     user,
     role
   } as const;
-}
+});
 
 export function ProtectedPageRedirect({ to, reason }: { to: string; reason: string }) {
   return (

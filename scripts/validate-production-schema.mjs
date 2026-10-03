@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Client } from "pg";
+import safety from "../apps/dashboard/environment-safety.cjs";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const migrationsDir = path.join(rootDir, "packages/database/migrations");
@@ -238,30 +240,43 @@ async function main() {
     throw new Error("Missing SUPABASE_DB_URL or SUPABASE_DB_PASSWORD + NEXT_PUBLIC_SUPABASE_URL");
   }
 
-  const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
+  safety.assertEnvironment({ ...process.env, SUPABASE_DB_URL: connectionString }, "schema-validation");
+  const client = new Client({
+    connectionString,
+    ssl: safety.databaseTarget(connectionString) === "local" ? false : { rejectUnauthorized: false },
+    options: "-c default_transaction_read_only=on",
+    connectionTimeoutMillis: 10000,
+    query_timeout: 15000
+  });
   await client.connect();
 
-  const report = {
-    generatedAt: new Date().toISOString(),
-    migrations: await inspectMigrations(client),
-    tables: await inspectTables(client),
-    columns: await inspectColumns(client),
-    enums: await inspectEnums(client),
-    indexes: await inspectIndexes(client),
-    functions: await inspectFunctions(client),
-    policies: await inspectPolicies(client),
-    storageBuckets: await inspectStorageBuckets(client)
-  };
-
-  await client.end();
+  let report;
+  try {
+    await client.query("begin read only");
+    report = {
+      generatedAt: new Date().toISOString(),
+      migrations: await inspectMigrations(client),
+      tables: await inspectTables(client),
+      columns: await inspectColumns(client),
+      enums: await inspectEnums(client),
+      indexes: await inspectIndexes(client),
+      functions: await inspectFunctions(client),
+      policies: await inspectPolicies(client),
+      storageBuckets: await inspectStorageBuckets(client)
+    };
+    await client.query("commit");
+  } finally {
+    // Closing also rolls back the read-only transaction if an inspection fails.
+    await client.end();
+  }
 
   const failures = countFailures(report);
   console.log(JSON.stringify(report, null, 2));
   if (failures > 0) {
-    console.error(`\nProduction schema validation failed with ${failures} missing required item(s).`);
+    console.error(`\nSchema validation failed with ${failures} missing or invalid required item(s).`);
     process.exit(1);
   }
-  console.log("\nProduction schema validation passed.");
+  console.log("\nSchema validation passed.");
 }
 
 async function inspectMigrations(client) {
@@ -273,17 +288,21 @@ async function inspectMigrations(client) {
       files,
       applied: [],
       pendingByLedger: files,
+      checksumMismatches: [],
       note: "Migration ledger is absent. Use object-level validation to assess manually applied migrations."
     };
   }
 
   const result = await client.query("select filename, checksum, applied_at from public.operion_schema_migrations order by filename");
   const applied = result.rows.map((row) => row.filename);
+  const appliedChecksums = new Map(result.rows.map((row) => [row.filename, row.checksum]));
   return {
     ledgerExists: true,
     files,
     applied,
-    pendingByLedger: files.filter((file) => !applied.includes(file))
+    pendingByLedger: files.filter((file) => !applied.includes(file)),
+    checksumMismatches: files.filter((file) => appliedChecksums.has(file) &&
+      appliedChecksums.get(file) !== crypto.createHash("sha256").update(fs.readFileSync(path.join(migrationsDir, file), "utf8")).digest("hex"))
   };
 }
 
@@ -358,12 +377,9 @@ async function inspectPolicies(client) {
 }
 
 async function inspectStorageBuckets(client) {
-  const existing = await querySet(
-    client,
-    `select id from storage.buckets`,
-    "id"
-  );
-  return requiredStorageBuckets.map((bucket) => ({ bucket, exists: existing.has(bucket) }));
+  const result = await client.query("select id, public from storage.buckets");
+  const existing = new Map(result.rows.map((row) => [row.id, row]));
+  return requiredStorageBuckets.map((bucket) => ({ bucket, exists: existing.has(bucket), private: existing.get(bucket)?.public === false }));
 }
 
 async function querySet(client, sql, key, params = []) {
@@ -378,6 +394,9 @@ async function regclassExists(client, name) {
 
 function countFailures(report) {
   let count = 0;
+  count += report.migrations.ledgerExists ? 0 : 1;
+  count += report.migrations.pendingByLedger.length;
+  count += report.migrations.checksumMismatches.length;
   count += report.tables.filter((item) => !item.exists).length;
   for (const columns of Object.values(report.columns)) {
     count += columns.filter((item) => !item.exists).length;
@@ -388,7 +407,7 @@ function countFailures(report) {
   count += report.indexes.filter((item) => !item.exists).length;
   count += report.functions.filter((item) => !item.exists).length;
   count += report.policies.filter((item) => !item.exists).length;
-  count += report.storageBuckets.filter((item) => !item.exists).length;
+  count += report.storageBuckets.filter((item) => !item.exists || !item.private).length;
   return count;
 }
 
