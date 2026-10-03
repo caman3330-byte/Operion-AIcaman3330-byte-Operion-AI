@@ -53,7 +53,8 @@ const publicApiPrefixes = [
   "/api/autonomous",
   "/api/portal/upload-link",
   "/api/auth/logout",
-  "/api/webhooks/sendgrid"
+  "/api/webhooks/sendgrid",
+  "/api/acquisition/google-places-scheduler"
 ];
 
 const customerApiPrefixes = [
@@ -109,20 +110,6 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/api")) {
     if (isPublicApiRoute(pathname) || isCustomerApiRoute(pathname)) {
-      return withSecurityHeaders(NextResponse.next());
-    }
-
-    // Allow scheduler endpoint with CRON_SECRET validation (handled by route handler)
-    if (pathname === "/api/acquisition/google-places-scheduler") {
-      const cronSecret = request.nextUrl.searchParams.get("secret");
-      const expectedSecret = process.env.CRON_SECRET;
-      // If CRON_SECRET is configured, require valid secret; otherwise allow for local testing
-      if (expectedSecret && (!cronSecret || cronSecret !== expectedSecret)) {
-        return new NextResponse(JSON.stringify({ error: "unauthorized" }), {
-          status: 401,
-          headers: { "content-type": "application/json" }
-        });
-      }
       return withSecurityHeaders(NextResponse.next());
     }
 
