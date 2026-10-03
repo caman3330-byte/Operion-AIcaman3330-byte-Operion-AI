@@ -1,22 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { requireFounder } from "@/lib/auth";
-import { getDataDetail } from "@/lib/data-prospects/repository";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { handleRouteError } from "@/lib/errors";
+import type { DataDetail } from "@/lib/data-prospects/types";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     await requireFounder(request);
+    const { id } = await params;
+    const supabase = await getSupabaseAdmin();
 
-    const { id } = await context.params;
-    const parsedId = z.string().uuid().parse(id);
-    const kind = z.enum(["prospect", "candidate"]).parse(request.nextUrl.searchParams.get("kind") ?? "prospect");
+    const { data, error } = await (supabase
+      .from("acquisition_prospects" as any)
+      .select("*")
+      .eq("id", id)
+      .single() as any);
 
-    const data = await getDataDetail(parsedId, kind);
+    if (error) throw new Error(error.message);
+    if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    return NextResponse.json({ data });
+    return NextResponse.json({
+      data: data as DataDetail,
+    });
   } catch (error) {
     return handleRouteError(error);
   }
