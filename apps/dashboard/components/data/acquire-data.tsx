@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 
-const sources = [
-  { value: "google_places", label: "Google Places" },
-  { value: "apollo", label: "Apollo" }
-];
+interface ProviderStatus {
+  key: string;
+  label: string;
+  configured: boolean;
+}
 
 export function AcquireData({ onAcquired }: { onAcquired: () => void }) {
   const [source, setSource] = useState("");
@@ -22,6 +23,19 @@ export function AcquireData({ onAcquired }: { onAcquired: () => void }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [providers, setProviders] = useState<ProviderStatus[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/data/providers")
+      .then((res) => res.json())
+      .then((data) => setProviders(data.providers ?? []))
+      .catch(() => setProviders([]))
+      .finally(() => setProvidersLoading(false));
+  }, []);
+
+  const configuredProviders = providers.filter((p) => p.configured);
+  const allProvidersConfigured = configuredProviders.length > 0;
 
   async function handleAcquire(event: React.FormEvent) {
     event.preventDefault();
@@ -67,6 +81,26 @@ export function AcquireData({ onAcquired }: { onAcquired: () => void }) {
     }
   }
 
+  if (!allProvidersConfigured) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+          <CardHeader>
+            <CardTitle className="text-amber-900 dark:text-amber-100">AI acquisition is not configured</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-amber-800 dark:text-amber-200">
+            <p>To enable AI-powered business discovery, add an acquisition provider:</p>
+            <ul className="list-inside list-disc space-y-2 ml-2">
+              <li><strong>Google Places:</strong> Set GOOGLE_PLACES_API_KEY environment variable</li>
+              <li><strong>Apollo:</strong> Set APOLLO_API_KEY environment variable</li>
+            </ul>
+            <p className="text-xs mt-3 opacity-75">Once configured, you can discover businesses by entering a search query and selecting a data source.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -80,9 +114,9 @@ export function AcquireData({ onAcquired }: { onAcquired: () => void }) {
                 <Label htmlFor="source">Data Source</Label>
                 <Select value={source} onChange={(e) => setSource(e.target.value)} disabled={loading}>
                   <option value="">Select a source…</option>
-                  {sources.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
+                  {configuredProviders.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.label}
                     </option>
                   ))}
                 </Select>
