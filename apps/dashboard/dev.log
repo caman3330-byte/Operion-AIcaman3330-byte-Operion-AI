@@ -1,0 +1,14 @@
+
+> @operion/dashboard@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use by process 28328, using available port 3008 instead.
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3008
+   - Network:      http://192.168.29.236:3008
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · middlewareClientMaxBodySize: "55mb"
+
+ ✓ Starting...
+ ✓ Ready in 4.7s

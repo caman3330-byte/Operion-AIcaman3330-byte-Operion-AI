@@ -29,7 +29,7 @@ export async function checkDuplicate(
     const { data } = await supabase
       .from('acquisition_prospects' as any)
       .select('id')
-      .ilike('website_url', `%${key.domain}%`)
+      .ilike('domain', `${key.domain}`)
       .neq('id', excludeId || 'null')
       .limit(1) as any;
 
@@ -43,7 +43,7 @@ export async function checkDuplicate(
     const { data } = await supabase
       .from('acquisition_prospects' as any)
       .select('id')
-      .eq('source_payload->>phone_normalized', key.phone_normalized)
+      .eq('normalized_phone', key.phone_normalized)
       .neq('id', excludeId || 'null')
       .limit(1) as any;
 
@@ -57,7 +57,7 @@ export async function checkDuplicate(
     const { data } = await supabase
       .from('acquisition_prospects' as any)
       .select('id')
-      .eq('source_payload->>identity_key', key.business_name_address_normalized)
+      .eq('identity_key', key.business_name_address_normalized)
       .neq('id', excludeId || 'null')
       .limit(1) as any;
 

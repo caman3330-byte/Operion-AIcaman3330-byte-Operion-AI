@@ -56,6 +56,34 @@ export async function GET(request: NextRequest) {
 
     const lastRun = history?.[0];
 
+    // Create acquisition batch for this run
+    const timestamp = new Date().toISOString();
+    const batchCode = `GOOGLE_PLACES_${Date.now()}`;
+    const { data: batchData, error: batchError } = (await supabase
+      .from('acquisition_import_batches' as any)
+      .insert({
+        batch_code: batchCode,
+        original_filename: `google-places-scheduler-${timestamp}`,
+        content_sha256: batchCode, // Use batch code as hash (simplified)
+        source_kind: 'ai',
+        provider: 'google_places',
+        status: 'confirmed',
+      })
+      .select('id')) as any;
+
+    const batchId = batchData?.[0]?.id;
+    if (!batchId || batchError) {
+      metrics.errors.push(
+        batchError
+          ? `Failed to create batch: ${batchError.message}`
+          : 'Batch creation failed'
+      );
+      return NextResponse.json({
+        error: 'Failed to create acquisition batch',
+        metrics,
+      });
+    }
+
     // Determine which program to run next (round-robin based on priority)
     const program = ACQUISITION_CONFIG.searchPrograms[0];
     if (!program) {
@@ -68,6 +96,7 @@ export async function GET(request: NextRequest) {
     logger.info('acquisition_scheduler_started', {
       run_id: runId,
       program: program.id,
+      batch_id: batchId,
     });
 
     // Execute searches for this program
@@ -112,27 +141,47 @@ export async function GET(request: NextRequest) {
               continue;
             }
 
-            // Insert new business
+            // Create identity key for deduplication
+            const normalizedName = (business.business_name || 'Unknown')
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '_');
+            const normalizedAddress = [business.business_name, business.city, business.state]
+              .filter(Boolean)
+              .join('_')
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '_');
+
+            // Insert new prospect into acquisition_prospects table
             const { error: insertError } = await (supabase
               .from('acquisition_prospects' as any)
               .insert({
+                identity_key: normalizedAddress || normalizedName,
+                acquisition_import_batch_id: batchId,
+                source_row_number: metrics.new_businesses_inserted + metrics.duplicates_skipped + 1,
                 business_name: business.business_name,
+                normalized_business_name: normalizedName,
+                normalized_address: business.address || '',
+                normalized_city: business.city || '',
+                normalized_state: business.state || '',
+                normalized_zip: business.zip || '',
+                normalized_phone: business.phone?.replace(/\D/g, '').slice(-10) || null,
+                normalized_email: business.email || null,
+                domain: business.website_url ? (() => { try { return new URL(business.website_url).hostname; } catch { return null; } })() : null,
                 address: business.address,
                 city: business.city,
                 state: business.state,
                 zip: business.zip,
-                phone: business.phone,
                 website_url: business.website_url,
-                source_kind: 'ai',
-                provider: 'google_places',
-                industry: business.industry || program.industries[0],
-                enrichment_status: 'pending',
                 source_payload: {
                   provider: 'google_places',
                   place_id: business.source_record_id,
+                  phone: business.phone,
+                  phone_normalized: business.phone?.replace(/\D/g, '').slice(-10) || null,
                   discovery_date: new Date().toISOString(),
                   discovered_as: `${industry} in ${location}`,
                 },
+                state_key: 'prospect',
+                enrichment_status: 'pending',
               }) as any);
 
             if (insertError) {
