@@ -218,11 +218,10 @@ Apply migrations in this order:
 
 ---
 
-## Remaining Blockers
+## Remaining Blocker
 
-**NONE** - All code implementation complete and validated
+The implementation is complete and validated locally. One external step remains before runtime verification:
 
-**One blocker to user testing:**
 - Preview Supabase requires migration 0047 to be applied
 - User must apply via Supabase SQL Editor (documented in PREVIEW_VERIFICATION_MANUAL_STEPS.md)
 
