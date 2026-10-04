@@ -3,7 +3,7 @@
 **Date:** October 4, 2026  
 **Status:** CODE READY ✅ | STAGING VERIFICATION BLOCKED ⏸️  
 **Blocker Type:** Supabase Admin Access Required  
-**Latest Commit:** 36315d1 - Route legacy CSV research to safe DATA import  
+**Latest Commit:** 79cf14a - Headerless XLSX and owner-name support  
 
 ---
 
@@ -17,7 +17,7 @@
 - Database schema modifications require authenticated admin access
 
 **Required Access:**
-1. Supabase console access to operion-ai-mvp project
+1. Supabase console access to operion-ai-staging project
 2. SQL Editor permissions in Supabase
 3. Vercel Preview authentication token (founder role)
 
@@ -32,7 +32,7 @@
 - All prior DATA foundation commits
 
 ✅ **Local Validation**
-- 65 PostgreSQL migration checks: PASSED
+- 66 PostgreSQL migration checks: PASSED
 - 44 Vitest checks: PASSED
 - TypeScript: PASSED
 - Build: PASSED
@@ -69,13 +69,14 @@
 
 ### 1. Supabase Console - Apply Migrations
 
-**Location:** Supabase Dashboard → operion-ai-mvp → SQL Editor
+**Location:** Supabase Dashboard → operion-ai-staging → SQL Editor
 
 **Migrations to apply (in order):**
 1. `packages/database/migrations/0042_grant_data_table_permissions.sql`
 2. `packages/database/migrations/0043_grant_delete_permissions.sql`
 3. `packages/database/migrations/0044_acquisition_research_tracking.sql`
 4. `packages/database/migrations/0046_data_foundation_additions.sql`
+5. `packages/database/migrations/0047_data_owner_name.sql`
 
 **For each migration:**
 1. Open file from repository
@@ -93,7 +94,7 @@
 
 -- Verify migrations applied
 SELECT version FROM _supabase_migrations 
-WHERE version IN ('0042', '0043', '0044', '0046')
+WHERE version IN ('0042', '0043', '0044', '0046', '0047')
 ORDER BY version;
 
 -- Verify new columns exist
@@ -106,7 +107,7 @@ AND column_name IN ('batch_id', 'filename', 'row_number', 'original_data');
 
 ### 3. Run API Tests (Preview Deployment)
 
-**Against:** https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app
+**Against:** https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app
 
 **Tests to run:**
 1. CSV/XLSX Preview (no persist)
@@ -183,7 +184,7 @@ Copy/paste ready for terminal (replace `<FOUNDER_TOKEN>` with actual token):
 ### CSV Preview test:
 ```bash
 curl -X POST \
-  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
+  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
   -H "Authorization: Bearer <FOUNDER_TOKEN>" \
   -F "file=@test_file.csv"
 ```
@@ -191,7 +192,7 @@ curl -X POST \
 ### CSV Import test:
 ```bash
 curl -X POST \
-  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/csv-upload" \
+  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/csv-upload" \
   -H "Authorization: Bearer <FOUNDER_TOKEN>" \
   -F "file=@test_file.csv" \
   -F "preview_id=<PREVIEW_ID>"
@@ -200,7 +201,7 @@ curl -X POST \
 ### Search test:
 ```bash
 curl -X GET \
-  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/search?q=test" \
+  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/search?q=test" \
   -H "Authorization: Bearer <FOUNDER_TOKEN>"
 ```
 

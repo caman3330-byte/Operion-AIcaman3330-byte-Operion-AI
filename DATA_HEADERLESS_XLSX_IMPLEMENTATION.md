@@ -196,11 +196,11 @@ Apply migrations in this order:
 
 ## Preview Deployment
 
-**Latest:** https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app
+**Latest:** https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app
 
 **To test with user's file:**
 
-1. Navigate to `/data/csv-research` page
+1. Navigate to `/data/manual-upload` page
 2. Click "Upload CSV/XLSX"
 3. Select `C:\Users\Asus\Desktop\10-4-2026.xlsx`
 4. System will:

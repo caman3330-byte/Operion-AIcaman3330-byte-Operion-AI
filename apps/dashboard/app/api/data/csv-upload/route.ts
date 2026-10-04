@@ -54,88 +54,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create an explicitly confirmed DATA batch. This only queues source rows;
-    // it does not create leads, applications, or outreach messages.
+    // Create an explicitly confirmed DATA batch through the replay-safe import
+    // function. It creates DATA prospects and provenance rows only; it does
+    // not create leads, applications, or outreach messages.
     const supabase = await getSupabaseAdmin();
-    const batchCode = 'CSV-' + contentHash.slice(0, 16);
+    const { data: result, error: importError } = await (supabase as any).rpc('import_data_prospects', {
+      p_filename: file.name,
+      p_content_sha256: contentHash,
+      p_source_kind: 'manual',
+      p_provider: 'csv_upload',
+      p_uploaded_by: actor.id,
+      p_rows: normalizedRows,
+    });
 
-    const { data: batch, error: batchError } = await (supabase
-      .from('acquisition_import_batches' as any)
-      .insert({
-        batch_code: batchCode,
-        original_filename: file.name,
-        content_sha256: contentHash,
-        source_kind: 'manual',
-        provider: 'csv_upload',
-        uploaded_by: actor.id,
-        status: 'confirmed', // Use existing enum: previewed|confirmed|failed|cancelled
-        total_rows: normalizedRows.length,
-        valid_rows: normalizedRows.filter(r => r.status === 'valid').length,
-        duplicate_rows: normalizedRows.filter(r => r.status === 'duplicate').length,
-        invalid_rows: normalizedRows.filter(r => r.status === 'invalid').length,
-        missing_email_rows: normalizedRows.filter(r => !r.email || r.email.trim() === '').length,
-        missing_phone_rows: normalizedRows.filter(r => !r.phone || r.phone.trim() === '').length,
-      })
-      .select()
-      .single()) as any;
-
-    if (batchError) {
+    if (importError || !result) {
       return NextResponse.json(
-        { error: `Failed to create batch: ${batchError.message}` },
+        { error: `Failed to import DATA rows: ${importError?.message ?? 'No import result returned.'}` },
         { status: 500 }
       );
     }
 
-    // Create import row entries for ALL rows (valid, invalid, duplicate preserved)
-    const queueEntries = normalizedRows.map((normRow, idx) => ({
-      batch_id: batch.id,
-      row_number: idx + 1,
-      original_data: rawRows[idx], // Complete original row before normalization
-      status: normRow.status, // Will be 'valid'|'invalid'|'duplicate'
-      normalized_payload: {
-        business_name: normRow.business_name,
-        address: normRow.address,
-        city: normRow.city,
-        state: normRow.state,
-        zip: normRow.zip,
-        phone: normRow.phone,
-        email: normRow.email,
-        website_url: normRow.website_url,
-        industry: normRow.industry,
-        owner_name: normRow.owner_name,
-      },
-      validation_errors: normRow.errors || [],
-      duplicate_reason: normRow.duplicate_reason || null,
-      created_at: new Date().toISOString(),
-    }));
-
-    const { data: queueData, error: queueError } = await (supabase
-      .from('acquisition_import_rows' as any)
-      .insert(queueEntries)
-      .select()) as any;
-
-    if (queueError) {
-      return NextResponse.json(
-        { error: `Failed to create import rows: ${queueError.message}` },
-        { status: 500 }
-      );
-    }
-
-    // Summary response with actual statistics
+    const counts = result.counts ?? {};
     const summary = {
-      batch_id: batch.id,
-      batch_code: batch.batch_code,
+      batch_id: result.batch_id,
+      batch_code: result.batch_code,
       filename: file.name,
-      total_rows: normalizedRows.length,
-      valid_rows: normalizedRows.filter(r => r.status === 'valid').length,
-      invalid_rows: normalizedRows.filter(r => r.status === 'invalid').length,
-      duplicate_rows: normalizedRows.filter(r => r.status === 'duplicate').length,
-      missing_email: normalizedRows.filter(r => !r.email || r.email.trim() === '').length,
-      missing_phone: normalizedRows.filter(r => !r.phone || r.phone.trim() === '').length,
+      total_rows: counts.total ?? normalizedRows.length,
+      valid_rows: counts.imported ?? 0,
+      invalid_rows: counts.invalid ?? 0,
+      duplicate_rows: counts.duplicate ?? 0,
+      missing_email: counts.missing_email ?? 0,
+      missing_phone: counts.missing_phone ?? 0,
     };
 
     return NextResponse.json({
       success: true,
+      replayed: Boolean(result.replayed),
       ...summary,
       message: `Confirmed ${summary.total_rows} rows for DATA research: ${summary.valid_rows} valid, ${summary.invalid_rows} invalid, ${summary.duplicate_rows} duplicates. No leads or outreach were created.`,
     });

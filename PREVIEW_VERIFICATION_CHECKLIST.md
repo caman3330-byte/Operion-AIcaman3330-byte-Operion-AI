@@ -2,7 +2,7 @@
 
 **Status:** Ready for Preview deployment  
 **Latest Commits:** 15089e9 (DATA migrations replay-safe) + 9ae2999 (explicit confirmation)  
-**Local Validation:** ✅ 65 PostgreSQL checks + 44 Vitest checks + Build passing  
+**Local Validation:** ✅ 66 PostgreSQL checks + 44 Vitest checks + Build passing  
 **Production:** ✅ Untouched  
 
 ---
@@ -27,14 +27,14 @@ Both commits are already in the main branch:
 
 ## Preview Database Migration Steps
 
-**CRITICAL:** These steps must be executed by someone with Supabase admin access to the Preview environment (operion-ai-mvp).
+**CRITICAL:** These steps must be executed by someone with Supabase admin access to the Preview environment (operion-ai-staging).
 
 ### Step 1: Connect to Preview Supabase
 
 Use Supabase dashboard or authenticated psql:
 ```bash
 # Via psql:
-psql "postgresql://[user]:[password]@db.supabase.co:5432/operion-ai-mvp"
+psql "postgresql://[user]:[password]@db.supabase.co:5432/operion-ai-staging"
 
 # Or use Supabase dashboard SQL Editor
 ```
@@ -48,7 +48,7 @@ ORDER BY version DESC
 LIMIT 20;
 
 -- Expected: Should show 0041_minimal_data_schema and earlier
--- Should NOT show 0042, 0043, 0044, 0046 (we'll apply them)
+-- Should NOT show 0042, 0043, 0044, 0046, 0047 (we'll apply them)
 ```
 
 ### Step 3: Apply Migrations in Order
@@ -87,7 +87,7 @@ FROM _supabase_migrations
 WHERE version >= '0042' 
 ORDER BY version;
 
--- Should show: 0042, 0043, 0044, 0046
+-- Should show: 0042, 0043, 0044, 0046, 0047
 ```
 
 ### Step 5: Verify Table Schemas
