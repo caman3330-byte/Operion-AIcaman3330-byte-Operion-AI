@@ -2,7 +2,7 @@
 
 **Date:** October 4, 2026  
 **Status:** ✅ IMPLEMENTED & VALIDATED  
-**Latest Commit:** 79cf14a - Support headerless xlsx and owner names in data imports  
+**Latest Commit:** 95b6d36 - Support registry-style headerless workbooks and owner names in data imports  
 **Build Status:** ✅ PASSING (TypeScript, Lint, Build)  
 **Production:** ✅ UNTOUCHED  
 
@@ -34,7 +34,7 @@
 
 4. **`apps/dashboard/lib/acquisition/manual-import.ts`** (+23 lines)
    - Added `positionalRow()` function for headerless files
-   - Maps positional indices to field names:
+   - Maps positional indices to field names for both supported headerless layouts:
      - Index 0: business_name
      - Index 1: address
      - Index 2: city
@@ -152,7 +152,22 @@ For headerless files, columns map to these fields in order:
 | 9 | zip_2 | Optional | Text | "78702" |
 | 10 | owner_name | Optional | Text | "John Smith" |
 
-**User's File (10-4-2026.xlsx):** Uses columns 1 (business_name) and 2 (address)
+**User's File (10-4-2026.xlsx):** Uses a registry export layout with first name, last name, business name, physical address, and a repeated mailing address.
+
+For this 11-column layout, the parser maps:
+
+| Position | Field |
+|---:|---|
+| 1 | owner first name |
+| 2 | owner last name |
+| 3 | business_name |
+| 4 | physical address |
+| 5 | city |
+| 6 | state |
+| 7 | ZIP |
+| 8–11 | mailing address, city, state, ZIP retained in `original_data` |
+
+The owner first and last names are combined into `owner_name`. The physical address is used for identity and enrichment; mailing fields remain available in the provenance payload.
 
 ---
 
