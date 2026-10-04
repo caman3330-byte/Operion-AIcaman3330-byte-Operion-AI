@@ -34,6 +34,7 @@ export function DataWorkspace({ source }: { source: DataSource }) {
   const [detail, setDetail] = useState<DataDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [enriching, setEnriching] = useState(false);
+  const [promoting, setPromoting] = useState(false);
   const refresh = () => setRevision((value) => value + 1);
 
   useEffect(() => {
@@ -64,6 +65,19 @@ export function DataWorkspace({ source }: { source: DataSource }) {
     finally { setEnriching(false); }
   }
 
+  async function promote() {
+    if (!detail || detail.record_kind !== "prospect") return;
+    setPromoting(true); setDetailError(null);
+    try {
+      await readResponse(await fetch(`/api/data/${detail.id}/promote`, { method: "POST" }));
+      refresh();
+      const updated = await fetch(`/api/data/${detail.id}?kind=prospect`, { cache: "no-store" });
+      const payload = await readResponse(updated) as { data: DataDetail };
+      setDetail(payload.data);
+    } catch (failure) { setDetailError(failure instanceof Error ? failure.message : "Promotion failed. Please retry."); }
+    finally { setPromoting(false); }
+  }
+
   function handleSearch(event: FormEvent) { event.preventDefault(); setPage(1); }
   const stats = result ? { total: result.pagination.total, verified: Math.floor(result.pagination.total * 0.3), invalid: Math.floor(result.pagination.total * 0.1) } : { total: 0, verified: 0, invalid: 0 };
   return <div className="space-y-6">
@@ -85,10 +99,10 @@ export function DataWorkspace({ source }: { source: DataSource }) {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs text-muted-foreground"><span>{result.pagination.total ? `${(page - 1) * 25 + 1}–${Math.min(page * 25, result.pagination.total)} of ${result.pagination.total}` : "0 records"}</span><div className="flex items-center gap-3"><Button variant="outline" size="sm" aria-label="Previous page" disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button><span>Page {page} of {Math.max(1, result.pagination.total_pages)}</span><Button variant="outline" size="sm" aria-label="Next page" disabled={page >= result.pagination.total_pages} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button></div></div>
       </div> : null}
     </section>
-    <Dialog open={Boolean(selected)} onOpenChange={(open: boolean) => { if (!open && !enriching) { setSelected(null); setDetail(null); } }}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{selected?.business_name ?? "Business details"}</DialogTitle><DialogDescription>Full information and source history.</DialogDescription></DialogHeader>
+    <Dialog open={Boolean(selected)} onOpenChange={(open: boolean) => { if (!open && !enriching && !promoting) { setSelected(null); setDetail(null); } }}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{selected?.business_name ?? "Business details"}</DialogTitle><DialogDescription>Full information and source history.</DialogDescription></DialogHeader>
       {detailError ? <p role="alert" className="text-sm text-destructive">{detailError}</p> : null}
       {!detail && !detailError ? <p role="status">Loading details…</p> : null}
-      {detail ? <><div className="flex flex-wrap items-center gap-3"><Status value={detail.status} /><Button className="ml-auto" variant="outline" size="sm" disabled={enriching || detail.enrichment_status === "enriching"} onClick={() => void enrich()}>{enriching ? "Enriching…" : "Enrich"}</Button></div>
+      {detail ? <><div className="flex flex-wrap items-center gap-3"><Status value={detail.status} /><Button className="ml-auto" variant="outline" size="sm" disabled={enriching || promoting || detail.enrichment_status === "enriching"} onClick={() => void enrich()}>{enriching ? "Enriching…" : "Enrich"}</Button>{detail.record_kind === "prospect" && !detail.lead_id ? <Button size="sm" disabled={promoting || enriching} onClick={() => void promote()}>{promoting ? "Promoting…" : "Promote to Leads"}</Button> : null}</div>
         <dl className="grid gap-3 sm:grid-cols-2 text-sm">{[["Industry", detail.industry], ["Address", detail.address], ["City", detail.city], ["State", detail.state], ["ZIP", detail.zip], ["Phone", detail.phone], ["Email", detail.email], ["Website", detail.website_url], ["Source", detail.source === "manual" ? "Manual Upload" : "AI Acquired"], ["Status", readable(detail.enrichment_status)]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground font-medium">{label}</dt><dd className="mt-0.5 break-words">{value || <span className="text-xs text-muted-foreground">Not available</span>}</dd></div>)}</dl>
       </> : null}
     </DialogContent></Dialog>
