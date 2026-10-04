@@ -3,7 +3,7 @@
 **Status:** CODE READY ✅ | STAGING VERIFICATION BLOCKED ⏸️  
 **Blocker:** Supabase admin access required to apply migrations  
 **Latest Commit:** 79cf14a - Headerless XLSX and owner-name support  
-**Preview Deployment:** https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app  
+**Preview Deployment:** https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app  
 
 ---
 
@@ -214,7 +214,7 @@ EOF
 
 # Send preview request (user must provide valid founder token)
 curl -X POST \
-  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
+  "https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>" \
   -F "file=@test_preview.csv"
 ```
@@ -275,7 +275,7 @@ WHERE batch_id IN (
 ```bash
 # Send import request with preview_id from Phase 3
 curl -X POST \
-  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/csv-upload" \
+  "https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app/api/data/csv-upload" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>" \
   -F "file=@test_preview.csv" \
   -F "preview_id=<PREVIEW_ID_FROM_PHASE_3>"
@@ -347,7 +347,7 @@ EOF
 
 # Send preview
 curl -X POST \
-  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
+  "https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>" \
   -F "file=@test_mixed.csv"
 ```
@@ -390,7 +390,7 @@ WHERE batch_id = '<new_batch_id>';
 ```bash
 # Search for imported businesses
 curl -X GET \
-  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/search?q=valid&limit=10&offset=0" \
+  "https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app/api/data/search?q=valid&limit=10&offset=0" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>"
 ```
 
@@ -421,14 +421,14 @@ curl -X GET \
 ```bash
 # Test offset
 curl -X GET \
-  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/search?limit=1&offset=0" \
+  "https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app/api/data/search?limit=1&offset=0" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>"
 
 # Should return first result
 
 # Then test offset=1
 curl -X GET \
-  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/search?limit=1&offset=1" \
+  "https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app/api/data/search?limit=1&offset=1" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>"
 
 # Should return second result if exists
@@ -578,3 +578,5 @@ First Blocker: [None found / Describe exact blocker]
 **Credentials Required:** Supabase admin access to operion-ai-staging + Vercel Preview auth token
 
 **Next Action:** Complete Phase 1-7 steps in order and report results
+
+

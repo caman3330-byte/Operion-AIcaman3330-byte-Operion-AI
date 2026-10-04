@@ -196,7 +196,7 @@ Apply migrations in this order:
 
 ## Preview Deployment
 
-**Latest:** https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app
+**Latest:** https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app
 
 **To test with user's file:**
 
@@ -258,3 +258,5 @@ The implementation is complete and validated locally. One external step remains 
 **Files:** 6 changed, 109 additions, 0 deletions (committed as 79cf14a)
 
 **Build:** ✅ TypeScript ✅ Lint ✅ Production ready
+
+

@@ -107,7 +107,7 @@ AND column_name IN ('batch_id', 'filename', 'row_number', 'original_data');
 
 ### 3. Run API Tests (Preview Deployment)
 
-**Against:** https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app
+**Against:** https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app
 
 **Tests to run:**
 1. CSV/XLSX Preview (no persist)
@@ -184,7 +184,7 @@ Copy/paste ready for terminal (replace `<FOUNDER_TOKEN>` with actual token):
 ### CSV Preview test:
 ```bash
 curl -X POST \
-  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
+  "https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
   -H "Authorization: Bearer <FOUNDER_TOKEN>" \
   -F "file=@test_file.csv"
 ```
@@ -192,7 +192,7 @@ curl -X POST \
 ### CSV Import test:
 ```bash
 curl -X POST \
-  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/csv-upload" \
+  "https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app/api/data/csv-upload" \
   -H "Authorization: Bearer <FOUNDER_TOKEN>" \
   -F "file=@test_file.csv" \
   -F "preview_id=<PREVIEW_ID>"
@@ -201,7 +201,7 @@ curl -X POST \
 ### Search test:
 ```bash
 curl -X GET \
-  "https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app/api/data/search?q=test" \
+  "https://operion-ai-dashboard-messikxxz-operion-ai-s-projects.vercel.app/api/data/search?q=test" \
   -H "Authorization: Bearer <FOUNDER_TOKEN>"
 ```
 
@@ -276,3 +276,5 @@ When all phases complete successfully:
 **Documentation:** See PREVIEW_VERIFICATION_MANUAL_STEPS.md for exact commands and procedures
 
 **Support:** All SQL and API commands provided with expected responses
+
+
