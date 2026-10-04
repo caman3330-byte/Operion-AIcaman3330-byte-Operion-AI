@@ -243,7 +243,10 @@ Basic Co,OK service`;
 
     it('should use business_name + address as final fallback', () => {
       const normalize = (text: string) => {
-        return text.toLowerCase().trim().replace(/\s+/g, '_');
+        return text.toLowerCase().trim()
+          .replace(/\bstreet\b/g, 'st')
+          .replace(/\s*,\s*/g, ' ')
+          .replace(/\s+/g, '_');
       };
 
       const records = [
@@ -378,7 +381,7 @@ Basic Co,OK service`;
 
   describe('Upload Summary Statistics', () => {
     it('should calculate correct summary counts', () => {
-      const allRows = [
+      const allRows: Array<{ status: string; business_name: string; email?: string; phone?: string }> = [
         { status: 'pending', business_name: 'Co A' }, // valid
         { status: 'pending', business_name: 'Co B' }, // valid
         { status: 'invalid', business_name: '' }, // invalid

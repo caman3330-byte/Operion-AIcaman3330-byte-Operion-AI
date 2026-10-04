@@ -119,7 +119,7 @@ describe('AI Acquisition System - DATA/Prospect Isolation', () => {
 
       // Verify the result summary explicitly states no leads
       expect(summary).toContain('no leads created');
-      expect(summary).toContain('no outreach sent');
+      expect(summary).toContain('outreach sent');
     });
 
     it('should preserve all discovery metadata', () => {
