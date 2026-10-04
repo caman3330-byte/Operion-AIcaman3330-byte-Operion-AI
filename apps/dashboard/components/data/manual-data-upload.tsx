@@ -8,27 +8,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Preview = {
-  sheet_name: string;
-  columns: string[];
-  counts: {
-    total: number;
-    valid: number;
-    duplicate: number;
-    invalid: number;
-    missing_email: number;
-    missing_phone: number;
-    ready_for_outreach: number;
-  };
-  rows: Array<{
+  filename: string;
+  rows_detected: number;
+  valid_rows: number;
+  invalid_rows: number;
+  duplicate_rows: number;
+  missing_email: number;
+  missing_phone: number;
+  ready_for_outreach: number;
+  sample_rows: Array<{
     row_number: number;
     status: "valid" | "invalid" | "duplicate";
-    duplicate_reason: string | null;
-    errors: string[];
-    business_name: string;
-    city: string | null;
-    state: string | null;
-    email: string | null;
-    phone: string | null;
+    errors?: string[];
+    business_name?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    email?: string;
+    phone?: string;
   }>;
 };
 
@@ -49,7 +46,7 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
     form.set("file", file);
 
     try {
-      const response = await fetch("/api/acquisition/manual-import/preview", {
+      const response = await fetch("/api/data/csv-preview", {
         method: "POST",
         body: form
       });
@@ -63,7 +60,7 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
         );
       }
 
-      setPreview(payload.data);
+      setPreview(payload);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The import preview could not be generated.");
     } finally {
@@ -112,23 +109,23 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
       {preview ? (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Metric label="Rows" value={preview.counts.total} detail={`${preview.counts.valid} valid`} />
-            <Metric label="Duplicates" value={preview.counts.duplicate} detail="Within this file" tone="warning" />
-            <Metric label="Missing email" value={preview.counts.missing_email} detail={`${preview.counts.ready_for_outreach} email-ready`} />
+            <Metric label="Rows" value={preview.rows_detected} detail={`${preview.valid_rows} valid`} />
+            <Metric label="Duplicates" value={preview.duplicate_rows} detail="Within this file" tone="warning" />
+            <Metric label="Missing email" value={preview.missing_email} detail={`${preview.ready_for_outreach} contact-ready`} />
             <Metric
               label="Missing phone"
-              value={preview.counts.missing_phone}
-              detail={`${preview.counts.invalid} invalid`}
-              tone={preview.counts.invalid ? "danger" : "default"}
+              value={preview.missing_phone}
+              detail={`${preview.invalid_rows} invalid`}
+              tone={preview.invalid_rows ? "danger" : "default"}
             />
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Preview: {preview.sheet_name}</CardTitle>
+              <CardTitle>Preview: {preview.filename}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground">Detected columns: {preview.columns.join(", ")}</p>
+              <p className="text-xs text-muted-foreground">The file was parsed without writing records or sending messages.</p>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -140,11 +137,11 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {preview.rows.map((row) => (
+                  {preview.sample_rows.map((row) => (
                     <TableRow key={row.row_number}>
                       <TableCell>{row.row_number}</TableCell>
                       <TableCell>{row.business_name || "—"}</TableCell>
-                      <TableCell>{[row.city, row.state].filter(Boolean).join(", ") || "—"}</TableCell>
+                      <TableCell>{[row.address, row.city, row.state].filter(Boolean).join(", ") || "—"}</TableCell>
                       <TableCell>{row.email ?? row.phone ?? "Missing"}</TableCell>
                       <TableCell>
                         <Badge
@@ -152,7 +149,7 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
                             row.status === "valid" ? "success" : row.status === "duplicate" ? "warning" : "destructive"
                           }
                         >
-                          {row.status === "duplicate" ? `duplicate: ${row.duplicate_reason}` : row.errors[0] ?? row.status}
+                          {row.errors?.[0] ?? row.status}
                         </Badge>
                       </TableCell>
                     </TableRow>

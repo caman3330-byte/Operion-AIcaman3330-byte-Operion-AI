@@ -28,10 +28,15 @@ interface PreviewResponse {
   duplicate_rows: number;
   missing_email: number;
   missing_phone: number;
+  ready_for_outreach: number;
   sample_rows: Array<{
     row_number: number;
     business_name?: string;
     address?: string;
+    city?: string;
+    state?: string;
+    email?: string;
+    phone?: string;
     status: 'valid' | 'invalid' | 'duplicate' | string;
     errors?: string[];
   }>;
@@ -79,6 +84,9 @@ export async function POST(request: NextRequest) {
 
     const missingEmail = validRows.filter(r => !r.email || r.email.trim() === '').length;
     const missingPhone = validRows.filter(r => !r.phone || r.phone.trim() === '').length;
+    const readyForOutreach = validRows.filter(
+      r => Boolean(r.email?.trim() || r.phone?.trim())
+    ).length;
 
     // Generate preview ID (store file metadata for later confirmation)
     const previewMetadata = {
@@ -106,10 +114,15 @@ export async function POST(request: NextRequest) {
       duplicate_rows: duplicateRows.length,
       missing_email: missingEmail,
       missing_phone: missingPhone,
+      ready_for_outreach: readyForOutreach,
       sample_rows: normalizedRows.slice(0, 10).map(r => ({
         row_number: r.row_number || 0,
         business_name: r.business_name || '',
         ...(r.address ? { address: r.address } : {}),
+        ...(r.city ? { city: r.city } : {}),
+        ...(r.state ? { state: r.state } : {}),
+        ...(r.email ? { email: r.email } : {}),
+        ...(r.phone ? { phone: r.phone } : {}),
         status: r.status,
         errors: r.errors
       })),
