@@ -27,6 +27,7 @@ type Preview = {
     state?: string;
     email?: string;
     phone?: string;
+    owner_name?: string;
   }>;
 };
 
@@ -123,7 +124,7 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
             <span className="text-sm text-muted-foreground">{fileName ?? "Maximum 5 MB and 5,000 rows"}</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Supported columns: Business Name, Address, City, State, ZIP, Website, Phone, and Email. Business Name is required; email and
+            Supported columns: Business Name, Owner Name, Address, City, State, ZIP, Website, Phone, and Email. Business Name is required; email and
             phone are flagged when missing but do not reject a business.
           </p>
           {message ? (
@@ -162,6 +163,7 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
                     <TableHead>Business</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Contact</TableHead>
+                    <TableHead>Owner</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -172,6 +174,7 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
                       <TableCell>{row.business_name || "—"}</TableCell>
                       <TableCell>{[row.address, row.city, row.state].filter(Boolean).join(", ") || "—"}</TableCell>
                       <TableCell>{row.email ?? row.phone ?? "Missing"}</TableCell>
+                      <TableCell>{row.owner_name ?? "—"}</TableCell>
                       <TableCell>
                         <Badge
                           variant={

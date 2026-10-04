@@ -22,6 +22,7 @@ export type ManualImportRow = {
   normalized_zip: string;
   identity_key: string | null;
   industry: string | null;
+  owner_name: string | null;
   raw_payload: Record<string, unknown>;
   address: string | null;
   city: string | null;
@@ -52,6 +53,7 @@ type SpreadsheetRow = Record<string, unknown>;
 
 const columnAliases: Record<string, string[]> = {
   business_name: ["business name", "company", "company name", "business", "name"],
+  owner_name: ["owner name", "owner", "business owner", "owner full name", "contact name"],
   address: ["address", "street", "street address", "business address"],
   city: ["city", "town"],
   state: ["state", "province", "region"],
@@ -85,7 +87,12 @@ export function parseManualImport(fileName: string, contents: ArrayBuffer | Uint
   if (!sheetName) throw new ManualImportError("The workbook has no worksheet.");
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) throw new ManualImportError("The worksheet could not be read.");
-  const rows = XLSX.utils.sheet_to_json<SpreadsheetRow>(sheet, { defval: "", raw: false, blankrows: true });
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", raw: false, blankrows: false });
+  const firstRow = (matrix[0] ?? []).map((value) => stringValue(value));
+  const hasRecognizedHeader = firstRow.some((value) => Object.values(columnAliases).flat().includes(normalizeHeading(value)));
+  const rows = hasRecognizedHeader
+    ? matrixToRecords(matrix)
+    : matrix.map((row) => positionalRow(row));
   if (rows.length === 0) throw new ManualImportError("The worksheet has no data rows.");
   if (rows.length > MAX_ROWS) throw new ManualImportError(`Uploads are limited to ${MAX_ROWS.toLocaleString()} rows.`);
 
@@ -151,6 +158,7 @@ function normalizeRow(row: SpreadsheetRow, rowNumber: number, columns: Record<st
     business_name: normalized.business_name,
     ...identity,
     industry: compact(value("industry")),
+    owner_name: compact(value("owner_name")),
     raw_payload: { ...row },
     address,
     city: normalized.city,
@@ -161,6 +169,19 @@ function normalizeRow(row: SpreadsheetRow, rowNumber: number, columns: Record<st
     phone: normalized.phone,
     email: normalized.email
   };
+}
+
+function matrixToRecords(matrix: unknown[][]): SpreadsheetRow[] {
+  const headers = (matrix[0] ?? []).map((value, index) => {
+    const heading = stringValue(value).trim();
+    return heading || `__empty_${index}`;
+  });
+  return matrix.slice(1).map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
+}
+
+function positionalRow(row: unknown[]): SpreadsheetRow {
+  const fields = ["business_name", "address", "city", "state", "zip", "address_2", "city_2", "state_2", "zip_2", "owner_name"];
+  return Object.fromEntries(fields.map((field, index) => [field, row[index] ?? ""]));
 }
 
 function mapColumns(columns: string[]) {

@@ -37,6 +37,7 @@ interface PreviewResponse {
     state?: string;
     email?: string;
     phone?: string;
+    owner_name?: string;
     status: 'valid' | 'invalid' | 'duplicate' | string;
     errors?: string[];
   }>;
@@ -122,6 +123,7 @@ export async function POST(request: NextRequest) {
         ...(r.state ? { state: r.state } : {}),
         ...(r.email ? { email: r.email } : {}),
         ...(r.phone ? { phone: r.phone } : {}),
+        ...(r.owner_name ? { owner_name: r.owner_name } : {}),
         status: r.status,
         errors: r.errors
       })),

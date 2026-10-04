@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
         email: normRow.email,
         website_url: normRow.website_url,
         industry: normRow.industry,
+        owner_name: normRow.owner_name,
       },
       validation_errors: normRow.errors || [],
       duplicate_reason: normRow.duplicate_reason || null,

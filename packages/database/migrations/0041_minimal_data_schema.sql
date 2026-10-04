@@ -121,6 +121,7 @@ alter table public.acquisition_prospects
   add column if not exists source_kind text default 'manual',
   add column if not exists provider text default 'manual_upload',
   add column if not exists industry text,
+  add column if not exists owner_name text,
   add column if not exists enrichment_status text default 'pending',
   add column if not exists enrichment_error text,
   add column if not exists enriched_at timestamptz,
@@ -277,7 +278,7 @@ grant execute on function public.import_data_prospects(text,text,text,text,uuid,
 
 -- Views
 create or replace view public.data_prospect_records with (security_invoker=true) as
-select p.id, 'prospect'::text as record_kind, p.business_name, p.industry, p.address, p.city, p.state, p.zip,
+select p.id, 'prospect'::text as record_kind, p.business_name, p.owner_name, p.industry, p.address, p.city, p.state, p.zip,
   p.normalized_phone as phone, p.normalized_email as email, p.website_url,
   p.source_kind as source, p.provider,
   case when p.verified_at is not null then 'verified'
@@ -293,7 +294,7 @@ select p.id, 'prospect'::text as record_kind, p.business_name, p.industry, p.add
     where r.acquisition_prospect_id = p.id), array[p.source_kind]::text[]) as sources
 from acquisition_prospects p
 union all
-select c.id, 'candidate'::text, c.business_name, c.industry,
+select c.id, 'candidate'::text, c.business_name, null::text, c.industry,
   c.raw_payload->>'address', c.raw_payload->>'city', c.state, c.raw_payload->>'zip',
   c.business_phone, c.business_email, c.website_url,
   'ai'::text, s.source_name,
