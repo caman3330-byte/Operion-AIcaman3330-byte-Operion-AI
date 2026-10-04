@@ -9,6 +9,8 @@ import { logger } from '@/lib/logger';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
+// Vercel deployment force-trigger for public endpoint access
+
 interface AcquisitionRun {
   timestamp: string;
   searches_executed: number;
