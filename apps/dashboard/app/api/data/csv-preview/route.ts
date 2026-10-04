@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireFounder } from '@/lib/auth';
 import { createHash } from 'node:crypto';
-import { normalizeImportRows } from '@/lib/acquisition/manual-import';
+import { parseManualImport } from '@/lib/acquisition/manual-import';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -63,9 +63,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse file
+    // Parse CSV/XLSX through the shared parser so spreadsheet headers such as
+    // "Business Name" and "Phone Number" are normalized consistently with import.
     const buffer = await file.arrayBuffer();
-    const rows = parseFile(file.name, Buffer.from(buffer));
+    const parsed = parseManualImport(file.name, Buffer.from(buffer));
+    const normalizedRows = parsed.rows;
+    const rows = normalizedRows.map((row) => row.raw_payload);
 
     if (rows.length === 0) {
       return NextResponse.json(
@@ -73,9 +76,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Normalize rows to detect issues
-    const normalizedRows = normalizeImportRows(rows);
 
     // Categorize rows
     const validRows = normalizedRows.filter(r => r.status === 'valid');

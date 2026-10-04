@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireFounder } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { handleRouteError } from '@/lib/errors';
-import { normalizeImportRows } from '@/lib/acquisition/manual-import';
+import { parseManualImport } from '@/lib/acquisition/manual-import';
 import { createHash } from 'node:crypto';
 
 export const dynamic = 'force-dynamic';
@@ -39,19 +39,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse CSV file
+    // Parse CSV/XLSX through the shared parser so preview and confirmation
+    // produce the same normalized rows and content hash.
     const buffer = await file.arrayBuffer();
-    const rawRows = parseFile(file.name, Buffer.from(buffer));
-
-    if (rawRows.length === 0) {
-      return NextResponse.json(
-        { error: 'No data rows found in file' },
-        { status: 400 }
-      );
-    }
-
-    // Normalize rows to categorize (valid/invalid/duplicate) and preserve originals
-    const normalizedRows = normalizeImportRows(rawRows);
+    const parsed = parseManualImport(file.name, Buffer.from(buffer));
+    const normalizedRows = parsed.rows;
+    const rawRows = normalizedRows.map((row) => row.raw_payload);
     const contentHash = createHash('sha256').update(JSON.stringify(rawRows)).digest('hex');
 
     if (!confirmed || typeof previewId !== 'string' || previewId !== contentHash) {
