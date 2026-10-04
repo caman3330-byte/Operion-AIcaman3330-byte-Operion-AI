@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Preview = {
+  preview_id: string;
   filename: string;
   rows_detected: number;
   valid_rows: number;
@@ -35,11 +36,16 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
   const [fileName, setFileName] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [importedMessage, setImportedMessage] = useState<string | null>(null);
 
   async function previewFile(file: File) {
     setLoading(true);
     setMessage(null);
     setPreview(null);
+    setImportedMessage(null);
+    setSelectedFile(file);
     setFileName(file.name);
 
     const form = new FormData();
@@ -65,6 +71,29 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
       setMessage(error instanceof Error ? error.message : "The import preview could not be generated.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function confirmImport() {
+    if (!selectedFile || !preview) return;
+    setImporting(true);
+    setMessage(null);
+    setImportedMessage(null);
+    const form = new FormData();
+    form.set("file", selectedFile);
+    form.set("confirm", "true");
+    form.set("preview_id", preview.preview_id);
+    try {
+      const response = await fetch("/api/data/csv-upload", { method: "POST", body: form });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "The DATA import could not be confirmed.");
+      setImportedMessage(payload.message ?? "DATA import confirmed.");
+      setSelectedFile(null);
+      onImported();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The DATA import could not be confirmed.");
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -166,9 +195,12 @@ export function ManualDataUpload({ revision, onImported }: { revision: number; o
             <CardContent>
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <ShieldCheck className="h-4 w-4 text-primary" />
-                Confirmation is intentionally unavailable until the batch migration and database-level duplicate transaction are applied and
-                verified in staging. No records or messages have been created from this preview.
+                Review the sample rows before confirming. Confirmation queues DATA rows only; it does not create leads, applications, or outreach messages.
               </p>
+              <Button className="mt-4" onClick={() => void confirmImport()} disabled={importing || !selectedFile}>
+                {importing ? "Confirming import…" : "Confirm DATA import"}
+              </Button>
+              {importedMessage ? <p className="mt-3 text-sm text-green-700">{importedMessage}</p> : null}
             </CardContent>
           </Card>
         </>

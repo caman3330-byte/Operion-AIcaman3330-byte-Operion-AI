@@ -98,10 +98,9 @@ export async function POST(request: NextRequest) {
       normalized_rows: normalizedRows
     };
 
-    const previewId = createHash('sha256')
-      .update(JSON.stringify(previewMetadata))
-      .digest('hex')
-      .slice(0, 16);
+    // The confirmation endpoint recomputes this hash from the uploaded file.
+    // This prevents an import from being confirmed without a matching preview.
+    const previewId = previewMetadata.content_hash;
 
     // Store preview metadata in session/cache (in real implementation)
     // For now, return it encoded in response for user to send back
@@ -136,14 +135,7 @@ export async function POST(request: NextRequest) {
       })
     };
 
-    // Store preview metadata temporarily (would be in Redis/cache in production)
-    // For now, we'll send it back and client includes it in confirm
-    const previewData = {
-      ...preview,
-      _metadata: previewMetadata // Include for validation on confirm
-    };
-
-    return NextResponse.json(previewData);
+    return NextResponse.json(preview);
 
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

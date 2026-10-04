@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const confirmed = formData.get('confirm') === 'true';
+    const previewId = formData.get('preview_id');
 
     if (!file) {
       return NextResponse.json(
@@ -52,8 +54,15 @@ export async function POST(request: NextRequest) {
     const normalizedRows = normalizeImportRows(rawRows);
     const contentHash = createHash('sha256').update(JSON.stringify(rawRows)).digest('hex');
 
-    // Create import batch in database with 'confirmed' status
-    // (matches existing schema: previewed → confirmed → imported/failed/cancelled)
+    if (!confirmed || typeof previewId !== 'string' || previewId !== contentHash) {
+      return NextResponse.json(
+        { error: 'Confirm the exact file preview before importing.' },
+        { status: 409 }
+      );
+    }
+
+    // Create an explicitly confirmed DATA batch. This only queues source rows;
+    // it does not create leads, applications, or outreach messages.
     const supabase = await getSupabaseAdmin();
     const batchCode = 'CSV-' + contentHash.slice(0, 16);
 
@@ -134,7 +143,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       ...summary,
-      message: `Imported ${summary.total_rows} rows: ${summary.valid_rows} valid, ${summary.invalid_rows} invalid, ${summary.duplicate_rows} duplicates.`,
+      message: `Confirmed ${summary.total_rows} rows for DATA research: ${summary.valid_rows} valid, ${summary.invalid_rows} invalid, ${summary.duplicate_rows} duplicates. No leads or outreach were created.`,
     });
 
   } catch (error) {
