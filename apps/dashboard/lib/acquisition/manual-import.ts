@@ -180,6 +180,25 @@ function matrixToRecords(matrix: unknown[][]): SpreadsheetRow[] {
 }
 
 function positionalRow(row: unknown[]): SpreadsheetRow {
+  // The supplied business list is a common registry export with no header row:
+  // first name, last name, business name, street, city, state, ZIP, followed by
+  // a repeated mailing address. Keep the mailing fields in raw_payload while
+  // using the physical business address for identity and enrichment.
+  if (row.length >= 11) {
+    return {
+      owner_name: [row[0], row[1]].map(stringValue).map((value) => value.trim()).filter(Boolean).join(" "),
+      business_name: row[2] ?? "",
+      address: row[3] ?? "",
+      city: row[4] ?? "",
+      state: row[5] ?? "",
+      zip: row[6] ?? "",
+      mailing_address: row[7] ?? "",
+      mailing_city: row[8] ?? "",
+      mailing_state: row[9] ?? "",
+      mailing_zip: row[10] ?? ""
+    };
+  }
+
   const fields = ["business_name", "address", "city", "state", "zip", "address_2", "city_2", "state_2", "zip_2", "owner_name"];
   return Object.fromEntries(fields.map((field, index) => [field, row[index] ?? ""]));
 }
