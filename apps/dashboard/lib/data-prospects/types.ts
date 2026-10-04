@@ -14,6 +14,7 @@ export type DataRecord = {
   id: string;
   record_kind: "prospect" | "candidate";
   business_name: string;
+  owner_name: string | null;
   industry: string | null;
   address: string | null;
   city: string | null;
@@ -76,6 +77,7 @@ export type DataProspect = {
   normalized_phone: string | null;
   domain: string | null;
   business_name: string;
+  owner_name: string | null;
   address: string | null;
   city: string | null;
   state: string | null;
