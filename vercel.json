@@ -12,7 +12,7 @@
   "crons": [
     {
       "path": "/api/acquisition/google-places-scheduler",
-      "schedule": "0 2,8,14,20 * * *"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/outreach/workers/tick?limit=10&mode=lifecycle",

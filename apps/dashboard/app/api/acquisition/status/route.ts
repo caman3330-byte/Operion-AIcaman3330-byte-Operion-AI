@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 }
 
 function calculateNextRun(cronExpression: string): string {
-  // Parse "0 2,8,14,20 * * *" format (minute hour day month day-of-week)
+  // Parse the configured daily schedule (minute hour day month day-of-week).
   const parts = cronExpression.split(' ');
   const minute = parseInt(parts[0] || '0');
   const hoursStr = parts[1] || '0';

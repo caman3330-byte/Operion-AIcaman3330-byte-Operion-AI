@@ -46,9 +46,9 @@ export const ACQUISITION_CONFIG = {
 
   // Scheduling
   schedule: {
-    // Runs at 2 AM, 8 AM, 2 PM, 8 PM UTC (every 6 hours)
-    cronExpression: '0 2,8,14,20 * * *',
-    description: 'Every 6 hours',
+    // Runs once daily at 2 AM UTC (compatible with the Vercel Hobby plan)
+    cronExpression: '0 2 * * *',
+    description: 'Daily at 02:00 UTC',
   },
 
   // Deduplication priority (strongest identifiers first)
