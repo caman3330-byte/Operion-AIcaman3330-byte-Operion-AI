@@ -11,7 +11,11 @@ if (!packagePath || !path.isAbsolute(packagePath)) {
   throw new Error('OPERION_PGLITE_PATH must point to a separately installed PGlite package.');
 }
 const { PGlite } = require(packagePath);
-const { pgcrypto } = require(path.join(packagePath, 'dist/contrib/pgcrypto.cjs'));
+// Older PGlite bundles exposed pgcrypto as a contrib module; newer bundles
+// provide gen_random_uuid() without that separate file. Support both layouts.
+const pgcryptoPath = path.join(packagePath, 'dist/contrib/pgcrypto.cjs');
+const extensions = fs.existsSync(pgcryptoPath) ? { pgcrypto: require(pgcryptoPath).pgcrypto } : {};
+const hasPgcryptoExtension = Boolean(extensions.pgcrypto);
 const root = path.resolve(__dirname, '..');
 const migrations = path.join(root, 'packages/database/migrations');
 const results = [];
@@ -130,7 +134,7 @@ async function counters(db) {
     (select count(*)::integer from leads) as leads,
     (select count(*)::integer from business_applications) as applications,
     (select count(*)::integer from outreach_history) as outreach_history,
-    (select count(*)::integer from outreach_emails) as outreach_emails`)).rows[0];
+    (select count(*)::integer from outreach_email_queue) as outreach_email_queue`)).rows[0];
 }
 
 async function verifyDataLayer(db) {
@@ -274,13 +278,13 @@ async function verifyDataLayer(db) {
   });
   await check('DATA imports create no leads, applications, or outreach messages', async () => {
     const final = await counters(db);
-    for (const key of ['leads', 'applications', 'outreach_history', 'outreach_emails']) assert.equal(final[key], initial[key]);
+    for (const key of ['leads', 'applications', 'outreach_history', 'outreach_email_queue']) assert.equal(final[key], initial[key]);
     assert.equal((await db.query('select count(*)::integer as count from acquisition_prospects where lead_id is not null or business_application_id is not null')).rows[0].count, 0);
   });
 }
 
 async function run() {
-  const db = new PGlite({ extensions: { pgcrypto } });
+  const db = new PGlite({ extensions });
   try {
     await db.exec(bootstrap);
     const files = fs.readdirSync(migrations).filter(name => /^\d+.*\.sql$/.test(name)).sort();
@@ -289,7 +293,11 @@ async function run() {
       if (process.argv.includes('--baseline-only') && filename.startsWith('0041_')) continue;
       if (filename.startsWith('0041_')) historical = await seedHistoricalFixtures(db);
       try {
-        await db.exec(fs.readFileSync(path.join(migrations, filename), 'utf8'));
+        let sql = fs.readFileSync(path.join(migrations, filename), 'utf8');
+        // Modern PGlite bundles expose gen_random_uuid() as a built-in but do
+        // not ship the separately loadable pgcrypto extension.
+        if (!hasPgcryptoExtension) sql = sql.replace(/create extension if not exists pgcrypto;\s*/gi, '');
+        await db.exec(sql);
         results.push({ check: `migration ${filename}`, passed: true });
       } catch (error) {
         throw new Error(`${filename}: ${error.message}`, { cause: error });

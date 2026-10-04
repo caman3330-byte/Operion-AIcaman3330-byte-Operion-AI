@@ -9,7 +9,7 @@
 
 alter table public.acquisition_import_rows
   add column if not exists original_data jsonb default '{}'::jsonb
-    comment 'Complete original row from file upload (before any normalization)';
+;
 
 -- Index for efficient lookups
 create index if not exists idx_acquisition_import_rows_prospect_id
@@ -22,18 +22,17 @@ create index if not exists idx_acquisition_import_rows_prospect_id
 -- Link back to original batch (may differ from acquisition_import_batch_id for AI acquisition)
 alter table public.acquisition_prospects
   add column if not exists batch_id uuid
-    references public.acquisition_import_batches(id) on delete set null
-    comment 'Original import batch (for provenance; may be same as acquisition_import_batch_id)';
+    references public.acquisition_import_batches(id) on delete set null;
 
 -- Original filename for audit trail
 alter table public.acquisition_prospects
   add column if not exists filename text
-    comment 'Original filename (for audit trail and provenance)';
+;
 
 -- Row number from file for traceability
 alter table public.acquisition_prospects
   add column if not exists row_number integer
-    comment 'Original row number from source file (for full traceability)';
+;
 
 -- ============================================================================
 -- PART 3: Add missing indexes for efficient queries

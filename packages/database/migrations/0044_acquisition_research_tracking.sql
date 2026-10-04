@@ -2,33 +2,37 @@
 -- Supports CSV research pipeline with qualification scoring
 
 alter table public.acquisition_import_rows add column if not exists
-  researched_data jsonb default '{}'::jsonb comment 'Full researched business data';
+  researched_data jsonb default '{}'::jsonb;
+comment on column public.acquisition_import_rows.researched_data is 'Full researched business data';
 
 alter table public.acquisition_import_rows add column if not exists
-  qualification_score integer check (qualification_score >= 0 and qualification_score <= 100)
-  comment 'Lead quality score 0-100';
+  qualification_score integer check (qualification_score >= 0 and qualification_score <= 100);
+comment on column public.acquisition_import_rows.qualification_score is 'Lead quality score 0-100';
 
 alter table public.acquisition_import_rows add column if not exists
-  qualification_status text check (qualification_status in ('strong_fit', 'possible_fit', 'weak_fit', 'not_a_fit', 'needs_review'))
-  comment 'Qualification status after research';
+  qualification_status text check (qualification_status in ('strong_fit', 'possible_fit', 'weak_fit', 'not_a_fit', 'needs_review'));
+comment on column public.acquisition_import_rows.qualification_status is 'Qualification status after research';
 
 alter table public.acquisition_import_rows add column if not exists
-  research_timestamp timestamptz comment 'When research was completed';
+  research_timestamp timestamptz;
+comment on column public.acquisition_import_rows.research_timestamp is 'When research was completed';
 
 alter table public.acquisition_import_rows add column if not exists
-  error_message text comment 'Error message if research failed';
+  error_message text;
+comment on column public.acquisition_import_rows.error_message is 'Error message if research failed';
 
 -- Add qualification tracking to acquisition_prospects
 alter table public.acquisition_prospects add column if not exists
-  lead_score integer check (lead_score >= 0 and lead_score <= 100)
-  comment 'Calculated lead quality score';
+  lead_score integer check (lead_score >= 0 and lead_score <= 100);
+comment on column public.acquisition_prospects.lead_score is 'Calculated lead quality score';
 
 alter table public.acquisition_prospects add column if not exists
-  qualification_status text check (qualification_status in ('strong_fit', 'possible_fit', 'weak_fit', 'not_a_fit', 'needs_review'))
-  comment 'MCA qualification status';
+  qualification_status text check (qualification_status in ('strong_fit', 'possible_fit', 'weak_fit', 'not_a_fit', 'needs_review'));
+comment on column public.acquisition_prospects.qualification_status is 'MCA qualification status';
 
 alter table public.acquisition_prospects add column if not exists
-  qualification_reason text comment 'Why the lead was qualified at this level';
+  qualification_reason text;
+comment on column public.acquisition_prospects.qualification_reason is 'Why the lead was qualified at this level';
 
 -- Create index on research status for efficient queue queries
 create index if not exists idx_acquisition_import_rows_status_created
