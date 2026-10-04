@@ -3,7 +3,7 @@
 **Date:** October 4, 2026  
 **Status:** CODE READY ✅ | STAGING VERIFICATION BLOCKED ⏸️  
 **Blocker Type:** Supabase Admin Access Required  
-**Latest Commit:** 4f05bab - Manual Preview verification steps  
+**Latest Commit:** 36315d1 - Route legacy CSV research to safe DATA import  
 
 ---
 
@@ -106,11 +106,11 @@ AND column_name IN ('batch_id', 'filename', 'row_number', 'original_data');
 
 ### 3. Run API Tests (Preview Deployment)
 
-**Against:** https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app
+**Against:** https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app
 
 **Tests to run:**
-1. CSV Preview (no persist)
-2. CSV Import (with hash confirmation)
+1. CSV/XLSX Preview (no persist)
+2. CSV/XLSX Import (with hash confirmation)
 3. Invalid/Duplicate row handling
 4. Search and pagination
 5. Isolation verification (check no leads created)
@@ -183,7 +183,7 @@ Copy/paste ready for terminal (replace `<FOUNDER_TOKEN>` with actual token):
 ### CSV Preview test:
 ```bash
 curl -X POST \
-  "https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
+  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
   -H "Authorization: Bearer <FOUNDER_TOKEN>" \
   -F "file=@test_file.csv"
 ```
@@ -191,7 +191,7 @@ curl -X POST \
 ### CSV Import test:
 ```bash
 curl -X POST \
-  "https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app/api/data/csv-upload" \
+  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/csv-upload" \
   -H "Authorization: Bearer <FOUNDER_TOKEN>" \
   -F "file=@test_file.csv" \
   -F "preview_id=<PREVIEW_ID>"
@@ -200,7 +200,7 @@ curl -X POST \
 ### Search test:
 ```bash
 curl -X GET \
-  "https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app/api/data/search?q=test" \
+  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/search?q=test" \
   -H "Authorization: Bearer <FOUNDER_TOKEN>"
 ```
 

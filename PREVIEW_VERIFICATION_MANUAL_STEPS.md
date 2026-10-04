@@ -3,7 +3,7 @@
 **Status:** CODE READY ✅ | STAGING VERIFICATION BLOCKED ⏸️  
 **Blocker:** Supabase admin access required to apply migrations  
 **Latest Commit:** fc318b3 - Vercel Hobby-compatible daily acquisition schedule  
-**Preview Deployment:** https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app  
+**Preview Deployment:** https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app  
 
 ---
 
@@ -177,7 +177,7 @@ ORDER BY column_name;
 
 ---
 
-### Phase 3: Test CSV Preview (API Test)
+### Phase 3: Test CSV/XLSX Preview (API Test)
 
 **Prerequisites:**
 - User must be authenticated as founder
@@ -196,7 +196,7 @@ EOF
 
 # Send preview request (user must provide valid founder token)
 curl -X POST \
-  "https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
+  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>" \
   -F "file=@test_preview.csv"
 ```
@@ -250,14 +250,14 @@ WHERE batch_id IN (
 
 ---
 
-### Phase 4: Test CSV Import with Hash Confirmation
+### Phase 4: Test CSV/XLSX Import with Hash Confirmation
 
 **Test Command:**
 
 ```bash
 # Send import request with preview_id from Phase 3
 curl -X POST \
-  "https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app/api/data/csv-upload" \
+  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/csv-upload" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>" \
   -F "file=@test_preview.csv" \
   -F "preview_id=<PREVIEW_ID_FROM_PHASE_3>"
@@ -329,7 +329,7 @@ EOF
 
 # Send preview
 curl -X POST \
-  "https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
+  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/csv-preview" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>" \
   -F "file=@test_mixed.csv"
 ```
@@ -372,7 +372,7 @@ WHERE batch_id = '<new_batch_id>';
 ```bash
 # Search for imported businesses
 curl -X GET \
-  "https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app/api/data/search?q=valid&limit=10&offset=0" \
+  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/search?q=valid&limit=10&offset=0" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>"
 ```
 
@@ -403,14 +403,14 @@ curl -X GET \
 ```bash
 # Test offset
 curl -X GET \
-  "https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app/api/data/search?limit=1&offset=0" \
+  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/search?limit=1&offset=0" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>"
 
 # Should return first result
 
 # Then test offset=1
 curl -X GET \
-  "https://operion-ai-dashboard-o46m31wbi-operion-ai-s-projects.vercel.app/api/data/search?limit=1&offset=1" \
+  "https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app/api/data/search?limit=1&offset=1" \
   -H "Authorization: Bearer <FOUNDER_TOKEN_HERE>"
 
 # Should return second result if exists
@@ -502,11 +502,11 @@ Migration Phase:
 ✅ 0046 applied
 ✅ All columns verified
 
-CSV Preview:
+CSV/XLSX Preview:
 ✅ Returns statistics correctly
 ✅ No database writes on preview
 
-CSV Import:
+CSV/XLSX Import:
 ✅ Creates batch with status='confirmed'
 ✅ Creates rows with correct status
 ✅ Preserves original_data
