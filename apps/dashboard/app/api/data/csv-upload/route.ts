@@ -130,8 +130,19 @@ function parseFile(filename: string, buffer: Buffer): ParsedRow[] {
         });
         return row;
       }).filter(row => Object.values(row).some(v => v)); // Remove empty rows
+    } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.XLSX') || filename.endsWith('.XLS')) {
+      // Parse Excel using xlsx
+      const XLSX = require('xlsx');
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) throw new Error('Excel file has no sheets');
+
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+      data = jsonData as any[];
     } else {
-      throw new Error('Unsupported file format. Please use CSV file.');
+      throw new Error('Unsupported file format. Please use CSV (.csv) or Excel (.xlsx) file.');
     }
 
     // Normalize parsed rows
