@@ -2,8 +2,8 @@
 
 **Status:** CODE READY ✅ | STAGING VERIFICATION BLOCKED ⏸️  
 **Blocker:** Supabase admin access required to apply migrations  
-**Latest Commit:** fc318b3 - Vercel Hobby-compatible daily acquisition schedule  
-**Preview Deployment:** https://operion-ai-dashboard-iqrlapkwv-operion-ai-s-projects.vercel.app  
+**Latest Commit:** 79cf14a - Headerless XLSX and owner-name support  
+**Preview Deployment:** https://operion-ai-dashboard-79uexwrrw-operion-ai-s-projects.vercel.app  
 
 ---
 
@@ -11,7 +11,7 @@
 
 The Preview deployment requires Vercel authentication (HTTP 302 redirect). Since credentials cannot be used in chat, verification must be completed by someone with:
 
-1. **Supabase Admin Access** - To apply migrations to operion-ai-mvp database
+1. **Supabase Admin Access** - To apply migrations to the `operion-ai-staging` database
 2. **Vercel Preview Authentication** - To test API endpoints against the Preview deployment
 3. **Direct Database Access** - To verify migration application and table schemas
 
@@ -21,7 +21,7 @@ The Preview deployment requires Vercel authentication (HTTP 302 redirect). Since
 
 ### Phase 1: Apply Migrations to Preview Supabase
 
-**Location:** Supabase Console → operion-ai-mvp project → SQL Editor
+**Location:** Supabase Console → `operion-ai-staging` project → SQL Editor
 
 #### Step 1a: Verify Current Migration State
 
@@ -119,7 +119,24 @@ AND column_name = 'original_data';
 -- Should return 1 row
 ```
 
-#### Step 1f: Final Migration Verification
+#### Step 1f: Apply Migration 0047
+
+**Location:** Repository file `packages/database/migrations/0047_data_owner_name.sql`
+
+Copy the entire file into the same SQL Editor and click **Run**. This adds the optional `owner_name` field and refreshes the DATA view so an owner supplied in the workbook is preserved.
+
+**Expected Result:** No errors. The `owner_name` column exists on `acquisition_prospects`.
+
+```sql
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'acquisition_prospects'
+  AND column_name = 'owner_name';
+-- Should return one row: owner_name | text
+```
+
+#### Step 1g: Final Migration Verification
 
 Execute in Supabase SQL Editor:
 
@@ -137,9 +154,10 @@ ORDER BY version;
 0043_grant_delete_permissions
 0044_acquisition_research_tracking
 0046_data_foundation_additions
+0047_data_owner_name
 ```
 
-**✅ If all 6 migrations show: MIGRATION PHASE COMPLETE**
+**✅ If all 7 migrations show: MIGRATION PHASE COMPLETE**
 
 ---
 
