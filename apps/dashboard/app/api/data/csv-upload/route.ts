@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireFounder } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { handleRouteError } from '@/lib/errors';
+import { normalizeImportRows } from '@/lib/acquisition/manual-import';
 import { createHash } from 'node:crypto';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,8 @@ interface ParsedRow {
   [key: string]: any;
 }
 
+// Use normalizeImportRows from lib/acquisition/manual-import for actual processing
+
 export async function POST(request: NextRequest) {
   try {
     const actor = await requireFounder(request);
@@ -36,28 +39,40 @@ export async function POST(request: NextRequest) {
 
     // Parse CSV file
     const buffer = await file.arrayBuffer();
-    const rows = parseFile(file.name, Buffer.from(buffer));
+    const rawRows = parseFile(file.name, Buffer.from(buffer));
 
-    if (rows.length === 0) {
+    if (rawRows.length === 0) {
       return NextResponse.json(
         { error: 'No data rows found in file' },
         { status: 400 }
       );
     }
 
-    // Create import batch in database
+    // Normalize rows to categorize (valid/invalid/duplicate) and preserve originals
+    const normalizedRows = normalizeImportRows(rawRows);
+    const contentHash = createHash('sha256').update(JSON.stringify(rawRows)).digest('hex');
+
+    // Create import batch in database with 'confirmed' status
+    // (matches existing schema: previewed → confirmed → imported/failed/cancelled)
     const supabase = await getSupabaseAdmin();
-    const contentHash = createHash('sha256').update(JSON.stringify(rows)).digest('hex');
+    const batchCode = 'CSV-' + contentHash.slice(0, 16);
 
     const { data: batch, error: batchError } = await (supabase
       .from('acquisition_import_batches' as any)
       .insert({
-        filename: file.name,
+        batch_code: batchCode,
+        original_filename: file.name,
         content_sha256: contentHash,
         source_kind: 'manual',
         provider: 'csv_upload',
         uploaded_by: actor.id,
-        status: 'pending',
+        status: 'confirmed', // Use existing enum: previewed|confirmed|failed|cancelled
+        total_rows: normalizedRows.length,
+        valid_rows: normalizedRows.filter(r => r.status === 'valid').length,
+        duplicate_rows: normalizedRows.filter(r => r.status === 'duplicate').length,
+        invalid_rows: normalizedRows.filter(r => r.status === 'invalid').length,
+        missing_email_rows: normalizedRows.filter(r => !r.email || r.email.trim() === '').length,
+        missing_phone_rows: normalizedRows.filter(r => !r.phone || r.phone.trim() === '').length,
       })
       .select()
       .single()) as any;
@@ -69,12 +84,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create research queue entries
-    const queueEntries = rows.map((row, index) => ({
+    // Create import row entries for ALL rows (valid, invalid, duplicate preserved)
+    const queueEntries = normalizedRows.map((normRow, idx) => ({
       batch_id: batch.id,
-      row_number: index + 1,
-      original_data: row,
-      status: 'pending',
+      row_number: idx + 1,
+      original_data: rawRows[idx], // Complete original row before normalization
+      status: normRow.status, // Will be 'valid'|'invalid'|'duplicate'
+      normalized_payload: {
+        business_name: normRow.business_name,
+        address: normRow.address,
+        city: normRow.city,
+        state: normRow.state,
+        zip: normRow.zip,
+        phone: normRow.phone,
+        email: normRow.email,
+        website_url: normRow.website_url,
+        industry: normRow.industry,
+      },
+      validation_errors: normRow.errors || [],
+      duplicate_reason: normRow.duplicate_reason || null,
       created_at: new Date().toISOString(),
     }));
 
@@ -85,24 +113,28 @@ export async function POST(request: NextRequest) {
 
     if (queueError) {
       return NextResponse.json(
-        { error: `Failed to create research queue: ${queueError.message}` },
+        { error: `Failed to create import rows: ${queueError.message}` },
         { status: 500 }
       );
     }
 
-    // Trigger research job to start processing
-    // For now, mark batch as ready for research
-    await (supabase
-      .from('acquisition_import_batches' as any)
-      .update({ status: 'processing' })
-      .eq('id', batch.id)) as any;
+    // Summary response with actual statistics
+    const summary = {
+      batch_id: batch.id,
+      batch_code: batch.batch_code,
+      filename: file.name,
+      total_rows: normalizedRows.length,
+      valid_rows: normalizedRows.filter(r => r.status === 'valid').length,
+      invalid_rows: normalizedRows.filter(r => r.status === 'invalid').length,
+      duplicate_rows: normalizedRows.filter(r => r.status === 'duplicate').length,
+      missing_email: normalizedRows.filter(r => !r.email || r.email.trim() === '').length,
+      missing_phone: normalizedRows.filter(r => !r.phone || r.phone.trim() === '').length,
+    };
 
     return NextResponse.json({
       success: true,
-      batch_id: batch.id,
-      filename: file.name,
-      rows_imported: rows.length,
-      message: `Imported ${rows.length} businesses. Research will begin shortly.`,
+      ...summary,
+      message: `Imported ${summary.total_rows} rows: ${summary.valid_rows} valid, ${summary.invalid_rows} invalid, ${summary.duplicate_rows} duplicates.`,
     });
 
   } catch (error) {
