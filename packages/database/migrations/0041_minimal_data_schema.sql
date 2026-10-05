@@ -276,8 +276,16 @@ end $$;
 revoke all on function public.import_data_prospects(text,text,text,text,uuid,jsonb) from public,anon,authenticated;
 grant execute on function public.import_data_prospects(text,text,text,text,uuid,jsonb) to service_role;
 
--- Views
-create or replace view public.data_prospect_records with (security_invoker=true) as
+-- Views. AI candidate tables are optional for a DATA-only staging database.
+-- The conditional definition keeps this migration replayable before the
+-- optional acquisition-department migrations are installed.
+drop view if exists public.data_prospect_records;
+do $$
+begin
+  if to_regclass('public.merchant_acquisition_candidates') is not null
+     and to_regclass('public.merchant_acquisition_sources') is not null then
+    execute $view$
+      create view public.data_prospect_records with (security_invoker=true) as
 select p.id, 'prospect'::text as record_kind, p.business_name, p.owner_name, p.industry, p.address, p.city, p.state, p.zip,
   p.normalized_phone as phone, p.normalized_email as email, p.website_url,
   p.source_kind as source, p.provider,
@@ -305,6 +313,28 @@ select c.id, 'candidate'::text, c.business_name, null::text, c.industry,
 from merchant_acquisition_candidates c
 join merchant_acquisition_sources s on s.id = c.source_id
 where c.source_id in (select id from merchant_acquisition_sources);
+    $view$;
+  else
+    execute $view$
+      create view public.data_prospect_records with (security_invoker=true) as
+      select p.id, 'prospect'::text as record_kind, p.business_name, p.owner_name, p.industry, p.address, p.city, p.state, p.zip,
+        p.normalized_phone as phone, p.normalized_email as email, p.website_url,
+        p.source_kind as source, p.provider,
+        case when p.verified_at is not null then 'verified'
+             when p.enrichment_status = 'enriched' then 'enriched'
+             when p.normalized_email is null and p.normalized_phone is null then 'missing_contact'
+             else 'imported' end as status,
+        p.enrichment_status, p.enrichment_error,
+        (p.verified_at is not null) as verified,
+        (p.enrichment_status = 'enriched' and (p.normalized_email is not null or p.normalized_phone is not null)) as ready_for_outreach,
+        p.created_at,
+        coalesce((select array_agg(distinct b.source_kind order by b.source_kind)
+          from acquisition_import_rows r join acquisition_import_batches b on b.id = r.batch_id
+          where r.acquisition_prospect_id = p.id), array[p.source_kind]::text[]) as sources
+      from acquisition_prospects p
+    $view$;
+  end if;
+end $$;
 
 create or replace view public.data_import_batch_summaries with (security_invoker=true) as
 select b.*, count(p.id) as prospect_count

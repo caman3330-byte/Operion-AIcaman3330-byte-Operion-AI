@@ -138,6 +138,12 @@ async function counters(db) {
 }
 
 async function verifyDataLayer(db) {
+  await check('0041 guards optional AI candidate tables for DATA-only staging', async () => {
+    const migration = fs.readFileSync(path.join(migrations, '0041_minimal_data_schema.sql'), 'utf8');
+    assert.match(migration, /to_regclass\('public\.merchant_acquisition_candidates'\)/);
+    assert.match(migration, /to_regclass\('public\.merchant_acquisition_sources'\)/);
+    assert.match(migration, /drop view if exists public\.data_prospect_records/);
+  });
   const initial = await counters(db);
   let imported;
   const rows = [
