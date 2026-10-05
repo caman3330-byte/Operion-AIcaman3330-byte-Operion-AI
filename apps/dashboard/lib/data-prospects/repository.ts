@@ -173,7 +173,7 @@ export async function previewDataImport(parsed: ManualImportPreview): Promise<Ma
     ? {...row,status:"duplicate" as const,duplicate_reason:"business_location: existing prospect"} : row);
   return {...parsed,counts:{...parsed.counts,valid:rows.filter(row=>row.status==="valid").length,
     duplicate:rows.filter(row=>row.status==="duplicate").length,
-    ready_for_outreach:rows.filter(row=>row.status==="valid" && row.email).length},rows:rows.slice(0,100)};
+    ready_for_outreach:rows.filter(row=>row.status==="valid" && row.email).length},rows};
 }
 
 export async function persistDataImport(input: { fileName: string; contentHash: string; sourceKind: DataSource; provider: string; uploadedBy: string | null; rows: ManualImportRow[] }): Promise<DataImportResult> {

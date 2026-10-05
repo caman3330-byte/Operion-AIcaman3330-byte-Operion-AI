@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireFounder } from '@/lib/auth';
 import { createHash } from 'node:crypto';
 import { parseManualImport } from '@/lib/acquisition/manual-import';
+import { previewDataImport } from '@/lib/data-prospects/repository';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -68,7 +69,10 @@ export async function POST(request: NextRequest) {
     // "Business Name" and "Phone Number" are normalized consistently with import.
     const buffer = await file.arrayBuffer();
     const parsed = parseManualImport(file.name, Buffer.from(buffer));
-    const normalizedRows = parsed.rows;
+    // Read existing DATA identities so the preview matches the confirmed RPC.
+    // This performs no inserts, updates, lead creation, or outreach.
+    const previewed = await previewDataImport(parsed);
+    const normalizedRows = previewed.rows;
     const rows = normalizedRows.map((row) => row.raw_payload);
 
     if (rows.length === 0) {
