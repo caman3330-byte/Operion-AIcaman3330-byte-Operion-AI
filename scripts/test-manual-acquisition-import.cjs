@@ -39,6 +39,23 @@ assert.equal(preview.rows[1].status, 'duplicate');
 assert.equal(preview.rows[2].status, 'valid');
 assert.equal(preview.rows[3].status, 'invalid');
 assert.equal(preview.rows[0].state, 'TX');
+
+// Registry exports can be headerless and place owner name before the business.
+// Keep this fixture synthetic so the private user workbook never enters Git.
+const registryRows = [
+  ['BRAIN', 'BIVONA', 'BIVCO BEGINNINGS LLC', '186 S DELAWARE AVENUE', 'LINDENHURST', 'NY', '11757-5127', '186 S DELAWARE AVENUE', 'LINDENHURST', 'NY', '11757-5127']
+];
+const registryBook = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(registryBook, XLSX.utils.aoa_to_sheet(registryRows), 'Sheet1');
+const registryBytes = XLSX.write(registryBook, { bookType: 'xlsx', type: 'array' });
+const registryPreview = previewManualImport('registry.xlsx', registryBytes);
+assert.equal(registryPreview.counts.total, 1);
+assert.equal(registryPreview.rows[0].business_name, 'BIVCO BEGINNINGS LLC');
+assert.equal(registryPreview.rows[0].owner_name, 'BRAIN BIVONA');
+assert.equal(registryPreview.rows[0].address, '186 S DELAWARE AVENUE');
+assert.equal(registryPreview.rows[0].zip, '11757-5127');
+assert.equal(registryPreview.rows[0].status, 'valid');
+
 assert.throws(() => previewManualImport('prospects.pdf', new Uint8Array([1])), ManualImportError);
 assert.throws(() => previewManualImport('empty.csv', new Uint8Array()), ManualImportError);
 
