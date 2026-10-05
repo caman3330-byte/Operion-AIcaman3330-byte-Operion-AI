@@ -187,6 +187,8 @@ async function verifyDataLayer(db) {
     assert.equal(linked.rows[0].acquisition_prospect_id, imported.rows[0].acquisition_prospect_id);
     const record = (await db.query('select * from data_prospect_records where id=$1', [imported.rows[0].acquisition_prospect_id])).rows[0];
     assert.deepEqual(record.sources.sort(), ['ai', 'manual']);
+    assert.ok(Array.isArray(record.provenance));
+    assert.equal(record.provenance[0].row_number, 1);
     const origins = (await db.query(`select b.source_kind,b.provider,r.row_number,r.raw_payload from acquisition_import_rows r
       join acquisition_import_batches b on b.id=r.batch_id where r.acquisition_prospect_id=$1 order by r.row_number`, [record.id])).rows;
     assert.equal(origins.length, 3);

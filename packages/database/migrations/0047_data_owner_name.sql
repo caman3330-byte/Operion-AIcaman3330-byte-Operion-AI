@@ -37,7 +37,11 @@ begin
         coalesce((select array_agg(distinct b.source_kind order by b.source_kind)
           from public.acquisition_import_rows r
           join public.acquisition_import_batches b on b.id = r.batch_id
-          where r.acquisition_prospect_id = p.id), array[p.source_kind]::text[]) as sources
+          where r.acquisition_prospect_id = p.id), array[p.source_kind]::text[]) as sources,
+        jsonb_build_array(jsonb_build_object('source', p.source_kind, 'provider', p.provider,
+          'batch_code', (select b.batch_code from public.acquisition_import_batches b where b.id = p.acquisition_import_batch_id),
+          'original_filename', (select b.original_filename from public.acquisition_import_batches b where b.id = p.acquisition_import_batch_id),
+          'row_number', p.source_row_number, 'created_at', p.created_at)) as provenance
       from public.acquisition_prospects p
       union all
       select c.id, 'candidate'::text, c.business_name, null::text, c.industry,
@@ -46,7 +50,9 @@ begin
         case when c.enrichment_status::text in ('completed','verified') then 'verified' else c.enrichment_status::text end,
         c.enrichment_status::text, null::text,
         coalesce(c.website_verified or c.phone_verified or c.email_found, false), false,
-        c.created_at, array['ai']::text[]
+        c.created_at, array['ai']::text[],
+        jsonb_build_array(jsonb_build_object('source', 'ai', 'provider', s.source_name,
+          'batch_code', null, 'original_filename', null, 'row_number', null, 'created_at', c.created_at))
       from public.merchant_acquisition_candidates c
       join public.merchant_acquisition_sources s on s.id = c.source_id
     $view$;
@@ -69,7 +75,11 @@ begin
         coalesce((select array_agg(distinct b.source_kind order by b.source_kind)
           from public.acquisition_import_rows r
           join public.acquisition_import_batches b on b.id = r.batch_id
-          where r.acquisition_prospect_id = p.id), array[p.source_kind]::text[]) as sources
+          where r.acquisition_prospect_id = p.id), array[p.source_kind]::text[]) as sources,
+        jsonb_build_array(jsonb_build_object('source', p.source_kind, 'provider', p.provider,
+          'batch_code', (select b.batch_code from public.acquisition_import_batches b where b.id = p.acquisition_import_batch_id),
+          'original_filename', (select b.original_filename from public.acquisition_import_batches b where b.id = p.acquisition_import_batch_id),
+          'row_number', p.source_row_number, 'created_at', p.created_at)) as provenance
       from public.acquisition_prospects p
     $view$;
   end if;
