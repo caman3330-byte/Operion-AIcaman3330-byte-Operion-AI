@@ -315,6 +315,20 @@ async function run() {
         assert.deepEqual(await historicalSnapshot(db), historical);
       });
       await verifyDataLayer(db);
+      await check('0041 executes with optional AI candidate tables absent', async () => {
+        const migration = fs.readFileSync(path.join(migrations, files.find(name => name.startsWith('0041_'))), 'utf8');
+        await db.exec('begin');
+        try {
+          await db.exec('drop table if exists merchant_acquisition_candidates cascade; drop table if exists merchant_acquisition_sources cascade;');
+          await db.exec(migration);
+          const view = (await db.query("select to_regclass('public.data_prospect_records') as name")).rows[0].name;
+          assert.equal(view, 'data_prospect_records');
+          const columns = (await db.query("select column_name from information_schema.columns where table_schema='public' and table_name='data_prospect_records' and column_name in ('business_name','owner_name','phone','email')")).rows;
+          assert.equal(columns.length, 4);
+        } finally {
+          await db.exec('rollback');
+        }
+      });
       await check('0041 can be reapplied without removing records or changing row outcomes', async () => {
         const before = await counters(db);
         await db.exec(fs.readFileSync(path.join(migrations, files.find(name => name.startsWith('0041_'))), 'utf8'));
