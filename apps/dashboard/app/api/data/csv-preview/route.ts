@@ -144,10 +144,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(preview);
 
   } catch (error) {
+    console.error('[csv-preview] Error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `Preview failed: ${message}` },
-      { status: 400 }
+      { error: message },
+      { status: 500 }
     );
   }
 }

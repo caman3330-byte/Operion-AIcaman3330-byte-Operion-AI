@@ -148,6 +148,12 @@ function normalizeRow(row: SpreadsheetRow, rowNumber: number, columns: Record<st
   const duplicateKey = identity.identity_key && seen.has(identity.identity_key) ? identity.identity_key : null;
   if (!duplicateKey && !errors.length && identity.identity_key) seen.set(identity.identity_key, String(rowNumber));
 
+  const rawPayload: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(row)) {
+    const v = val === null || val === undefined ? "" : String(val);
+    rawPayload[key] = v;
+  }
+
   return {
     row_number: rowNumber,
     status: errors.length ? "invalid" : duplicateKey ? "duplicate" : "valid",
@@ -159,7 +165,7 @@ function normalizeRow(row: SpreadsheetRow, rowNumber: number, columns: Record<st
     ...identity,
     industry: compact(value("industry")),
     owner_name: compact(value("owner_name")),
-    raw_payload: { ...row },
+    raw_payload: rawPayload,
     address,
     city: normalized.city,
     state: normalized.state,

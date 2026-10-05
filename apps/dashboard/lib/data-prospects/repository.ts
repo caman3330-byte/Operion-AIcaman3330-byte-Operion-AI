@@ -163,17 +163,22 @@ export async function getDataDetail(id: string, kind: "prospect" | "candidate"):
 }
 
 export async function previewDataImport(parsed: ManualImportPreview): Promise<ManualImportPreview> {
-  const keys = [...new Set(parsed.rows.map(row=>row.identity_key).filter((key): key is string=>Boolean(key)))];
-  const existing = new Set<string>();
-  for (let offset=0;offset<keys.length;offset+=100) {
-    const { data,error } = await db().from("acquisition_prospects").select("identity_key").in("identity_key",keys.slice(offset,offset+100));
-    check(error); data?.forEach(row=>existing.add(row.identity_key));
+  try {
+    const keys = [...new Set(parsed.rows.map(row=>row.identity_key).filter((key): key is string=>Boolean(key)))];
+    const existing = new Set<string>();
+    for (let offset=0;offset<keys.length;offset+=100) {
+      const { data,error } = await db().from("acquisition_prospects").select("identity_key").in("identity_key",keys.slice(offset,offset+100));
+      check(error); data?.forEach(row=>existing.add(row.identity_key));
+    }
+    const rows = parsed.rows.map(row => row.status==="valid" && row.identity_key && existing.has(row.identity_key)
+      ? {...row,status:"duplicate" as const,duplicate_reason:"business_location: existing prospect"} : row);
+    return {...parsed,counts:{...parsed.counts,valid:rows.filter(row=>row.status==="valid").length,
+      duplicate:rows.filter(row=>row.status==="duplicate").length,
+      ready_for_outreach:rows.filter(row=>row.status==="valid" && row.email).length},rows};
+  } catch (error) {
+    console.error('[previewDataImport] Database query failed:', error);
+    throw error;
   }
-  const rows = parsed.rows.map(row => row.status==="valid" && row.identity_key && existing.has(row.identity_key)
-    ? {...row,status:"duplicate" as const,duplicate_reason:"business_location: existing prospect"} : row);
-  return {...parsed,counts:{...parsed.counts,valid:rows.filter(row=>row.status==="valid").length,
-    duplicate:rows.filter(row=>row.status==="duplicate").length,
-    ready_for_outreach:rows.filter(row=>row.status==="valid" && row.email).length},rows};
 }
 
 export async function persistDataImport(input: { fileName: string; contentHash: string; sourceKind: DataSource; provider: string; uploadedBy: string | null; rows: ManualImportRow[] }): Promise<DataImportResult> {
