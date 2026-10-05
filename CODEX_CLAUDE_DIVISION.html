@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODEX vs CLAUDE - Operion Build</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 10px; color: #1a1a1a; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 16px; }
+        .timeline { margin: 40px 0; }
+        .phase { background: white; border-left: 4px solid #2563eb; padding: 20px; margin: 15px 0; border-radius: 4px; }
+        .phase-title { font-size: 18px; font-weight: bold; color: #1a1a1a; margin-bottom: 15px; }
+        .phase-duration { color: #999; font-size: 12px; margin-bottom: 10px; }
+        .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px; }
+        .codex, .claude { padding: 15px; background: #fafafa; border-radius: 3px; font-size: 14px; line-height: 1.6; }
+        .codex { border-top: 3px solid #7c3aed; }
+        .claude { border-top: 3px solid #dc2626; }
+        .codex h4 { color: #7c3aed; margin-bottom: 8px; }
+        .claude h4 { color: #dc2626; margin-bottom: 8px; }
+        .codex ul, .claude ul { margin-left: 20px; }
+        .codex li, .claude li { margin: 5px 0; }
+        .status { text-align: center; font-size: 18px; font-weight: bold; margin: 30px 0; padding: 20px; background: #dbeafe; border-radius: 4px; color: #1e40af; }
+        .execution { background: white; border: 2px solid #16a34a; padding: 20px; border-radius: 4px; margin: 20px 0; }
+        .execution h3 { color: #16a34a; margin-bottom: 15px; }
+        .execution-item { margin: 10px 0; padding: 10px; background: #f0fdf4; border-left: 3px solid #16a34a; }
+        .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .legend-item { padding: 15px; background: white; border-radius: 4px; }
+        .legend-codex { border-top: 3px solid #7c3aed; }
+        .legend-claude { border-top: 3px solid #dc2626; }
+        .legend-codex h4 { color: #7c3aed; }
+        .legend-claude h4 { color: #dc2626; }
+        .legend-description { font-size: 14px; color: #666; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 CODEX ↔ CLAUDE</h1>
+        <p class="subtitle">Operion Capital Platform Build - Complete Division of Labor</p>
+
+        <div class="legend">
+            <div class="legend-item legend-codex">
+                <h4>CODEX</h4>
+                <p class="legend-description"><strong>Frontend</strong> • UI/UX • Pages • Components • Themes • Real-time updates</p>
+            </div>
+            <div class="legend-item legend-claude">
+                <h4>CLAUDE</h4>
+                <p class="legend-description"><strong>Backend</strong> • Database • APIs • Jobs • Logic • Deployment</p>
+            </div>
+        </div>
+
+        <div class="execution">
+            <h3>✅ EXECUTION MODEL: NON-STOP</h3>
+            <div class="execution-item">📅 <strong>Duration:</strong> 24-35 hours continuous</div>
+            <div class="execution-item">⚡ <strong>Mode:</strong> Parallel work on every phase (overlap, no waiting)</div>
+            <div class="execution-item">🔄 <strong>Sync:</strong> Coordinate on schema changes, endpoint contracts, theme colors</div>
+            <div class="execution-item">🎯 <strong>No breaks:</strong> One phase finishes → next phase starts immediately</div>
+            <div class="execution-item">🚀 <strong>Target:</strong> Full end-to-end flow working by Oct 7-8, 2026</div>
+        </div>
+
+        <!-- PHASE 1 -->
+        <div class="phase">
+            <div class="phase-title">PHASE 1: DATA RESEARCH (Validation)</div>
+            <div class="phase-duration">⏱️ 2-4 hours</div>
+            <div class="split">
+                <div class="codex">
+                    <h4>CODEX</h4>
+                    <ul>
+                        <li>Review existing manual upload component</li>
+                        <li>Test file selection UI</li>
+                        <li>Verify preview table displays correctly</li>
+                        <li>Test hash confirmation button</li>
+                    </ul>
+                </div>
+                <div class="claude">
+                    <h4>CLAUDE</h4>
+                    <ul>
+                        <li>✅ Verify Preview deployment (8-point DATA test)</li>
+                        <li>Test: Headerless XLSX mapping</li>
+                        <li>Test: Owner name preservation</li>
+                        <li>Test: Preview no-write behavior</li>
+                        <li>Test: Exact hash confirmation</li>
+                        <li>Test: Duplicate detection</li>
+                        <li>Test: Provenance preservation</li>
+                        <li>Test: Error messages</li>
+                        <li>🔧 Fix any runtime errors immediately</li>
+                        <li>Deploy fixed Preview version</li>
+                    </ul>
+                </div>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-left: 3px solid #ffc107; font-size: 13px;">
+                ⚠️ <strong>BLOCKER:</strong> Awaiting user Preview authentication + test file upload
+            </div>
+        </div>
+
+        <!-- PHASE 2 -->
+        <div class="phase">
+            <div class="phase-title">PHASE 2: LEADS PIPELINE</div>
+            <div class="phase-duration">⏱️ 4-6 hours</div>
+            <div class="split">
+                <div class="codex">
+                    <h4>CODEX</h4>
+                    <ul>
+                        <li>Build <code>/leads</code> page</li>
+                        <li>Search bar (business name, address, phone, email)</li>
+                        <li>Sort dropdown (created_at, status, score)</li>
+                        <li>Filter sidebar (status, source, industry, state)</li>
+                        <li>Pagination (25 per page)</li>
+                        <li>Lead detail view (full info + timeline)</li>
+                        <li>"Promote to Lead" button (with confirm)</li>
+                        <li>Bulk export to CSV</li>
+                    </ul>
+                </div>
+                <div class="claude">
+                    <h4>CLAUDE</h4>
+                    <ul>
+                        <li>Create <code>leads</code> table schema</li>
+                        <li>Migrate <code>acquisition_prospects</code> → <code>leads</code></li>
+                        <li>POST <code>/api/leads</code> (create lead)</li>
+                        <li>GET <code>/api/leads</code> (list with filters)</li>
+                        <li>GET <code>/api/leads/{id}</code> (detail)</li>
+                        <li>POST <code>/api/leads/{id}/qualify</code> (mark ready)</li>
+                        <li>POST <code>/api/leads/bulk-enrich</code> (call Apollo/Google APIs)</li>
+                        <li>Lead enrichment async job</li>
+                        <li>Activity tracking (viewed, contacted)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 3 -->
+        <div class="phase">
+            <div class="phase-title">PHASE 3: MERCHANT OUTREACH (AI Email Blast)</div>
+            <div class="phase-duration">⏱️ 6-8 hours</div>
+            <div class="split">
+                <div class="codex">
+                    <h4>CODEX (Light Blue Theme)</h4>
+                    <ul>
+                        <li>Build <code>/outreach/campaigns</code> page</li>
+                        <li>Create campaign form (select leads, template, schedule)</li>
+                        <li>"Send to 47 leads?" confirmation</li>
+                        <li>Campaign detail (stats: sent, opened, clicked, replied %)</li>
+                        <li>Reply inbox (same-thread messages)</li>
+                        <li>Application tracker (form fill live updates)</li>
+                        <li>Light blue theme (funding ad style)</li>
+                        <li>Real-time notifications (email sent, reply received)</li>
+                    </ul>
+                </div>
+                <div class="claude">
+                    <h4>CLAUDE</h4>
+                    <ul>
+                        <li>Create <code>email_campaigns</code> table</li>
+                        <li>Create <code>outreach_emails</code> table</li>
+                        <li>Create <code>application_submissions</code> table</li>
+                        <li>POST <code>/api/campaigns</code> (create)</li>
+                        <li>GET <code>/api/campaigns</code> (list)</li>
+                        <li>POST <code>/api/campaigns/{id}/send</code> (blast 50+/day)</li>
+                        <li>SendGrid webhook handler (opens/clicks/bounces)</li>
+                        <li>Email template system (light blue HTML)</li>
+                        <li>Async blast job (rate-limited, logged)</li>
+                        <li>Application form handler (captures name, business, funding, revenue)</li>
+                        <li>Reply tracking + same-thread storage</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 4 -->
+        <div class="phase">
+            <div class="phase-title">PHASE 4: CONTACTS / MERCHANTS (Interested Segment)</div>
+            <div class="phase-duration">⏱️ 2-3 hours</div>
+            <div class="split">
+                <div class="codex">
+                    <h4>CODEX</h4>
+                    <ul>
+                        <li>Build <code>/contacts</code> page</li>
+                        <li>List of interested prospects only</li>
+                        <li>Search + sort + filter</li>
+                        <li>Contact cards (name, business, phone, email)</li>
+                        <li>"Not Interested" button → move back to leads</li>
+                        <li>Interest timeline + notes</li>
+                    </ul>
+                </div>
+                <div class="claude">
+                    <h4>CLAUDE</h4>
+                    <ul>
+                        <li>Create <code>contacts</code> table</li>
+                        <li>GET <code>/api/contacts</code> (list)</li>
+                        <li>POST <code>/api/leads/{id}/mark-interested</code></li>
+                        <li>POST <code>/api/contacts/{id}/mark-not-interested</code></li>
+                        <li>Interest tracking (timestamp, reason)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 5 -->
+        <div class="phase">
+            <div class="phase-title">PHASE 5: LENDERS OUTREACH (Partner Integration)</div>
+            <div class="phase-duration">⏱️ 5-7 hours</div>
+            <div class="split">
+                <div class="codex">
+                    <h4>CODEX (Light Green Theme)</h4>
+                    <ul>
+                        <li>Build <code>/lenders</code> page</li>
+                        <li>Lender list + add/edit form</li>
+                        <li>Build <code>/applications</code> page</li>
+                        <li>Application list (show all available apps)</li>
+                        <li>Bulk send modal (select 30-40, confirm, send)</li>
+                        <li>Lender thread view (all apps sent, responses)</li>
+                        <li>Status tracking (pending, approved, rejected)</li>
+                        <li>Light green theme (lender focus)</li>
+                    </ul>
+                </div>
+                <div class="claude">
+                    <h4>CLAUDE</h4>
+                    <ul>
+                        <li>Create <code>lenders</code> table (manual + future AI)</li>
+                        <li>Create <code>lending_applications</code> table</li>
+                        <li>CRUD <code>/api/lenders</code></li>
+                        <li>GET <code>/api/applications</code></li>
+                        <li>POST <code>/api/applications/bulk-send</code> (30-40 at once)</li>
+                        <li>PDF/Word export function</li>
+                        <li>Track sending (delivery status, timestamps)</li>
+                        <li>Response tracking (lender replies)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 6 -->
+        <div class="phase">
+            <div class="phase-title">PHASE 6: GLOBAL FEATURES + AI CHAT</div>
+            <div class="phase-duration">⏱️ 3-4 hours</div>
+            <div class="split">
+                <div class="codex">
+                    <h4>CODEX</h4>
+                    <ul>
+                        <li>AI chat sidebar (text input, history)</li>
+                        <li>Settings page (email routing config)</li>
+                        <li>Add search + sort to ALL pages</li>
+                        <li>Real-time toast notifications</li>
+                        <li>Theme toggle (light blue/light green)</li>
+                        <li>Mobile responsiveness check</li>
+                        <li>Top navigation (data → leads → outreach → contacts → lenders)</li>
+                    </ul>
+                </div>
+                <div class="claude">
+                    <h4>CLAUDE</h4>
+                    <ul>
+                        <li>POST <code>/api/chat</code> (Claude semantic search)</li>
+                        <li>AI context (access Operion prospects, leads, contacts, lenders data)</li>
+                        <li>Settings endpoint (email routing config)</li>
+                        <li>Email routing table (merchant_email_from, lender_email_from, app_email_from)</li>
+                        <li>Real-time status endpoints (broadcast email sent, reply received, etc.)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 7 -->
+        <div class="phase">
+            <div class="phase-title">PHASE 7: TESTING + FINAL DEPLOYMENT</div>
+            <div class="phase-duration">⏱️ 2-3 hours</div>
+            <div class="split">
+                <div class="codex">
+                    <h4>CODEX</h4>
+                    <ul>
+                        <li>E2E test all workflows</li>
+                        <li>Theme validation (blue/green)</li>
+                        <li>Mobile test (all pages)</li>
+                        <li>Load test (50+ emails/day, 30+ applications)</li>
+                        <li>User acceptance (confirm with user)</li>
+                    </ul>
+                </div>
+                <div class="claude">
+                    <h4>CLAUDE</h4>
+                    <ul>
+                        <li>Full test suite (all endpoints)</li>
+                        <li>TypeCheck, Lint, Build</li>
+                        <li>Create database migrations</li>
+                        <li>Verify migrations replay-safe</li>
+                        <li>Deploy to Preview (verify end-to-end)</li>
+                        <li>🚨 DO NOT TOUCH PRODUCTION</li>
+                        <li>Final verification (DATA → LEADS → OUTREACH → CONTACTS → LENDERS)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="status">
+            ✅ READY TO START PHASE 1<br>
+            ⏳ Awaiting Preview authentication + test file upload<br>
+            🚀 Will execute non-stop: Phase 1 → 2 → 3 → 4 → 5 → 6 → 7
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 4px; margin-top: 20px;">
+            <h3 style="margin-bottom: 15px;">🎯 SUCCESS CRITERIA</h3>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>✅ DATA: All 8-point verification passing</li>
+                <li>✅ LEADS: Search, filter, sort, promote workflow working</li>
+                <li>✅ MERCHANT OUTREACH: 50+ emails/day, light blue theme, reply tracking</li>
+                <li>✅ CONTACTS: Move interested from leads, list management</li>
+                <li>✅ LENDERS: Manual lender mgmt, bulk app send (30-40), light green theme</li>
+                <li>✅ GLOBAL: Search/sort everywhere, settings, AI chat, real-time notifications</li>
+                <li>✅ DEPLOY: Preview end-to-end working, no Production changes</li>
+                <li>✅ All tests passing, all migrations safe, all secrets protected</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
