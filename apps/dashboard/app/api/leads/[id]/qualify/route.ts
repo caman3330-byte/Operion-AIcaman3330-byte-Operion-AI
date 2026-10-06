@@ -6,29 +6,32 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireFounder(request);
     const db = getSupabaseAdmin();
-    const { reason } = await request.json();
+    const { id } = await params;
+    const payload = await request.json().catch(() => ({}));
+    const reason = typeof payload?.reason === 'string' ? payload.reason : null;
 
-    // Update lead status to outreach_ready and record qualification
-    const { data, error } = await db
-      .from('leads')
+    // Qualification is an explicit founder review action. It does not send
+    // outreach or create a campaign; those remain separate approved actions.
+    const { data, error } = await (db
+      .from('leads') as any)
       .update({
-        status: 'outreach_ready',
+        status: 'qualified',
         qualified_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
     if (error) throw error;
 
     // Log activity
-    await db.from('lead_activity').insert({
-      lead_id: params.id,
+    await (db.from('lead_activity' as any) as any).insert({
+      lead_id: id,
       action: 'qualified',
       details: { reason: reason || null }
     });
