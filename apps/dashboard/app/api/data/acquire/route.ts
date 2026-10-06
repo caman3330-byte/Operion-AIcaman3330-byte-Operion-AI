@@ -29,9 +29,29 @@ export async function POST(request: NextRequest) {
       throw new ValidationError(result.source_results.flatMap((source) => source.errors).join("; ") || "Acquisition source is unavailable");
     }
 
-    // NOTE: Enrichment is processed asynchronously by the background scheduler at /api/data/enrich-scheduler
-    // New prospects are inserted with enrichment_status='pending' and will be processed by the scheduler
-    // This ensures enrichment is durable and does not depend on this HTTP request remaining alive
+    /**
+     * DURABLE ENRICHMENT ARCHITECTURE
+     *
+     * New prospects are inserted with enrichment_status='pending'. Enrichment is processed
+     * asynchronously by the background scheduler at /api/data/enrich-scheduler, NOT by
+     * fire-and-forget HTTP calls from this endpoint.
+     *
+     * Why? Fire-and-forget is not durable:
+     * - If this serverless function terminates before enrichment completes, jobs are lost
+     * - HTTP requests may timeout or fail silently
+     * - There is no retry or recovery mechanism
+     *
+     * The scheduler pattern ensures durability:
+     * - Work items are stored in the database (acquisition_prospects.enrichment_status)
+     * - Processing is done by a separate background worker
+     * - If a worker crashes, another instance will retry the work
+     * - State is preserved across function restarts and infrastructure changes
+     *
+     * Configuration:
+     * - Set up Vercel Cron (or similar) to call /api/data/enrich-scheduler
+     * - See ENRICHMENT_SCHEDULER.md for setup instructions
+     * - The scheduler runs periodically and processes all pending prospects
+     */
 
     return NextResponse.json({ data: result, outreach: false }, { status: 201 });
   } catch (error) {
