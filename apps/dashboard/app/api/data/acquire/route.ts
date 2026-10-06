@@ -29,14 +29,9 @@ export async function POST(request: NextRequest) {
       throw new ValidationError(result.source_results.flatMap((source) => source.errors).join("; ") || "Acquisition source is unavailable");
     }
 
-    // Trigger enrichment asynchronously after successful acquisition
-    // Fire and forget: do not await, return immediately
-    if (result.counts.discovered > 0) {
-      const protocol = request.url.startsWith('https') ? 'https' : 'http';
-      const host = request.headers.get('host') || 'localhost:3000';
-      const enrichmentUrl = `${protocol}://${host}/api/data/enrich-pending`;
-      fetch(enrichmentUrl, { method: 'POST' }).catch(() => null);
-    }
+    // NOTE: Enrichment is processed asynchronously by the background scheduler at /api/data/enrich-scheduler
+    // New prospects are inserted with enrichment_status='pending' and will be processed by the scheduler
+    // This ensures enrichment is durable and does not depend on this HTTP request remaining alive
 
     return NextResponse.json({ data: result, outreach: false }, { status: 201 });
   } catch (error) {
