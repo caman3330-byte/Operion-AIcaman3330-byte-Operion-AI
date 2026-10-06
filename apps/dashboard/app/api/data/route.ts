@@ -42,6 +42,32 @@ export async function GET(request: NextRequest) {
     const total = count ?? 0;
     const totalPages = Math.ceil(total / pageSize);
 
+    // Get real statistics from database
+    let stats = { verified: 0, invalid: 0 };
+    try {
+      // Count prospects with verified_at timestamp set
+      const verifiedQuery = source === "manual"
+        ? supabase.from("acquisition_prospects").select("id", { count: "exact", head: true }).eq("source_kind", "manual").not("verified_at", "is", null)
+        : supabase.from("acquisition_prospects").select("id", { count: "exact", head: true }).eq("source_kind", "ai").not("verified_at", "is", null);
+
+      const { count: verifiedCount } = await verifiedQuery as any;
+
+      // Count prospects with invalid/failed enrichment
+      const invalidQuery = source === "manual"
+        ? supabase.from("acquisition_prospects").select("id", { count: "exact", head: true }).eq("source_kind", "manual").eq("enrichment_status", "failed")
+        : supabase.from("acquisition_prospects").select("id", { count: "exact", head: true }).eq("source_kind", "ai").eq("enrichment_status", "failed");
+
+      const { count: invalidCount } = await invalidQuery as any;
+
+      stats = {
+        verified: verifiedCount ?? 0,
+        invalid: invalidCount ?? 0,
+      };
+    } catch (statsError) {
+      // Silently fail stats calculation, return defaults
+      console.warn("Error calculating statistics:", statsError);
+    }
+
     return NextResponse.json({
       data: (data ?? []) as DataRecord[],
       pagination: {
@@ -50,6 +76,7 @@ export async function GET(request: NextRequest) {
         total,
         total_pages: totalPages,
       },
+      stats,
     });
   } catch (error) {
     return handleRouteError(error);

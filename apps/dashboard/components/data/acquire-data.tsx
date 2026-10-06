@@ -182,8 +182,8 @@ export function AcquireData({ onAcquired }: { onAcquired: () => void }) {
             <ul className="list-inside list-disc space-y-0.5">
               <li>Enter your search criteria and select a data source</li>
               <li>Operion queries the source for matching businesses</li>
-              <li>Results are added to &quot;Acquired businesses&quot; below</li>
-              <li>All businesses are enriched and checked for duplicates</li>
+              <li>Results are automatically deduplicated and added below</li>
+              <li>Businesses are automatically enriched with additional details from configured sources</li>
             </ul>
           </div>
         </CardContent>

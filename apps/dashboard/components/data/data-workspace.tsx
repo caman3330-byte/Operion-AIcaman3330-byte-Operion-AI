@@ -79,7 +79,12 @@ export function DataWorkspace({ source }: { source: DataSource }) {
   }
 
   function handleSearch(event: FormEvent) { event.preventDefault(); setPage(1); }
-  const stats = result ? { total: result.pagination.total, verified: Math.floor(result.pagination.total * 0.3), invalid: Math.floor(result.pagination.total * 0.1) } : { total: 0, verified: 0, invalid: 0 };
+  // Stats now come from real database counts via API response
+  const stats = result ? {
+    total: result.pagination.total,
+    verified: result.stats?.verified ?? 0,
+    invalid: result.stats?.invalid ?? 0
+  } : { total: 0, verified: 0, invalid: 0 };
   return <div className="space-y-6">
     <header><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Merchant acquisition</p><h1 className="mt-1 text-2xl font-semibold">Data</h1><p className="mt-2 text-sm text-muted-foreground">Research and verify business information.</p></header>
     <nav aria-label="Data sources" className="flex gap-6 border-b border-border">

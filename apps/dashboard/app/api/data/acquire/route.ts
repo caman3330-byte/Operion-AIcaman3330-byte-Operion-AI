@@ -28,6 +28,17 @@ export async function POST(request: NextRequest) {
     if (result.counts.discovered === 0 && result.counts.failed > 0) {
       throw new ValidationError(result.source_results.flatMap((source) => source.errors).join("; ") || "Acquisition source is unavailable");
     }
+
+    // Trigger enrichment asynchronously after successful acquisition
+    // Do not await - return immediately while enrichment runs in background
+    if (result.counts.discovered > 0) {
+      request.context?.waitUntil?.(
+        fetch(new URL('/api/data/enrich-pending', request.url), { method: 'POST' }).catch(() => null)
+      ) ||
+      // Fallback for environments without waitUntil
+      fetch(new URL('/api/data/enrich-pending', request.url), { method: 'POST' }).catch(() => null);
+    }
+
     return NextResponse.json({ data: result, outreach: false }, { status: 201 });
   } catch (error) {
     return handleRouteError(error);
