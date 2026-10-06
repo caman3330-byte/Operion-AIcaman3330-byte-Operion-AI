@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { AcquisitionAdapterResult, RawBusinessLead } from '@/lib/acquisition/adapters/types';
+import type { AcquisitionAdapterResult } from '@/lib/acquisition/adapters/types';
+import type { RawBusinessLead } from '@/lib/acquisition/normalization';
 
 /**
  * End-to-end acquisition flow test for Google Places
@@ -244,13 +245,15 @@ describe('Google Places Business Acquisition Flow', () => {
     const googlePlacesResult: AcquisitionAdapterResult = {
       sourceKey: 'google_places',
       records: [],
-      errors: ['GOOGLE_PLACES_API_KEY is not configured']
+      errors: ['GOOGLE_PLACES_API_KEY is not configured'],
+      metadata: { status: 'disabled' }
     };
 
     const apolloResult: AcquisitionAdapterResult = {
       sourceKey: 'apollo',
       records: [],
-      errors: ['APOLLO_API_KEY is not configured']
+      errors: ['APOLLO_API_KEY is not configured'],
+      metadata: { status: 'disabled' }
     };
 
     const results = [googlePlacesResult, apolloResult];
