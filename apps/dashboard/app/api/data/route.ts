@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, Number(request.nextUrl.searchParams.get("page") ?? 1));
     const pageSize = Number(request.nextUrl.searchParams.get("page_size") ?? 25);
     const searchQ = request.nextUrl.searchParams.get("q") ?? "";
+    const sortBy = request.nextUrl.searchParams.get("sort") ?? "newest";
+    const sortDir = request.nextUrl.searchParams.get("sort_dir") ?? "desc";
 
     const offset = (page - 1) * pageSize;
     const supabase = await getSupabaseAdmin();
@@ -35,8 +37,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Apply sorting
+    const isAsc = sortDir === "asc";
+    switch (sortBy) {
+      case "oldest":
+        query = query.order("created_at", { ascending: true });
+        break;
+      case "name":
+        query = query.order("business_name", { ascending: isAsc });
+        break;
+      case "status":
+        query = query.order("enrichment_status", { ascending: isAsc });
+        break;
+      case "newest":
+      default:
+        query = query.order("created_at", { ascending: false });
+        break;
+    }
+
     const { data, count, error } = await (query
-      .order("created_at", { ascending: false })
       .range(offset, offset + pageSize - 1) as any);
 
     if (error) throw new Error(error.message);
