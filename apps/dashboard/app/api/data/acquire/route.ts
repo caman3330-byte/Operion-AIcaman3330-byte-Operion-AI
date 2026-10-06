@@ -30,13 +30,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Trigger enrichment asynchronously after successful acquisition
-    // Do not await - return immediately while enrichment runs in background
+    // Fire and forget: do not await, return immediately
     if (result.counts.discovered > 0) {
-      request.context?.waitUntil?.(
-        fetch(new URL('/api/data/enrich-pending', request.url), { method: 'POST' }).catch(() => null)
-      ) ||
-      // Fallback for environments without waitUntil
-      fetch(new URL('/api/data/enrich-pending', request.url), { method: 'POST' }).catch(() => null);
+      const protocol = request.url.startsWith('https') ? 'https' : 'http';
+      const host = request.headers.get('host') || 'localhost:3000';
+      const enrichmentUrl = `${protocol}://${host}/api/data/enrich-pending`;
+      fetch(enrichmentUrl, { method: 'POST' }).catch(() => null);
     }
 
     return NextResponse.json({ data: result, outreach: false }, { status: 201 });

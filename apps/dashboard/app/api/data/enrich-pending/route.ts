@@ -10,53 +10,17 @@ export const maxDuration = 300;
 const BATCH_SIZE = 5;
 const RATE_LIMIT_MS = 1000;
 
-/**
- * Worker endpoint to automatically enrich pending acquisition prospects.
- * Called by scheduler or manually to process prospects waiting for enrichment.
- *
- * GET: Get status of pending enrichment queue
- * POST: Process next batch of pending prospects
- */
-
-export async function GET(request: NextRequest) {
-  try {
-    const db = getSupabaseAdmin();
-
-    // Count prospects by enrichment status
-    const statuses = await Promise.all([
-      db.from('acquisition_prospects').select('id', { count: 'exact', head: true }).eq('enrichment_status', 'pending'),
-      db.from('acquisition_prospects').select('id', { count: 'exact', head: true }).eq('enrichment_status', 'enriching'),
-      db.from('acquisition_prospects').select('id', { count: 'exact', head: true }).eq('enrichment_status', 'enriched'),
-      db.from('acquisition_prospects').select('id', { count: 'exact', head: true }).eq('enrichment_status', 'no_match'),
-      db.from('acquisition_prospects').select('id', { count: 'exact', head: true }).eq('enrichment_status', 'failed'),
-    ]);
-
-    return NextResponse.json({
-      queue_status: {
-        pending: statuses[0].count ?? 0,
-        enriching: statuses[1].count ?? 0,
-        enriched: statuses[2].count ?? 0,
-        no_match: statuses[3].count ?? 0,
-        failed: statuses[4].count ?? 0,
-      },
-      message: 'Enrichment queue status',
-    });
-  } catch (error) {
-    return handleRouteError(error);
-  }
-}
-
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   let processed = 0;
   let failed = 0;
 
   try {
-    const db = getSupabaseAdmin();
+    const db = await getSupabaseAdmin();
 
-    // Get pending prospects (not already enriching)
+    // Get pending prospects
     const { data: pendingProspects, error: fetchError } = await (db
-      .from('acquisition_prospects')
+      .from('acquisition_prospects' as any)
       .select('id, business_name, address, city, state, zip, enrichment_status, updated_at')
       .eq('enrichment_status', 'pending')
       .order('created_at')
@@ -79,7 +43,6 @@ export async function POST(request: NextRequest) {
     // Process each prospect
     for (const prospect of pendingProspects) {
       try {
-        // Rate limiting between enrichment calls
         await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_MS));
 
         logger.info('enriching_prospect', {
@@ -87,28 +50,14 @@ export async function POST(request: NextRequest) {
           business_name: prospect.business_name,
         });
 
-        // Call existing enrichment function
         await enrichDataProspect(prospect.id);
         processed++;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
-
         logger.warn('enrich_prospect_failed', {
           prospect_id: prospect.id,
           error: errorMsg,
         });
-
-        // Mark as failed if error is permanent (auth, not found, etc)
-        if (errorMsg.includes('401') || errorMsg.includes('403') || errorMsg.includes('not configured')) {
-          await db
-            .from('acquisition_prospects')
-            .update({
-              enrichment_status: 'failed',
-              enrichment_error: errorMsg,
-            })
-            .eq('id', prospect.id);
-        }
-
         failed++;
       }
     }
@@ -128,6 +77,33 @@ export async function POST(request: NextRequest) {
       total: pendingProspects.length,
       duration_ms: duration,
       message: `Enriched ${processed} prospects, ${failed} failed`,
+    });
+  } catch (error) {
+    return handleRouteError(error);
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const db = await getSupabaseAdmin();
+
+    // Simple status check
+    const { count: pending } = await (db as any)
+      .from('acquisition_prospects')
+      .select('id', { count: 'exact', head: true })
+      .eq('enrichment_status', 'pending');
+
+    const { count: enriched } = await (db as any)
+      .from('acquisition_prospects')
+      .select('id', { count: 'exact', head: true })
+      .eq('enrichment_status', 'enriched');
+
+    return NextResponse.json({
+      queue_status: {
+        pending: pending ?? 0,
+        enriched: enriched ?? 0,
+      },
+      message: 'Enrichment queue status',
     });
   } catch (error) {
     return handleRouteError(error);
