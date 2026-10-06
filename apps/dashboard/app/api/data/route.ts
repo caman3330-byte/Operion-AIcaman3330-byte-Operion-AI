@@ -18,7 +18,10 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * pageSize;
     const supabase = await getSupabaseAdmin();
 
-    let query = (supabase.from("data_prospect_records" as any).select("*", { count: "exact" }));
+    // NOTE: data_prospect_records is a view created by migration 0041+
+    // but is not in generated Supabase types; cast result as any
+    const table = (supabase as any).from("data_prospect_records");
+    let query = table.select("*", { count: "exact" });
 
     if (source === "manual") {
       query = query.eq("source", "manual");
@@ -41,6 +44,25 @@ export async function GET(request: NextRequest) {
     const total = count ?? 0;
     const totalPages = Math.ceil(total / pageSize);
 
+    // Calculate real statistics from acquisition_prospects
+    const statsTable = (supabase as any).from("acquisition_prospects");
+    let statsQuery = statsTable.select("enrichment_status, verified_at", { count: "exact" });
+
+    if (source === "manual") {
+      statsQuery = statsQuery.eq("source", "manual");
+    } else {
+      statsQuery = statsQuery.eq("source", "ai").not("provider", "eq", "deleted_test_discovery");
+    }
+
+    const { data: statsData, error: statsError } = await statsQuery;
+
+    let verified = 0;
+    let invalid = 0;
+    if (!statsError && statsData) {
+      verified = statsData.filter((row: any) => row.verified_at !== null).length;
+      invalid = statsData.filter((row: any) => row.enrichment_status === "failed").length;
+    }
+
     return NextResponse.json({
       data: (data ?? []) as DataRecord[],
       pagination: {
@@ -49,7 +71,7 @@ export async function GET(request: NextRequest) {
         total,
         total_pages: totalPages,
       },
-      stats: { verified: 0, invalid: 0 },
+      stats: { verified, invalid },
     });
   } catch (error) {
     return handleRouteError(error);

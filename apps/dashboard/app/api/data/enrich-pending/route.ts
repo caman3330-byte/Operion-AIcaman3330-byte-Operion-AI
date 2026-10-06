@@ -19,12 +19,15 @@ export async function POST(request: NextRequest) {
     const db = await getSupabaseAdmin();
 
     // Get pending prospects
-    const { data: pendingProspects, error: fetchError } = await (db
-      .from('acquisition_prospects' as any)
+    // NOTE: acquisition_prospects table exists in schema (migration 0041+)
+    // but is not in generated Supabase types; cast result as any
+    const query = (db as any).from('acquisition_prospects')
       .select('id, business_name, address, city, state, zip, enrichment_status, updated_at')
       .eq('enrichment_status', 'pending')
       .order('created_at')
-      .limit(BATCH_SIZE)) as any;
+      .limit(BATCH_SIZE);
+
+    const { data: pendingProspects, error: fetchError } = await query as any;
 
     if (fetchError) {
       logger.error('enrich_pending_fetch_error', { error: fetchError.message });

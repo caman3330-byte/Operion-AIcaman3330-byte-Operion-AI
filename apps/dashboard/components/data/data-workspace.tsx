@@ -14,7 +14,7 @@ import { AcquireData } from "./acquire-data";
 
 const statuses = ["imported", "enriching", "enriched", "missing_contact", "verified", "duplicate", "ready_for_outreach"];
 const emptyFilters = { q: "", status: "", industry: "", state: "", provider: "", has_email: "", has_phone: "", verified: "", from: "", to: "" };
-type ListResult = { data: DataRecord[]; pagination: { page: number; page_size: number; total: number; total_pages: number } };
+type ListResult = { data: DataRecord[]; pagination: { page: number; page_size: number; total: number; total_pages: number }; stats?: { verified: number; invalid: number } };
 export function readable(value?: string | null) { if (!value) return ""; return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
 export function displayDate(value: string) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? "Unavailable" : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }); }
 export async function readResponse(response: Response) {
