@@ -56,11 +56,14 @@ export async function GET(request: NextRequest) {
 
     const { data: statsData, error: statsError } = await statsQuery;
 
-    let verified = 0;
-    let invalid = 0;
+    // Statistics reflect enrichment progress, not business judgments
+    // enriched: prospects with enrichment_status='enriched' (success)
+    // pending: prospects with enrichment_status='pending' (awaiting enrichment)
+    let enriched = 0;
+    let pending = 0;
     if (!statsError && statsData) {
-      verified = statsData.filter((row: any) => row.verified_at !== null).length;
-      invalid = statsData.filter((row: any) => row.enrichment_status === "failed").length;
+      enriched = statsData.filter((row: any) => row.enrichment_status === "enriched").length;
+      pending = statsData.filter((row: any) => row.enrichment_status === "pending").length;
     }
 
     return NextResponse.json({
@@ -71,7 +74,7 @@ export async function GET(request: NextRequest) {
         total,
         total_pages: totalPages,
       },
-      stats: { verified, invalid },
+      stats: { enriched, pending },
     });
   } catch (error) {
     return handleRouteError(error);

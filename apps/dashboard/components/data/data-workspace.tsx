@@ -14,7 +14,7 @@ import { AcquireData } from "./acquire-data";
 
 const statuses = ["imported", "enriching", "enriched", "missing_contact", "verified", "duplicate", "ready_for_outreach"];
 const emptyFilters = { q: "", status: "", industry: "", state: "", provider: "", has_email: "", has_phone: "", verified: "", from: "", to: "" };
-type ListResult = { data: DataRecord[]; pagination: { page: number; page_size: number; total: number; total_pages: number }; stats?: { verified: number; invalid: number } };
+type ListResult = { data: DataRecord[]; pagination: { page: number; page_size: number; total: number; total_pages: number }; stats?: { enriched: number; pending: number } };
 export function readable(value?: string | null) { if (!value) return ""; return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
 export function displayDate(value: string) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? "Unavailable" : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }); }
 export async function readResponse(response: Response) {
@@ -82,9 +82,9 @@ export function DataWorkspace({ source }: { source: DataSource }) {
   // Stats now come from real database counts via API response
   const stats = result ? {
     total: result.pagination.total,
-    verified: result.stats?.verified ?? 0,
-    invalid: result.stats?.invalid ?? 0
-  } : { total: 0, verified: 0, invalid: 0 };
+    enriched: result.stats?.enriched ?? 0,
+    pending: result.stats?.pending ?? 0
+  } : { total: 0, enriched: 0, pending: 0 };
   return <div className="space-y-6">
     <header><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Merchant acquisition</p><h1 className="mt-1 text-2xl font-semibold">Data</h1><p className="mt-2 text-sm text-muted-foreground">Research and verify business information.</p></header>
     <nav aria-label="Data sources" className="flex gap-6 border-b border-border">
@@ -92,7 +92,7 @@ export function DataWorkspace({ source }: { source: DataSource }) {
       <Link href="/data/manual-upload" aria-current={source === "manual" ? "page" : undefined} className={`border-b-2 pb-3 text-sm font-semibold ${source === "manual" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>Manual Upload</Link>
     </nav>
     {source === "manual" ? <ManualDataUpload revision={revision} onImported={() => { setPage(1); refresh(); }} /> : <AcquireData onAcquired={() => { setPage(1); refresh(); }} />}
-    <section className="grid gap-4 md:grid-cols-4"><div className="rounded-lg border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Total Acquired</p><p className="mt-2 text-2xl font-semibold">{stats.total.toLocaleString()}</p></div><div className="rounded-lg border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Verified</p><p className="mt-2 text-2xl font-semibold text-green-600">{stats.verified.toLocaleString()}</p></div><div className="rounded-lg border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Invalid</p><p className="mt-2 text-2xl font-semibold text-red-600">{stats.invalid.toLocaleString()}</p></div><div className="rounded-lg border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Total Merchants</p><p className="mt-2 text-2xl font-semibold">{(stats.total - stats.invalid).toLocaleString()}</p></div></section>
+    <section className="grid gap-4 md:grid-cols-4"><div className="rounded-lg border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Total Acquired</p><p className="mt-2 text-2xl font-semibold">{stats.total.toLocaleString()}</p></div><div className="rounded-lg border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Enriched</p><p className="mt-2 text-2xl font-semibold text-green-600">{stats.enriched.toLocaleString()}</p></div><div className="rounded-lg border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Pending Enrichment</p><p className="mt-2 text-2xl font-semibold text-amber-600">{stats.pending.toLocaleString()}</p></div><div className="rounded-lg border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Ready for Outreach</p><p className="mt-2 text-2xl font-semibold">{(stats.enriched).toLocaleString()}</p></div></section>
     <section aria-label="Business records" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">{source === "ai" ? "Acquired businesses" : "Uploaded businesses"}</h2><Button variant="outline" size="sm" onClick={refresh} disabled={loading}><RefreshCw className="h-3.5 w-3.5" />Refresh</Button></div>
       <form onSubmit={handleSearch} className="flex gap-2"><div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input aria-label="Search businesses" placeholder="Search business, address, phone, or email" value={searchQ} onChange={(event) => setSearchQ(event.target.value)} className="pl-9" maxLength={200} /></div><Button type="submit" variant="secondary">Search</Button>{searchQ && <Button type="button" variant="ghost" onClick={() => { setSearchQ(""); setPage(1); }}>Clear</Button>}</form>
