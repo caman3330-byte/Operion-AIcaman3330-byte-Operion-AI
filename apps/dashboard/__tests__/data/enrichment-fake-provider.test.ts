@@ -86,9 +86,9 @@ describe('Enrichment with Fake Provider', () => {
       // Assertions
       expect(enriched.enrichment_status).toBe('enriched');
       expect(enriched.verified_at).toBeDefined();
-      expect(enriched.phone).toBe('555-0123'); // Preserved from input
+      expect(enriched.normalized_phone).toBe('555-0123'); // Preserved from input
       expect(enriched.website_url).toBe('https://acmeroofing.com'); // From provider
-      expect(enriched.email).toBeNull(); // NOT FABRICATED
+      expect(enriched.normalized_email).toBeNull(); // NOT FABRICATED
     });
 
     it('should not duplicate enrichment if already enriched', () => {

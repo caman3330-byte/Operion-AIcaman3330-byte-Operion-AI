@@ -1,109 +1,83 @@
-# Data Enrichment Scheduler
+# Data Enrichment Architecture
 
 ## Overview
 
-The DATA enrichment system uses a durable, background-worker pattern to ensure enrichment completes regardless of serverless function termination.
+The DATA enrichment system integrates with OPERION's existing worker and orchestration infrastructure to ensure enrichment completes durably regardless of serverless function termination.
 
 ### Architecture
 
-1. **Acquisition Phase**: When new prospects are discovered via AI acquisition or manual upload, they are inserted with `enrichment_status = 'pending'`
-2. **Background Scheduler**: A separate scheduled worker processes pending prospects in batches
-3. **Enrichment Execution**: Each prospect is enriched via provider APIs (Google Places, Apollo, etc.)
-4. **State Preservation**: Enrichment results are durably stored in the database
+1. **Acquisition Phase**: When new prospects are discovered via AI acquisition or manual upload, they are inserted with `enrichment_status = 'pending'` in the `acquisition_prospects` table
+2. **Task Queue**: Enrichment work is managed through OPERION's existing `agent_task_queue` system (not a separate scheduler)
+3. **Worker Orchestration**: The existing worker runtime (`worker-runtime.ts`) claims and executes enrichment tasks
+4. **Enrichment Execution**: Each prospect is enriched via provider APIs (Google Places, Apollo, etc.)
+5. **State Preservation**: Enrichment results are durably stored in the database with atomic updates
 
-### Why Durable Scheduling?
+### Why Integrate with Existing Worker System?
 
 Fire-and-forget HTTP triggers (like fetching from one serverless function to another) are **not durable**:
 - If the originating function terminates before the trigger completes, enrichment jobs are lost
 - HTTP requests may timeout or fail silently
 - State is not preserved across function restarts
 
-The scheduler pattern solves this by:
-- Storing work items in the database (`acquisition_prospects.enrichment_status = 'pending'`)
-- Processing work items in a separate scheduled job
-- Retrying failed items automatically
+Integration with OPERION's existing worker/orchestration system solves this by:
+- Storing work items durably in the database (`acquisition_prospects.enrichment_status = 'pending'`)
+- Using OPERION's proven task queue (`agent_task_queue`) for reliable work distribution
+- Atomic claiming via optimistic locking (UPDATE with WHERE conditions)
+- Built-in retry logic and heartbeat tracking
 - Surviving function restarts and infrastructure changes
+- Reusing existing concurrency-safe mechanisms
 
-## Setup
+### Relationship to Existing Worker Runtime
 
-### Vercel Cron Jobs
+DATA enrichment should be configured as a workflow task type that integrates with:
+- `/api/orchestration/workers/tick` (existing worker endpoint)
+- `agent_task_queue` table (existing task queue)
+- `orchestrationRepository.claimTask()` (existing atomic claim mechanism)
+- Worker heartbeat and lease tracking
 
-Configure a cron job in `vercel.json`:
+This avoids duplicating scheduler logic already present in `worker-runtime.ts`.
 
-```json
-{
-  "crons": [
-    {
-      "path": "/api/data/enrich-scheduler",
-      "schedule": "0 * * * *"
-    }
-  ]
-}
+## Integration Steps
+
+### 1. Create DATA Enrichment Workflow Type
+
+Add to `workflow_routes` table:
+
+```sql
+INSERT INTO workflow_routes (workflow_key, department_key, role, name, description, active)
+VALUES (
+  'data_enrichment',
+  'research',
+  'enrichment_worker',
+  'DATA Enrichment',
+  'Process pending DATA prospect enrichment via external providers',
+  true
+);
 ```
 
-This runs the enrichment scheduler every hour.
+### 2. Configure Task Creation on Prospect Import
 
-### Environment Variables
+When prospects are created with `enrichment_status='pending'`:
+- Create corresponding `agent_task_queue` entry with `workflow_key='data_enrichment'`
+- Use existing `orchestrationRepository.createTask()`
+- Pass prospect ID in task context
 
-Set in your `.env.production`:
+### 3. Implement Enrichment Execution in Worker Runtime
 
-```bash
-# Optional: Secure the scheduler endpoint
-CRON_SECRET=your-secret-value
-```
+Add to execution modules or worker tick handler:
+- Match workflow_key='data_enrichment'
+- Extract prospect ID from task context
+- Call existing `enrichDataProspect(prospect_id)`
+- Update task status on completion (completed/failed)
 
-Then update your cron configuration to pass the secret:
+### 4. Existing Endpoints for Manual Trigger
 
-```json
-{
-  "crons": [
-    {
-      "path": "/api/data/enrich-scheduler?secret=your-secret-value",
-      "schedule": "0 * * * *"
-    }
-  ]
-}
-```
+For testing/manual enrichment (not primary workflow):
 
-### Local Testing
-
-Test the scheduler locally without secrets:
-
-```bash
-curl http://localhost:3000/api/data/enrich-scheduler
-```
-
-Or with a secret:
-
-```bash
-curl http://localhost:3000/api/data/enrich-scheduler?secret=test-secret
-```
-
-## Endpoints
-
-### POST /api/data/enrich-pending
-
-**Direct enrichment trigger** (for testing or manual triggering)
-
-Response:
-```json
-{
-  "processed": 5,
-  "failed": 1,
-  "total": 6,
-  "duration_ms": 3450,
-  "message": "Enriched 5 prospects, 1 failed"
-}
-```
-
-### GET /api/data/enrich-scheduler
-
-**Scheduled worker** (called by cron)
-
-Query Parameters:
-- `secret`: Optional cron secret for authorization
-
-Response: Same as `/api/data/enrich-pending`
+**POST /api/data/enrich-pending** (existing endpoint)
+- Direct enrichment trigger
+- Processes single or batch of pending prospects
+- Use for testing or operator intervention only
 
 ## Configuration
 
