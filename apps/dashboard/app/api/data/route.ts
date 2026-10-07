@@ -20,15 +20,15 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * pageSize;
     const supabase = await getSupabaseAdmin();
 
-    // NOTE: data_prospect_records is a view created by migration 0041+
-    // but is not in generated Supabase types; cast result as any
-    const table = (supabase as any).from("data_prospect_records");
+    // Query directly from acquisition_prospects table
+    // (data_prospect_records view requires migration 0041+ to be applied)
+    const table = (supabase as any).from("acquisition_prospects");
     let query = table.select("*", { count: "exact" });
 
     if (source === "manual") {
-      query = query.eq("source", "manual");
+      query = query.eq("source_kind", "manual");
     } else {
-      query = query.eq("source", "ai").not("provider", "eq", "deleted_test_discovery");
+      query = query.eq("source_kind", "ai").not("provider", "eq", "deleted_test_discovery");
     }
 
     if (searchQ) {
@@ -68,9 +68,9 @@ export async function GET(request: NextRequest) {
     let statsQuery = statsTable.select("enrichment_status, verified_at", { count: "exact" });
 
     if (source === "manual") {
-      statsQuery = statsQuery.eq("source", "manual");
+      statsQuery = statsQuery.eq("source_kind", "manual");
     } else {
-      statsQuery = statsQuery.eq("source", "ai").not("provider", "eq", "deleted_test_discovery");
+      statsQuery = statsQuery.eq("source_kind", "ai").not("provider", "eq", "deleted_test_discovery");
     }
 
     const { data: statsData, error: statsError } = await statsQuery;
