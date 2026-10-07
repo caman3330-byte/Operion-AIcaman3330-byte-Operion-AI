@@ -9,6 +9,8 @@ export interface LeadFilters {
   status?: LeadStatus | undefined;
   tier?: LeadTier | undefined;
   search?: string | undefined;
+  sortBy?: "created_at" | "business_name" | "status" | undefined;
+  sortOrder?: "asc" | "desc" | undefined;
 }
 
 export const leadsRepository = {
@@ -19,7 +21,10 @@ export const leadsRepository = {
     const to = from + pageSize - 1;
     const supabase = getSupabaseAdmin();
 
-    let query = supabase.from("leads").select("*", { count: "exact" }).order("created_at", { ascending: false });
+    const sortBy = filters.sortBy ?? "created_at";
+    const sortOrder = filters.sortOrder ?? "desc";
+
+    let query = supabase.from("leads").select("*", { count: "exact" }).order(sortBy, { ascending: sortOrder === "asc" });
 
     if (filters.status) {
       query = query.eq("status", filters.status);
@@ -30,7 +35,7 @@ export const leadsRepository = {
     }
 
     if (filters.search) {
-      query = query.or(`business_name.ilike.%${filters.search}%,contact_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      query = query.or(`business_name.ilike.%${filters.search}%,contact_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,city.ilike.%${filters.search}%,state.ilike.%${filters.search}%`);
     }
 
     const { data, count, error } = await query.range(from, to);
@@ -97,5 +102,38 @@ export const leadsRepository = {
     }
 
     return data;
+  },
+
+  async getEmailOutreachReadyLeads(filters: LeadFilters = {}): Promise<PaginatedResult<Lead>> {
+    const page = filters.page ?? 1;
+    const pageSize = Math.min(filters.pageSize ?? 25, 100);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const supabase = getSupabaseAdmin();
+
+    let query = supabase
+      .from("leads")
+      .select("*", { count: "exact" })
+      .not("email", "is", null)
+      .eq("status", "raw")
+      .is("blacklisted", null)
+      .is("email_verified", null) // not yet verified but available
+      .order("created_at", { ascending: false });
+
+    if (filters.search) {
+      query = query.or(`business_name.ilike.%${filters.search}%,contact_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%,city.ilike.%${filters.search}%,state.ilike.%${filters.search}%`);
+    }
+
+    const { data, count, error } = await query.range(from, to);
+    if (error) {
+      throw error;
+    }
+
+    return {
+      data: data ?? [],
+      page,
+      pageSize,
+      total: count ?? 0
+    };
   }
 };

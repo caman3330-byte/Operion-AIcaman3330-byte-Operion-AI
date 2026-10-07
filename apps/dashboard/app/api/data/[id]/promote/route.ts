@@ -30,6 +30,47 @@ export async function POST(
     }
 
     const supabase = await getSupabaseAdmin();
+
+    // Attempt atomic RPC path first (0048_atomic_promotion)
+    try {
+      const { data: result, error: rpcError } = await (supabase.rpc("promote_prospect_to_lead", {
+        p_prospect_id: prospect.id,
+        p_business_name: prospect.business_name,
+        p_contact_name: prospect.owner_name,
+        p_email: prospect.normalized_email,
+        p_phone: prospect.normalized_phone,
+        p_industry: prospect.industry,
+        p_state: prospect.state
+      }) as any);
+
+      if (!rpcError && result?.[0]) {
+        const rpcResult = result[0];
+        if (rpcResult.success && rpcResult.lead_id) {
+          return NextResponse.json({
+            promoted: true,
+            lead_id: rpcResult.lead_id,
+            replayed: rpcResult.replayed,
+            via_rpc: true,
+            actor: actor.email
+          });
+        }
+        if (rpcResult.error_message) {
+          throw new Error(rpcResult.error_message);
+        }
+      }
+
+      // If RPC doesn't exist yet, fall through to application-level implementation
+      if (rpcError && rpcError.code === "42883") {
+        // Function not found - RPC hasn't been applied to database yet
+        // Use application-level atomic fallback
+      } else if (rpcError) {
+        throw rpcError;
+      }
+    } catch (rpcAttemptError) {
+      // RPC not available - proceed with application-level implementation
+    }
+
+    // Fallback: Application-level atomic promotion with cleanup
     const { data: lead, error: leadError } = await (supabase.from("leads" as any).insert({
       business_name: prospect.business_name,
       contact_name: prospect.owner_name,
@@ -59,7 +100,7 @@ export async function POST(
       throw new ValidationError("The prospect changed during promotion. Refresh and try again.");
     }
 
-    return NextResponse.json({ promoted: true, lead_id: lead.id, replayed: false, actor: actor.email });
+    return NextResponse.json({ promoted: true, lead_id: lead.id, replayed: false, via_rpc: false, actor: actor.email });
   } catch (error) {
     return handleRouteError(error);
   }

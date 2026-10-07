@@ -11,6 +11,9 @@ export async function GET(request: NextRequest) {
   try {
     await requireFounder(request);
     const searchParams = request.nextUrl.searchParams;
+    const sort = searchParams.get("sort") ?? "created_at-desc";
+    const [sortField, sortDir] = sort.split("-");
+
     const result = await leadsRepository.list({
       page: Number(searchParams.get("page") ?? 1),
       pageSize: Number(searchParams.get("pageSize") ?? 25),
