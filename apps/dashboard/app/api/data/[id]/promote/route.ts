@@ -37,20 +37,12 @@ export async function POST(
       phone: prospect.normalized_phone,
       industry: prospect.industry,
       state: prospect.state,
-      status: "raw",
-      acquisition_prospect_id: prospect.id
+      status: "raw"
     }).select("id").single() as any);
 
     if (leadError) {
       if (["42P01", "42703", "PGRST204", "PGRST205"].includes(leadError.code ?? "")) {
         throw new ConfigurationError("Lead promotion is not enabled in this staging schema yet.", { required_table: "public.leads" });
-      }
-      // A unique acquisition_prospect_id conflict means a prior request won.
-      if (leadError.code === "23505") {
-        const { data: existing, error: existingError } = await (supabase.from("leads" as any)
-          .select("id").eq("acquisition_prospect_id", prospect.id).maybeSingle() as any);
-        if (existingError) throw existingError;
-        if (existing?.id) return NextResponse.json({ promoted: true, lead_id: existing.id, replayed: true });
       }
       throw leadError;
     }
@@ -61,7 +53,7 @@ export async function POST(
     if (updateError) throw updateError;
     if (!updated) {
       // Another request linked the prospect between the insert and update.
-      await supabase.from("leads" as any).delete().eq("id", lead.id).eq("acquisition_prospect_id", prospect.id);
+      await supabase.from("leads" as any).delete().eq("id", lead.id);
       const { data: existing } = await (supabase.from("acquisition_prospects" as any).select("lead_id").eq("id", prospect.id).single() as any);
       if (existing?.lead_id) return NextResponse.json({ promoted: true, lead_id: existing.lead_id, replayed: true });
       throw new ValidationError("The prospect changed during promotion. Refresh and try again.");
