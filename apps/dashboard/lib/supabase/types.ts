@@ -686,6 +686,23 @@ export interface Database {
         };
         Returns: PromptVersion;
       };
+      promote_prospect_to_lead: {
+        Args: {
+          p_prospect_id: string;
+          p_business_name: string;
+          p_contact_name?: string | null;
+          p_email?: string | null;
+          p_phone?: string | null;
+          p_industry?: string | null;
+          p_state?: string | null;
+        };
+        Returns: Array<{
+          lead_id: string | null;
+          replayed: boolean;
+          success: boolean;
+          error_message: string | null;
+        }>;
+      };
     };
     Enums: {
       lead_tier: LeadTier;
