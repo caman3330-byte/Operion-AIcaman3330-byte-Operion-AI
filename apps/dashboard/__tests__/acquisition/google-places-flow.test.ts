@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { AcquisitionAdapterResult } from '@/lib/acquisition/adapters/types';
-import type { RawBusinessLead } from '@/lib/acquisition/normalization';
+import { buildProspectIdentity, type RawBusinessLead } from '../../lib/acquisition/normalization';
 
 /**
  * End-to-end acquisition flow test for Google Places
@@ -71,7 +71,7 @@ describe('Google Places Business Acquisition Flow', () => {
       },
       {
         business_name: 'Acme Plumbing LLC', // Duplicate
-        address: '123 Main Street', // Slightly different format
+        address: '123 Main St.', // Slightly different punctuation
         city: 'Dallas',
         state: 'TX',
         phone: '555-0001',
@@ -94,7 +94,14 @@ describe('Google Places Business Acquisition Flow', () => {
     // After deduplication, should have 2 unique businesses
     const uniqueBusinesses = new Map<string, RawBusinessLead>();
     for (const record of rawRecords) {
-      const key = `${record.business_name}-${record.address}-${record.city}-${record.state}`;
+      const key = buildProspectIdentity({
+        business_name: record.business_name,
+        address: record.address ?? null,
+        city: record.city ?? null,
+        state: record.state ?? null,
+        zip: record.zip ?? null
+      }).identity_key;
+      if (!key) continue;
       if (!uniqueBusinesses.has(key)) {
         uniqueBusinesses.set(key, record);
       }

@@ -56,6 +56,22 @@ assert.equal(registryPreview.rows[0].address, '186 S DELAWARE AVENUE');
 assert.equal(registryPreview.rows[0].zip, '11757-5127');
 assert.equal(registryPreview.rows[0].status, 'valid');
 
+// Some exports start with business name and physical address, then repeat the
+// mailing address. Ensure this headerless shape does not get mistaken for the
+// first-name/last-name registry layout.
+const businessFirstRows = [
+  ['CARDINAL SELLING SERVICES LLC', '308 E 11th St', 'Huntingburg', 'IN', '47542', '308 E 11th St', 'Huntingburg', 'IN', '47542', '', '']
+];
+const businessFirstBook = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(businessFirstBook, XLSX.utils.aoa_to_sheet(businessFirstRows), 'Sheet1');
+const businessFirstBytes = XLSX.write(businessFirstBook, { bookType: 'xlsx', type: 'array' });
+const businessFirstPreview = previewManualImport('business-first.xlsx', businessFirstBytes);
+assert.equal(businessFirstPreview.rows[0].business_name, 'CARDINAL SELLING SERVICES LLC');
+assert.equal(businessFirstPreview.rows[0].address, '308 E 11th St');
+assert.equal(businessFirstPreview.rows[0].city, 'Huntingburg');
+assert.equal(businessFirstPreview.rows[0].state, 'IN');
+assert.equal(businessFirstPreview.rows[0].zip, '47542');
+
 assert.throws(() => previewManualImport('prospects.pdf', new Uint8Array([1])), ManualImportError);
 assert.throws(() => previewManualImport('empty.csv', new Uint8Array()), ManualImportError);
 

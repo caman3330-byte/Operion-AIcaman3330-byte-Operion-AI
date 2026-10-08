@@ -186,6 +186,24 @@ function matrixToRecords(matrix: unknown[][]): SpreadsheetRow[] {
 }
 
 function positionalRow(row: unknown[]): SpreadsheetRow {
+  // Some registry exports begin directly with business name and physical
+  // address, then repeat the mailing address. Detect that shape before the
+  // first-name/last-name registry mapping below.
+  if (isStateCode(row[3]) && isZipValue(row[4]) && isStateCode(row[7]) && isZipValue(row[8])) {
+    return {
+      business_name: row[0] ?? "",
+      address: row[1] ?? "",
+      city: row[2] ?? "",
+      state: row[3] ?? "",
+      zip: row[4] ?? "",
+      mailing_address: row[5] ?? "",
+      mailing_city: row[6] ?? "",
+      mailing_state: row[7] ?? "",
+      mailing_zip: row[8] ?? "",
+      owner_name: row[9] ?? ""
+    };
+  }
+
   // The supplied business list is a common registry export with no header row:
   // first name, last name, business name, street, city, state, ZIP, followed by
   // a repeated mailing address. Keep the mailing fields in raw_payload while
@@ -208,6 +226,9 @@ function positionalRow(row: unknown[]): SpreadsheetRow {
   const fields = ["business_name", "address", "city", "state", "zip", "address_2", "city_2", "state_2", "zip_2", "owner_name"];
   return Object.fromEntries(fields.map((field, index) => [field, row[index] ?? ""]));
 }
+
+function isStateCode(value: unknown) { return /^[A-Za-z]{2}$/.test(stringValue(value).trim()); }
+function isZipValue(value: unknown) { return /^\d{5}(?:-\d{4})?$/.test(stringValue(value).trim()); }
 
 function mapColumns(columns: string[]) {
   const normalized = new Map(columns.map((column) => [normalizeHeading(column), column]));
