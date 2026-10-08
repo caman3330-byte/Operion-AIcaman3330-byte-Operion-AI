@@ -1,8 +1,8 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState, useEffect } from "react";
 import type { Lead, LeadStatus, LeadTier } from "@operion/shared";
-import { Eye, Search } from "lucide-react";
+import { Eye, Search, RefreshCw } from "lucide-react";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -18,19 +18,50 @@ interface LeadsTableProps {
   initialLeads: Lead[];
 }
 
+interface LeadMetrics {
+  total: number;
+  email_ready: number;
+  email_and_phone: number;
+  phone_only: number;
+  needs_email: number;
+  active: number;
+  needs_research: number;
+}
+
 export function LeadsTable({ initialLeads }: LeadsTableProps) {
   const [leads, setLeads] = useState(initialLeads);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [status, setStatus] = useState<LeadStatus | "all">("all");
   const [tier, setTier] = useState<LeadTier | "all">("all");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<LeadMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
 
-  const view = useMemo(() => buildLeadListView(leads, { query: deferredQuery, status, tier, page }), [leads, deferredQuery, status, tier, page]);
+  // Load metrics on component mount
+  useEffect(() => {
+    const loadMetrics = async () => {
+      try {
+        const response = await fetch("/api/leads/metrics");
+        if (response.ok) {
+          const data = await response.json();
+          setMetrics(data);
+        }
+      } catch (error) {
+        console.error("Failed to load metrics:", error);
+      } finally {
+        setMetricsLoading(false);
+      }
+    };
+    loadMetrics();
+  }, []);
+
+  const view = useMemo(() => buildLeadListView(leads, { query: deferredQuery, status, tier, page, pageSize }), [leads, deferredQuery, status, tier, page, pageSize]);
 
   function openLead(lead: Lead) {
     setSelectedLead(lead);
@@ -82,11 +113,38 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-[1fr_180px_140px]">
+      {/* Metrics Cards */}
+      {metrics && (
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-lg border bg-card p-3">
+            <p className="text-xs text-muted-foreground">Total Leads</p>
+            <p className="mt-1 text-2xl font-semibold">{metrics.total.toLocaleString()}</p>
+          </div>
+          <div className="rounded-lg border bg-card p-3">
+            <p className="text-xs text-muted-foreground">Email Ready</p>
+            <p className="mt-1 text-2xl font-semibold text-green-600">{metrics.email_ready.toLocaleString()}</p>
+          </div>
+          <div className="rounded-lg border bg-card p-3">
+            <p className="text-xs text-muted-foreground">Email + Phone</p>
+            <p className="mt-1 text-2xl font-semibold text-blue-600">{metrics.email_and_phone.toLocaleString()}</p>
+          </div>
+          <div className="rounded-lg border bg-card p-3">
+            <p className="text-xs text-muted-foreground">Phone Only</p>
+            <p className="mt-1 text-2xl font-semibold text-amber-600">{metrics.phone_only.toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-3 md:grid-cols-[1fr_100px_140px_140px]">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="pl-9" aria-label="Search loaded leads" placeholder="Business, lead ID, contact, phone, or state" />
+          <Input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="pl-9" aria-label="Search leads" placeholder="Business name, email, phone, city, state..." />
         </div>
+        <Select aria-label="Page size" value={String(pageSize)} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}>
+          <option value="25">25 per page</option>
+          <option value="50">50 per page</option>
+          <option value="100">100 per page</option>
+        </Select>
         <Select aria-label="Lead status" value={status} onChange={(event) => { setStatus(event.target.value as LeadStatus | "all"); setPage(1); }}>
           <option value="all">All statuses</option>
           <option value="raw">Raw</option>
@@ -112,10 +170,8 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
       </div>
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-
-      <p className="text-xs text-muted-foreground">Searching {leads.length} loaded records (up to the latest 100), not a database-wide lead count.</p>
       {view.total === 0 ? (
-        <EmptyState title="No matching loaded leads" description="No loaded records match these filters." />
+        <EmptyState title="No matching leads" description="No leads match these filters." />
       ) : (
         <div className="rounded-md border bg-card">
           <Table>
@@ -155,7 +211,9 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3" aria-label="Lead pagination">
-        <p className="text-sm text-muted-foreground" aria-live="polite">{view.first}-{view.last} of {view.total} matching loaded leads</p>
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {view.total > 0 ? `${(view.page - 1) * pageSize + 1}–${Math.min(view.page * pageSize, view.total)} of ${view.total.toLocaleString()} leads` : "No leads"}
+        </p>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={view.page === 1} onClick={() => setPage(view.page - 1)}>Previous</Button>
           <span className="text-sm">{view.page} / {view.pageCount}</span>

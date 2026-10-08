@@ -23,13 +23,54 @@ export async function GET(request: NextRequest) {
       .eq("status", "raw")
       .is("blacklisted", null);
 
-    // Not email-ready (no email OR phone only)
-    const notEmailReady = (totalCount ?? 0) - (emailReadyCount ?? 0);
+    // Email + Phone (both present, email-ready)
+    const { count: emailPlusPhoneCount } = await supabase
+      .from("leads")
+      .select("*", { count: "exact", head: true })
+      .not("email", "is", null)
+      .not("phone", "is", null)
+      .eq("status", "raw")
+      .is("blacklisted", null);
+
+    // Phone Only (phone but no email)
+    const { count: phoneOnlyCount } = await supabase
+      .from("leads")
+      .select("*", { count: "exact", head: true })
+      .is("email", null)
+      .not("phone", "is", null)
+      .eq("status", "raw")
+      .is("blacklisted", null);
+
+    // Needs Email (has phone, no email)
+    const { count: needsEmailCount } = await supabase
+      .from("leads")
+      .select("*", { count: "exact", head: true })
+      .is("email", null)
+      .not("phone", "is", null)
+      .eq("status", "raw");
+
+    // Active businesses - cast to any to handle new fields not yet in type
+    const { count: activeCount } = await (supabase as any)
+      .from("leads")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "raw")
+      .eq("business_status", "active");
+
+    // Needs Research (unknown/unverified status)
+    const { count: needsResearchCount } = await (supabase as any)
+      .from("leads")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "raw")
+      .in("business_status", ["unknown", "unable_to_verify"]);
 
     return NextResponse.json({
       total: totalCount ?? 0,
       email_ready: emailReadyCount ?? 0,
-      not_email_ready: Math.max(0, notEmailReady),
+      email_and_phone: emailPlusPhoneCount ?? 0,
+      phone_only: phoneOnlyCount ?? 0,
+      needs_email: needsEmailCount ?? 0,
+      active: activeCount ?? 0,
+      needs_research: needsResearchCount ?? 0,
       timestamp: new Date().toISOString()
     });
   } catch (error) {

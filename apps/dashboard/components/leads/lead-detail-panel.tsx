@@ -38,15 +38,27 @@ export function LeadDetailPanel({
             <div className="mt-5 flex-1 space-y-5 overflow-y-auto">
               <LeadStatusBadge status={lead.status} tier={lead.tier} />
               <Button asChild variant="outline"><Link href={`/admin/leads/${lead.id}` as Route}>Full record, history & files</Link></Button>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <Detail label="Score" value={lead.qualification_score?.toString() ?? "—"} />
-                <Detail label="Revenue" value={formatCurrency(lead.annual_revenue_est)} />
-                <Detail label="Time in business" value={lead.time_in_business_years ? `${lead.time_in_business_years} years` : "—"} />
-                <Detail label="State" value={lead.state ?? "—"} />
-                <Detail label="Email" value={lead.email ?? "—"} />
-                <Detail label="Phone" value={lead.phone ?? "—"} />
-                <Detail label="Created" value={formatDateTime(lead.created_at)} />
-                <Detail label="Updated" value={formatDateTime(lead.updated_at)} />
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <Detail label="Score" value={lead.qualification_score?.toString() ?? "—"} />
+                  <Detail label="Revenue" value={lead.annual_revenue_est ? formatCurrency(lead.annual_revenue_est) : "Unknown"} />
+                  <Detail label="Time in business" value={lead.time_in_business_years ? `${lead.time_in_business_years} years` : "—"} />
+                  <Detail label="State" value={lead.state ?? "—"} />
+                  <Detail label="City" value={(lead as any).city ?? "—"} />
+                  <Detail label="Email" value={lead.email ?? "—"} />
+                  <Detail label="Phone" value={lead.phone ?? "—"} />
+                  <Detail label="Website" value={(lead as any).website_url ? <a href={(lead as any).website_url} target="_blank" rel="noopener noreferrer" className="text-primary underline truncate">{(lead as any).website_url}</a> : "—"} />
+                  <Detail label="Owner" value={(lead as any).owner_name ?? "—"} />
+                  <Detail label="Business Status" value={(lead as any).business_status ? capitalizeCase((lead as any).business_status) : "Unknown"} />
+                </div>
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs text-muted-foreground">Email Ready</p>
+                  <p className="mt-1 font-medium">{lead.email && !(lead as any).blacklisted ? "✓ Yes" : "✗ No"}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Detail label="Created" value={formatDateTime(lead.created_at)} />
+                  <Detail label="Updated" value={formatDateTime(lead.updated_at)} />
+                </div>
               </div>
 
               <div className="rounded-md border p-4">
@@ -78,11 +90,15 @@ export function LeadDetailPanel({
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function Detail({ label, value }: { label: string; value: string | React.ReactNode }) {
   return (
     <div className="rounded-md border bg-background p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 break-words font-medium">{value}</p>
     </div>
   );
+}
+
+function capitalizeCase(str: string): string {
+  return str.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
